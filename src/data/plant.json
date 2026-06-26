@@ -1,0 +1,62 @@
+[
+  {
+    "id": "GRB_001",
+    "name": "Caja reductora entrada",
+    "type": "gearbox",
+    "area": "Entrada laminador",
+    "system": "mecanico",
+    "position": { "x": -4, "y": 0.75, "z": 0 },
+    "rotation": { "x": 0, "y": 0, "z": 0 },
+    "size": { "width": 2.4, "height": 1.5, "depth": 1.4 },
+    "color": "#6b7b8c",
+    "criticality": "A",
+    "tags": ["mecanico", "lubricacion"],
+    "description": "Caja reductora principal de entrada al laminador.",
+    "dataSources": { "plcTag": "", "sapEquipmentId": "", "grafanaUrl": "", "powerBiUrl": "", "documentsUrl": "", "photosUrl": "", "failureHistory": "" }
+  },
+  {
+    "id": "MTR_001",
+    "name": "Motor principal",
+    "type": "motor",
+    "area": "Entrada laminador",
+    "system": "electrico",
+    "position": { "x": -7, "y": 0.7, "z": 0 },
+    "rotation": { "x": 0, "y": 0, "z": 0 },
+    "size": { "width": 2.4, "height": 1.4, "depth": 1.4 },
+    "color": "#287c8e",
+    "criticality": "A",
+    "tags": ["electrico", "accionamiento"],
+    "description": "Motor de accionamiento de la linea.",
+    "dataSources": { "plcTag": "", "sapEquipmentId": "", "grafanaUrl": "", "powerBiUrl": "", "documentsUrl": "", "photosUrl": "", "failureHistory": "" }
+  },
+  {
+    "id": "RTB_001",
+    "name": "Mesa de rodillos",
+    "type": "roller_table",
+    "area": "Transporte",
+    "system": "mecanico",
+    "position": { "x": 2, "y": 0.55, "z": 0 },
+    "rotation": { "x": 0, "y": 0, "z": 0 },
+    "size": { "width": 8, "height": 1.1, "depth": 2.5 },
+    "color": "#b27a32",
+    "criticality": "B",
+    "tags": ["mecanico", "transporte"],
+    "description": "Mesa de transferencia del producto.",
+    "dataSources": { "plcTag": "", "sapEquipmentId": "", "grafanaUrl": "", "powerBiUrl": "", "documentsUrl": "", "photosUrl": "", "failureHistory": "" }
+  },
+  {
+    "id": "TNK_001",
+    "name": "Tanque hidraulico",
+    "type": "tank",
+    "area": "Central hidraulica",
+    "system": "hidraulico",
+    "position": { "x": 2, "y": 1.5, "z": -4 },
+    "rotation": { "x": 0, "y": 0, "z": 0 },
+    "size": { "width": 2.2, "height": 3, "depth": 2.2 },
+    "color": "#7b8794",
+    "criticality": "B",
+    "tags": ["hidraulico"],
+    "description": "Reserva del circuito hidraulico.",
+    "dataSources": { "plcTag": "", "sapEquipmentId": "", "grafanaUrl": "", "powerBiUrl": "", "documentsUrl": "", "photosUrl": "", "failureHistory": "" }
+  }
+]
