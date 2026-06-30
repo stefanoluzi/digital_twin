@@ -4,15 +4,64 @@ import { useSceneStore } from '../../store/sceneStore'
 import type { AssetType, IndustrialAsset } from '../../types/plant'
 import { createIndustrialObject } from '../../utils/objectFactory'
 
-const entries: Array<{ type: AssetType; label: string; icon: string }> = [
-  { type: 'gearbox', label: 'Caja reductora', icon: 'G' },
-  { type: 'motor', label: 'Motor', icon: 'M' },
-  { type: 'roller', label: 'Rodillo', icon: 'R' },
-  { type: 'roller_table', label: 'Mesa de rodillos', icon: 'RT' },
-  { type: 'pump', label: 'Bomba', icon: 'P' },
-  { type: 'tank', label: 'Tanque', icon: 'T' },
-  { type: 'conveyor', label: 'Transportador', icon: 'C' },
-  { type: 'generic_box', label: 'Caja generica', icon: 'B' },
+const primitiveEntries: Array<{ type: AssetType; label: string; icon: string }> = [
+  { type: 'box', label: 'Box', icon: 'B' },
+  { type: 'long_box', label: 'Long Box', icon: 'LB' },
+  { type: 'cylinder', label: 'Cylinder', icon: 'CY' },
+  { type: 'pipe', label: 'Pipe', icon: 'P' },
+  { type: 'beam', label: 'Beam', icon: 'I' },
+  { type: 'plate', label: 'Plate', icon: 'PL' },
+]
+
+const mechanicalEntries: Array<{ type: AssetType; label: string; icon: string }> = [
+  { type: 'electric_motor_horizontal', label: 'Motor Electrico Horizontal', icon: 'MH' },
+  { type: 'electric_motor_vertical', label: 'Motor Electrico Vertical', icon: 'MV' },
+  { type: 'gearbox_horizontal', label: 'Caja Reductora Horizontal', icon: 'GH' },
+  { type: 'gearbox_vertical', label: 'Caja Reductora Vertical', icon: 'GV' },
+  { type: 'motor_gearbox_parallel', label: 'Motor + Reductor paralelo', icon: 'MR' },
+  { type: 'coupling', label: 'Acople', icon: 'AC' },
+  { type: 'cardan_shaft', label: 'Cardan', icon: 'CD' },
+  { type: 'transmission_shaft', label: 'Eje de Transmision', icon: 'EJ' },
+  { type: 'centrifugal_pump_horizontal', label: 'Bomba Centrifuga Horizontal', icon: 'BH' },
+  { type: 'vertical_pump', label: 'Bomba Vertical', icon: 'BV' },
+  { type: 'industrial_fan', label: 'Ventilador Industrial', icon: 'VI' },
+]
+
+const processEntries: Array<{ type: AssetType; label: string; icon: string }> = [
+  { type: 'roller_table_flat', label: 'Roller Table (Flat)', icon: 'RF' },
+  { type: 'roller_table_biconical', label: 'Roller Table (Biconical)', icon: 'RB' },
+  { type: 'bancal', label: 'Bancal', icon: 'BN' },
+  { type: 'centering_stars', label: 'Estrellas centradoras', icon: 'EC' },
+  { type: 'chain_bed', label: 'Chain Bed', icon: 'CB' },
+  { type: 'rolling_stand', label: 'Rolling Stand', icon: 'RS' },
+  { type: 'steader_3_roll', label: 'Steader 3 Rodillos', icon: 'S3' },
+  { type: 'piercer_drive', label: 'Piercer Drive', icon: 'PD' },
+]
+
+const transportEntries: Array<{ type: AssetType; label: string; icon: string }> = [
+  { type: 'rail_bed_multi', label: 'Bancal de Rieles', icon: 'BR' },
+]
+
+const hydraulicEntries: Array<{ type: AssetType; label: string; icon: string }> = [
+  { type: 'hydraulic_power_unit', label: 'Central Hidraulica', icon: 'CH' },
+]
+
+const transferEntries: Array<{ type: AssetType; label: string; icon: string }> = [
+  { type: 'transfer_star', label: 'Estrella', icon: 'ES' },
+  { type: 'transfer_v', label: 'Transferidor V', icon: 'TV' },
+  { type: 'transfer_claw', label: 'Transferidor Uña', icon: 'TU' },
+]
+
+const infrastructureEntries: Array<{ type: AssetType; label: string; icon: string }> = [
+  { type: 'platform', label: 'Plataforma', icon: 'PF' },
+  { type: 'stairs', label: 'Escalera', icon: 'ES' },
+  { type: 'handrail', label: 'Baranda', icon: 'BR' },
+  { type: 'column', label: 'Columna', icon: 'CL' },
+  { type: 'electrical_panel', label: 'Tablero electrico', icon: 'TE' },
+  { type: 'cabinet', label: 'Gabinete', icon: 'GB' },
+  { type: 'tank_vertical', label: 'Tanque vertical', icon: 'TV' },
+  { type: 'tank_horizontal', label: 'Tanque horizontal', icon: 'TH' },
+  { type: 'pipe_rack_simple', label: 'Pipe Rack simple', icon: 'PR' },
 ]
 
 function matches(asset: IndustrialAsset, query: string) {
@@ -88,15 +137,42 @@ export function ObjectLibrary() {
         </div>
       )}
 
-      <p className="panel-copy">Agregar activo al centro</p>
+      <div className="library-scroll">
+        <LibrarySection title="Primitive Geometry" entries={primitiveEntries} objects={objects} onAdd={add} />
+        <p className="panel-copy">Industrial Assets</p>
+        <LibrarySection title="Mechanical" entries={mechanicalEntries} objects={objects} onAdd={add} />
+        <LibrarySection title="Process" entries={processEntries} objects={objects} onAdd={add} />
+        <LibrarySection title="Transporte" entries={transportEntries} objects={objects} onAdd={add} />
+        <LibrarySection title="Hidraulica" entries={hydraulicEntries} objects={objects} onAdd={add} />
+        <LibrarySection title="Transferidores" entries={transferEntries} objects={objects} onAdd={add} />
+        <LibrarySection title="Infrastructure" entries={infrastructureEntries} objects={objects} onAdd={add} />
+        <div className="library-footer"><span className="status-dot" /> Escena local - Sin backend</div>
+      </div>
+    </aside>
+  )
+}
+
+function LibrarySection({
+  title,
+  entries,
+  objects,
+  onAdd,
+}: {
+  title: string
+  entries: Array<{ type: AssetType; label: string; icon: string }>
+  objects: IndustrialAsset[]
+  onAdd: (asset: IndustrialAsset) => void
+}) {
+  return (
+    <>
+      <p className="panel-copy">{title}</p>
       <div className="asset-library">
         {entries.map((entry) => (
-          <button key={entry.type} className="library-button" onClick={() => add(createIndustrialObject(entry.type, objects))}>
+          <button key={entry.type} className="library-button" onClick={() => onAdd(createIndustrialObject(entry.type, objects))}>
             <span className="library-icon">{entry.icon}</span><span>{entry.label}</span><span className="add-mark">+</span>
           </button>
         ))}
       </div>
-      <div className="library-footer"><span className="status-dot" /> Escena local - Sin backend</div>
-    </aside>
+    </>
   )
 }

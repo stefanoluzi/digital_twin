@@ -4,12 +4,45 @@ import type { ThreeEvent } from '@react-three/fiber'
 import type * as THREE from 'three'
 import { Color } from 'three'
 import type { IndustrialAsset, ViewSettings } from '../../types/plant'
+import { Bancal } from '../../industrialAssets/Bancal'
+import { Cabinet } from '../../industrialAssets/Cabinet'
+import { CardanShaft } from '../../industrialAssets/CardanShaft'
+import { CenteringStars } from '../../industrialAssets/CenteringStars'
+import { CentrifugalPumpHorizontal } from '../../industrialAssets/CentrifugalPumpHorizontal'
+import { ChainBed } from '../../industrialAssets/ChainBed'
+import { Column } from '../../industrialAssets/Column'
+import { Coupling } from '../../industrialAssets/Coupling'
+import { ElectricalPanel } from '../../industrialAssets/ElectricalPanel'
+import { ElectricMotorHorizontal } from '../../industrialAssets/ElectricMotorHorizontal'
+import { ElectricMotorVertical } from '../../industrialAssets/ElectricMotorVertical'
+import { GearboxHorizontal } from '../../industrialAssets/GearboxHorizontal'
+import { GearboxVertical } from '../../industrialAssets/GearboxVertical'
+import { Handrail } from '../../industrialAssets/Handrail'
+import { HydraulicPowerUnit } from '../../industrialAssets/HydraulicPowerUnit'
+import { IndustrialFan } from '../../industrialAssets/IndustrialFan'
+import { MotorGearboxParallel } from '../../industrialAssets/MotorGearboxParallel'
+import { PiercerDrive } from '../../industrialAssets/PiercerDrive'
+import { PipeRackSimple } from '../../industrialAssets/PipeRackSimple'
+import { Platform } from '../../industrialAssets/Platform'
+import { RailBedMulti } from '../../industrialAssets/RailBedMulti'
+import { RollerTableBiconical } from '../../industrialAssets/RollerTableBiconical'
+import { RollerTableFlat } from '../../industrialAssets/RollerTableFlat'
+import { RollingStand } from '../../industrialAssets/RollingStand'
+import { Steader3Roll } from '../../industrialAssets/Steader3Roll'
+import { Stairs } from '../../industrialAssets/Stairs'
+import { TankHorizontal } from '../../industrialAssets/TankHorizontal'
+import { TankVertical } from '../../industrialAssets/TankVertical'
+import { TransmissionShaft } from '../../industrialAssets/TransmissionShaft'
+import { TransferClaw } from '../../industrialAssets/transfers/TransferClaw'
+import { TransferStar } from '../../industrialAssets/transfers/TransferStar'
+import { TransferV } from '../../industrialAssets/transfers/TransferV'
+import { VerticalPump } from '../../industrialAssets/VerticalPump'
 
 interface Props {
   asset: IndustrialAsset
   selected: boolean
   view: ViewSettings
-  onSelect: () => void
+  onSelect: (event: ThreeEvent<MouseEvent>) => void
   onPointerDown?: (event: ThreeEvent<PointerEvent>) => void
   onPointerMove?: (event: ThreeEvent<PointerEvent>) => void
   onPointerUp?: (event: ThreeEvent<PointerEvent>) => void
@@ -46,8 +79,90 @@ function Material({ asset, selected, view }: Pick<Props, 'asset' | 'selected' | 
 
 function AssetGeometry({ asset, selected, view }: Pick<Props, 'asset' | 'selected' | 'view'>) {
   const { width: w, height: h, depth: d } = asset.size
+  const color = displayColor(asset, view.colorMode)
   const material = <Material asset={asset} selected={selected} view={view} />
   switch (asset.type) {
+    case 'box':
+    case 'long_box':
+    case 'beam':
+    case 'plate':
+      return <mesh castShadow receiveShadow><boxGeometry args={[w, h, d]} />{material}</mesh>
+    case 'cylinder':
+      return <mesh castShadow receiveShadow><cylinderGeometry args={[w / 2, w / 2, h, 32]} />{material}</mesh>
+    case 'pipe':
+      return <group>
+        <mesh rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow><cylinderGeometry args={[h / 2, h / 2, w, 24]} />{material}</mesh>
+        <mesh rotation={[0, 0, Math.PI / 2]} scale={[1.01, 1.01, 1.01]}>
+          <cylinderGeometry args={[h * 0.28, h * 0.28, w + 0.02, 24]} />
+          <meshStandardMaterial color="#1b2228" roughness={0.9} metalness={0} />
+        </mesh>
+      </group>
+    case 'roller_table_flat':
+      return <RollerTableFlat asset={asset} color={color} />
+    case 'roller_table_biconical':
+      return <RollerTableBiconical asset={asset} color={color} />
+    case 'bancal':
+      return <Bancal asset={asset} color={color} />
+    case 'rail_bed_multi':
+      return <RailBedMulti asset={asset} color={color} />
+    case 'centering_stars':
+      return <CenteringStars asset={asset} color={color} />
+    case 'chain_bed':
+      return <ChainBed asset={asset} color={color} />
+    case 'rolling_stand':
+      return <RollingStand asset={asset} color={color} />
+    case 'steader_3_roll':
+      return <Steader3Roll asset={asset} color={color} />
+    case 'piercer_drive':
+      return <PiercerDrive asset={asset} color={color} />
+    case 'electric_motor_horizontal':
+      return <ElectricMotorHorizontal asset={asset} color={color} />
+    case 'electric_motor_vertical':
+      return <ElectricMotorVertical asset={asset} color={color} />
+    case 'gearbox_horizontal':
+      return <GearboxHorizontal asset={asset} color={color} />
+    case 'gearbox_vertical':
+      return <GearboxVertical asset={asset} color={color} />
+    case 'motor_gearbox_parallel':
+      return <MotorGearboxParallel asset={asset} color={color} />
+    case 'hydraulic_power_unit':
+      return <HydraulicPowerUnit asset={asset} color={color} />
+    case 'transfer_star':
+      return <TransferStar asset={asset} color={color} />
+    case 'transfer_v':
+      return <TransferV asset={asset} color={color} />
+    case 'transfer_claw':
+      return <TransferClaw asset={asset} color={color} />
+    case 'coupling':
+      return <Coupling asset={asset} color={color} />
+    case 'cardan_shaft':
+      return <CardanShaft asset={asset} color={color} />
+    case 'transmission_shaft':
+      return <TransmissionShaft asset={asset} color={color} />
+    case 'centrifugal_pump_horizontal':
+      return <CentrifugalPumpHorizontal asset={asset} color={color} />
+    case 'vertical_pump':
+      return <VerticalPump asset={asset} color={color} />
+    case 'industrial_fan':
+      return <IndustrialFan asset={asset} color={color} />
+    case 'platform':
+      return <Platform asset={asset} color={color} />
+    case 'stairs':
+      return <Stairs asset={asset} color={color} />
+    case 'handrail':
+      return <Handrail asset={asset} color={color} />
+    case 'column':
+      return <Column asset={asset} color={color} />
+    case 'electrical_panel':
+      return <ElectricalPanel asset={asset} color={color} />
+    case 'cabinet':
+      return <Cabinet asset={asset} color={color} />
+    case 'tank_vertical':
+      return <TankVertical asset={asset} color={color} />
+    case 'tank_horizontal':
+      return <TankHorizontal asset={asset} color={color} />
+    case 'pipe_rack_simple':
+      return <PipeRackSimple asset={asset} color={color} />
     case 'motor':
     case 'roller':
       return <mesh rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow><cylinderGeometry args={[h / 2, h / 2, w, 24]} />{material}</mesh>
@@ -85,7 +200,7 @@ export const IndustrialObject = forwardRef<THREE.Group, Props>(function Industri
   onPointerUp,
   onContextMenu,
 }, ref) {
-  const click = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect() }
+  const click = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(event) }
   const label = (view.labelMode === 'name' ? asset.name : asset.id) || asset.id || asset.name || 'Sin ID'
 
   return (
@@ -102,7 +217,7 @@ export const IndustrialObject = forwardRef<THREE.Group, Props>(function Industri
       userData={{ assetId: asset.id }}
     >
       <AssetGeometry asset={asset} selected={selected} view={view} />
-      {selected && <mesh scale={1.035}>
+      {selected && <mesh scale={1.035} raycast={() => null}>
         <boxGeometry args={[asset.size.width, asset.size.height, asset.size.depth]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         <Edges color="#ffd166" lineWidth={1.5} />

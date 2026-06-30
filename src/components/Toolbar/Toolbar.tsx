@@ -97,6 +97,7 @@ export function Toolbar() {
         <label className="toolbar-check"><input type="checkbox" checked={store.snap.enabled} onChange={(e) => store.updateSnap({ enabled: e.target.checked })} /> Snap</label>
         <label className="toolbar-number">Grilla <input type="number" min="0.1" step="0.1" value={store.snap.gridSize} onChange={(e) => store.updateSnap({ gridSize: Math.max(0.1, numberFromInput(e.currentTarget, store.snap.gridSize || 0.5)) })} /></label>
         <label className="toolbar-check"><input type="checkbox" checked={store.view.showLabels} onChange={(e) => store.updateView({ showLabels: e.target.checked })} /> Labels</label>
+        <label className="toolbar-check"><input type="checkbox" checked={store.view.showResizeHandles} onChange={(e) => store.updateView({ showResizeHandles: e.target.checked })} /> Resize handles</label>
         <select value={store.view.labelMode} onChange={(e) => store.updateView({ labelMode: e.target.value as 'id' | 'name' })}>
           <option value="id">ID</option>
           <option value="name">Nombre</option>
@@ -105,6 +106,9 @@ export function Toolbar() {
           <option value="manual">Color manual</option>
           <option value="criticality">Por criticidad</option>
         </select>
+        <button onClick={() => store.updateView({ theme: store.view.theme === 'dark' ? 'light' : 'dark' })}>
+          {store.view.theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
         <span className="separator" />
         <button disabled={!store.selectedObjectId} onClick={() => store.selectedObjectId && store.duplicateObject(store.selectedObjectId)}>Duplicar</button>
         <button className="danger" disabled={!store.selectedObjectId} onClick={() => store.selectedObjectId && store.deleteObject(store.selectedObjectId)}>Eliminar</button>

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import initialPlant from '../data/plant.json'
+import { normalizeParamsForType, sizeFromParams } from '../utils/assetParams'
 import type {
   EditMode,
   DataSources,
@@ -12,18 +13,27 @@ import type {
   SnapSettings,
   ViewSettings,
 } from '../types/plant'
+import { assetTypes as allAssetTypes } from '../types/plant'
 
 const STORAGE_KEY = 'industrial-twin-scene-v2'
+const THEME_KEY = 'industrial-twin-theme'
 
 const defaultSnap: SnapSettings = { enabled: false, gridSize: 0.5, rotationDegrees: 15, scaleStep: 0.1 }
-const defaultView: ViewSettings = { showLabels: true, labelMode: 'id', colorMode: 'manual' }
+const storedTheme = typeof localStorage !== 'undefined' && localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'
+const defaultView: ViewSettings = { showLabels: true, showResizeHandles: true, labelMode: 'id', colorMode: 'manual', theme: storedTheme }
 const finiteOr = (value: unknown, fallback: number) => typeof value === 'number' && Number.isFinite(value) ? value : fallback
 const positiveOr = (value: unknown, fallback: number) => typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback
-const assetTypes = new Set<AssetType>(['gearbox', 'motor', 'roller', 'roller_table', 'pump', 'tank', 'conveyor', 'generic_box'])
+const normalizeRadians = (value: unknown, fallback = 0) => {
+  const radians = finiteOr(value, fallback)
+  const fullTurn = Math.PI * 2
+  return ((radians + Math.PI) % fullTurn + fullTurn) % fullTurn - Math.PI
+}
+const assetTypes = new Set<AssetType>(allAssetTypes)
 const systems = new Set<PlantSystem>(['', 'mecanico', 'hidraulico', 'lubricacion', 'electrico', 'instrumentacion'])
 const criticalities = new Set<Criticality>(['', 'A', 'B', 'C', 'D'])
 const labelModes = new Set<ViewSettings['labelMode']>(['id', 'name'])
 const colorModes = new Set<ViewSettings['colorMode']>(['manual', 'criticality'])
+const themeModes = new Set<ViewSettings['theme']>(['dark', 'light'])
 
 function safeString(value: unknown, fallback = '') {
   return typeof value === 'string' ? value : fallback
@@ -33,13 +43,34 @@ function normalizeColor(value: unknown) {
   return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : '#707b86'
 }
 
+function migrateAssetType(type: unknown): AssetType {
+  if (type === 'chain_bed_single') return 'chain_bed'
+  if (type === 'chain_bed_double') return 'chain_bed'
+  if (type === 'chain_bed_five' || type === 'chain_bed_5_rows') return 'chain_bed'
+  return assetTypes.has(type as AssetType) ? type as AssetType : 'generic_box'
+}
+
+function migrateParams(type: unknown, params: IndustrialAsset['params'] | undefined): IndustrialAsset['params'] {
+  if (type === 'chain_bed_single') return { ...params, chainCount: 1 }
+  if (type === 'chain_bed_double') return { ...params, chainCount: 2 }
+  if (type === 'chain_bed_five' || type === 'chain_bed_5_rows') return { ...params, chainCount: 5 }
+  const legacyParams = params as (IndustrialAsset['params'] & { chainRows?: unknown }) | undefined
+  if (type === 'chain_bed' && typeof params?.chainCount !== 'number' && typeof legacyParams?.chainRows === 'number') return { ...params, chainCount: legacyParams.chainRows }
+  return params ?? {}
+}
+
 function normalizeObject(object: Partial<IndustrialAsset> | unknown): IndustrialAsset {
   const raw = (object && typeof object === 'object' ? object : {}) as Partial<IndustrialAsset>
   const existingDataSources = (raw.dataSources ?? {}) as Partial<DataSources>
-  const width = positiveOr(raw.size?.width, 1)
-  const height = positiveOr(raw.size?.height, 1)
-  const depth = positiveOr(raw.size?.depth, 1)
-  const type = assetTypes.has(raw.type as AssetType) ? raw.type as AssetType : 'generic_box'
+  const type = migrateAssetType(raw.type)
+  const hasSize = Boolean(raw.size && typeof raw.size === 'object')
+  const baseSize = {
+    width: positiveOr(raw.size?.width, 1),
+    height: positiveOr(raw.size?.height, 1),
+    depth: positiveOr(raw.size?.depth, 1),
+  }
+  const params = normalizeParamsForType(type, migrateParams(raw.type, raw.params))
+  const size = hasSize ? baseSize : sizeFromParams(type, params, baseSize)
   const system = systems.has(raw.system as PlantSystem) ? raw.system as PlantSystem : ''
   const criticality = criticalities.has(raw.criticality as Criticality) ? raw.criticality as Criticality : ''
   const dataSources = {
@@ -60,17 +91,19 @@ function normalizeObject(object: Partial<IndustrialAsset> | unknown): Industrial
     system,
     position: {
       x: finiteOr(raw.position?.x, 0),
-      y: positiveOr(raw.position?.y, height / 2),
+      y: positiveOr(raw.position?.y, size.height / 2),
       z: finiteOr(raw.position?.z, 0),
     },
     rotation: {
-      x: finiteOr(raw.rotation?.x, 0),
-      y: finiteOr(raw.rotation?.y, 0),
-      z: finiteOr(raw.rotation?.z, 0),
+      x: normalizeRadians(raw.rotation?.x),
+      y: normalizeRadians(raw.rotation?.y),
+      z: normalizeRadians(raw.rotation?.z),
     },
-    size: { width, height, depth },
+    size,
+    params,
     color: normalizeColor(raw.color),
     criticality,
+    locked: Boolean(raw.locked),
     tags: Array.isArray(raw.tags) ? raw.tags.map((tag) => safeString(tag)).filter(Boolean) : [],
     description: safeString(raw.description),
     dataSources,
@@ -109,8 +142,10 @@ function normalizeSnap(snap?: Partial<SnapSettings>): SnapSettings {
 function normalizeView(view?: Partial<ViewSettings>): ViewSettings {
   return {
     showLabels: view?.showLabels ?? defaultView.showLabels,
+    showResizeHandles: view?.showResizeHandles ?? defaultView.showResizeHandles,
     labelMode: labelModes.has(view?.labelMode as ViewSettings['labelMode']) ? view?.labelMode as ViewSettings['labelMode'] : defaultView.labelMode,
     colorMode: colorModes.has(view?.colorMode as ViewSettings['colorMode']) ? view?.colorMode as ViewSettings['colorMode'] : defaultView.colorMode,
+    theme: themeModes.has(view?.theme as ViewSettings['theme']) ? view?.theme as ViewSettings['theme'] : defaultView.theme,
   }
 }
 
@@ -133,6 +168,8 @@ const cloneInitial = () => normalizeObjects(structuredClone(initialPlant) as unk
 interface SceneState {
   objects: IndustrialAsset[]
   selectedObjectId: string | null
+  selectedObjectIds: string[]
+  primarySelectedObjectId: string | null
   editMode: EditMode
   layout: LayoutImage | null
   snap: SnapSettings
@@ -141,8 +178,11 @@ interface SceneState {
   addObject: (object: IndustrialAsset) => void
   updateObject: (id: string, update: Partial<IndustrialAsset>) => void
   deleteObject: (id: string) => void
+  deleteObjects: (ids: string[]) => void
   duplicateObject: (id: string) => void
   selectObject: (id: string | null) => void
+  toggleObjectSelection: (id: string) => void
+  clearSelection: () => void
   setEditMode: (mode: EditMode) => void
   setLayout: (layout: LayoutImage | null) => void
   updateLayout: (update: Partial<LayoutImage>) => void
@@ -169,6 +209,8 @@ function isDocument(value: unknown): value is PlantSceneDocument {
 export const useSceneStore = create<SceneState>((set, get) => ({
   objects: cloneInitial(),
   selectedObjectId: null,
+  selectedObjectIds: [],
+  primarySelectedObjectId: null,
   editMode: 'move',
   layout: null,
   snap: defaultSnap,
@@ -177,7 +219,13 @@ export const useSceneStore = create<SceneState>((set, get) => ({
   addObject: (object) => set((state) => {
     const normalized = normalizeObject(object)
     normalized.id = makeUniqueId(normalized.id, state.objects)
-    return { objects: [...state.objects, normalized], selectedObjectId: normalized.id, focusRequest: null }
+    return {
+      objects: [...state.objects, normalized],
+      selectedObjectId: normalized.id,
+      selectedObjectIds: [normalized.id],
+      primarySelectedObjectId: normalized.id,
+      focusRequest: null,
+    }
   }),
   updateObject: (id, update) => set((state) => ({
     objects: state.objects.map((object) => {
@@ -187,12 +235,34 @@ export const useSceneStore = create<SceneState>((set, get) => ({
       return normalized
     }),
     selectedObjectId: update.id && state.selectedObjectId === id ? makeUniqueId(update.id, state.objects, id) : state.selectedObjectId,
+    primarySelectedObjectId: update.id && state.primarySelectedObjectId === id ? makeUniqueId(update.id, state.objects, id) : state.primarySelectedObjectId,
+    selectedObjectIds: update.id ? state.selectedObjectIds.map((selectedId) => selectedId === id ? makeUniqueId(update.id ?? id, state.objects, id) : selectedId) : state.selectedObjectIds,
   })),
-  deleteObject: (id) => set((state) => ({
-    objects: state.objects.filter((object) => object.id !== id),
-    selectedObjectId: state.selectedObjectId === id ? null : state.selectedObjectId,
-    focusRequest: state.focusRequest?.id === id ? null : state.focusRequest,
-  })),
+  deleteObject: (id) => set((state) => {
+    const selectedObjectIds = state.selectedObjectIds.filter((selectedId) => selectedId !== id)
+    const primarySelectedObjectId = state.primarySelectedObjectId === id ? selectedObjectIds[0] ?? null : state.primarySelectedObjectId
+    return {
+      objects: state.objects.filter((object) => object.id !== id),
+      selectedObjectId: primarySelectedObjectId,
+      selectedObjectIds,
+      primarySelectedObjectId,
+      focusRequest: state.focusRequest?.id === id ? null : state.focusRequest,
+    }
+  }),
+  deleteObjects: (ids) => set((state) => {
+    const targets = new Set(ids)
+    const selectedObjectIds = state.selectedObjectIds.filter((id) => !targets.has(id))
+    const primarySelectedObjectId = state.primarySelectedObjectId && !targets.has(state.primarySelectedObjectId)
+      ? state.primarySelectedObjectId
+      : selectedObjectIds[0] ?? null
+    return {
+      objects: state.objects.filter((object) => !targets.has(object.id)),
+      selectedObjectIds,
+      primarySelectedObjectId,
+      selectedObjectId: primarySelectedObjectId,
+      focusRequest: state.focusRequest && targets.has(state.focusRequest.id) ? null : state.focusRequest,
+    }
+  }),
   duplicateObject: (id) => set((state) => {
     const source = state.objects.find((object) => object.id === id)
     if (!source) return state
@@ -204,20 +274,49 @@ export const useSceneStore = create<SceneState>((set, get) => ({
     duplicate.name = `${source.name || source.id} (copia)`
     duplicate.position.x += 1
     duplicate.position.z += 1
-    return { objects: [...state.objects, duplicate], selectedObjectId: nextId, focusRequest: null }
+    return {
+      objects: [...state.objects, duplicate],
+      selectedObjectId: nextId,
+      selectedObjectIds: [nextId],
+      primarySelectedObjectId: nextId,
+      focusRequest: null,
+    }
   }),
-  selectObject: (id) => set({ selectedObjectId: id }),
+  selectObject: (id) => set({
+    selectedObjectId: id,
+    selectedObjectIds: id ? [id] : [],
+    primarySelectedObjectId: id,
+  }),
+  toggleObjectSelection: (id) => set((state) => {
+    const exists = state.selectedObjectIds.includes(id)
+    const selectedObjectIds = exists
+      ? state.selectedObjectIds.filter((selectedId) => selectedId !== id)
+      : [...state.selectedObjectIds, id]
+    const primarySelectedObjectId = exists
+      ? (state.primarySelectedObjectId === id ? selectedObjectIds[selectedObjectIds.length - 1] ?? null : state.primarySelectedObjectId)
+      : id
+    return {
+      selectedObjectIds,
+      primarySelectedObjectId,
+      selectedObjectId: primarySelectedObjectId,
+    }
+  }),
+  clearSelection: () => set({ selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null }),
   setEditMode: (mode) => set({ editMode: mode }),
   setLayout: (layout) => set({ layout: layout ? normalizeLayout(layout) : null }),
   updateLayout: (update) => set((state) => ({ layout: state.layout ? normalizeLayout({ ...state.layout, ...update }) : null })),
   centerLayout: () => set((state) => ({ layout: state.layout ? { ...state.layout } : null })),
   updateSnap: (update) => set((state) => ({ snap: normalizeSnap({ ...state.snap, ...update }) })),
-  updateView: (update) => set((state) => ({ view: normalizeView({ ...state.view, ...update }) })),
-  focusObject: (id) => set({ selectedObjectId: id, focusRequest: { id, nonce: Date.now() } }),
-  clearScene: () => set({ objects: [], selectedObjectId: null, focusRequest: null }),
+  updateView: (update) => set((state) => {
+    const view = normalizeView({ ...state.view, ...update })
+    localStorage.setItem(THEME_KEY, view.theme)
+    return { view }
+  }),
+  focusObject: (id) => set({ selectedObjectId: id, selectedObjectIds: [id], primarySelectedObjectId: id, focusRequest: { id, nonce: Date.now() } }),
+  clearScene: () => set({ objects: [], selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null, focusRequest: null }),
   loadScene: (document) => {
     if (Array.isArray(document)) {
-      set({ objects: normalizeObjects(document), selectedObjectId: null, focusRequest: null })
+      set({ objects: normalizeObjects(document), selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null, focusRequest: null })
       return
     }
     set({
@@ -226,6 +325,8 @@ export const useSceneStore = create<SceneState>((set, get) => ({
       snap: normalizeSnap(document.snap),
       view: normalizeView(document.view),
       selectedObjectId: null,
+      selectedObjectIds: [],
+      primarySelectedObjectId: null,
       focusRequest: null,
     })
   },
