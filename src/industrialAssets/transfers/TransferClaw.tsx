@@ -12,6 +12,23 @@ const numberParam = (value: IndustrialParamValue | undefined, fallback: number, 
   typeof value === 'number' && Number.isFinite(value) && value >= min ? value : fallback
 const countParam = (value: IndustrialParamValue | undefined, fallback: number, min: number, max: number) =>
   Math.max(min, Math.min(max, Math.round(numberParam(value, fallback, min))))
+const rotatePointsYZ = (
+  points: Array<[number, number]>,
+  pivot: [number, number],
+  angle: number,
+  yScale = 1,
+): Array<[number, number]> => {
+  const [pivotZ, pivotY] = pivot
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  return points.map(([z, y]) => {
+    const localZ = z - pivotZ
+    const localY = y - pivotY
+    return [pivotZ + localZ * cos - localY * sin, pivotY + (localZ * sin + localY * cos) * yScale]
+  })
+}
+const translatePointsYZ = (points: Array<[number, number]>, zOffset: number, yOffset = 0): Array<[number, number]> =>
+  points.map(([z, y]) => [z + zOffset, y + yOffset])
 
 function ExtrudedSilhouette({
   points,
@@ -101,6 +118,8 @@ function TransferClawUnit({
     [clawLength * 0.02, height * 0.64],
     [-clawLength * 0.26, height * 0.62],
   ]
+  const clawPivot: [number, number] = [-clawLength * 0.24, height * 0.74]
+  const rotatedClawPoints = translatePointsYZ(rotatePointsYZ(clawPoints, clawPivot, -Math.PI / 2, 0.46), clawLength * 0.42, height * 0.02)
 
   return (
     <group name="pivotGroup" rotation={[pivotAngle, 0, 0]}>
@@ -109,7 +128,11 @@ function TransferClawUnit({
         <meshStandardMaterial color={color} roughness={0.82} metalness={0.05} />
       </mesh>
       <ExtrudedSilhouette points={topPlatePoints} thickness={unitThickness} color="#4b5563" />
-      <ExtrudedSilhouette points={clawPoints} thickness={unitThickness} color="#687782" metalness={0.1} />
+      <mesh position={[0, height * 0.72, clawLength * 0.04]} rotation={[-0.18, 0, 0]}>
+        <boxGeometry args={[unitThickness * 0.95, shaftDiameter * 1.8, clawLength * 0.68]} />
+        <meshStandardMaterial color="#687782" roughness={0.78} metalness={0.1} />
+      </mesh>
+      <ExtrudedSilhouette points={rotatedClawPoints} thickness={unitThickness} color="#687782" metalness={0.1} />
       <mesh position={[0, 0, -clawLength * 0.22]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[shaftDiameter * 0.92, shaftDiameter * 0.92, unitThickness * 1.08, 20]} />
         <meshStandardMaterial color="#374151" roughness={0.7} metalness={0.14} />
