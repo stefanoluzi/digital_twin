@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { MouseEvent } from 'react'
+import { AREA_FILTER_ALL, AREA_BY_CODE, PLANT_AREAS, areaLabel } from '../../config/areas'
 import { useSceneStore } from '../../store/sceneStore'
 import type { AssetType, IndustrialAsset } from '../../types/plant'
 import { createIndustrialObject } from '../../utils/objectFactory'
@@ -36,6 +37,7 @@ const processEntries: Array<{ type: AssetType; label: string; icon: string }> = 
   { type: 'rolling_stand', label: 'Rolling Stand', icon: 'RS' },
   { type: 'steader_3_roll', label: 'Steader 3 Rodillos', icon: 'S3' },
   { type: 'piercer_drive', label: 'Piercer Drive', icon: 'PD' },
+  { type: 'piercer_machine', label: 'Piercer Machine', icon: 'PM' },
 ]
 
 const transportEntries: Array<{ type: AssetType; label: string; icon: string }> = [
@@ -67,11 +69,14 @@ const infrastructureEntries: Array<{ type: AssetType; label: string; icon: strin
 function matches(asset: IndustrialAsset, query: string) {
   const q = query.trim().toLowerCase()
   if (!q) return false
+  const area = AREA_BY_CODE[asset.areaCode]
   return [
     asset.id,
     asset.name,
     asset.type,
     asset.area,
+    asset.areaCode,
+    area?.name,
     asset.system,
     ...(Array.isArray(asset.tags) ? asset.tags : []),
   ].some((value) => String(value ?? '').toLowerCase().includes(q))
@@ -81,11 +86,18 @@ export function ObjectLibrary() {
   const [query, setQuery] = useState('')
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const objects = useSceneStore((state) => state.objects)
+  const areaFilter = useSceneStore((state) => state.view.areaFilter)
   const add = useSceneStore((state) => state.addObject)
   const focus = useSceneStore((state) => state.focusObject)
   const select = useSceneStore((state) => state.selectObject)
   const remove = useSceneStore((state) => state.deleteObject)
   const results = useMemo(() => query.trim() ? objects.filter((asset) => matches(asset, query)).slice(0, 12) : [], [objects, query])
+  const areaCounts = useMemo(() => {
+    const counts = new Map<string, number>([[AREA_FILTER_ALL, objects.length]])
+    PLANT_AREAS.forEach((area) => counts.set(area.code, 0))
+    objects.forEach((asset) => counts.set(asset.areaCode, (counts.get(asset.areaCode) ?? 0) + 1))
+    return counts
+  }, [objects])
 
   useEffect(() => {
     const close = () => setMenu(null)
@@ -124,7 +136,7 @@ export function ObjectLibrary() {
             <button key={asset.id} onClick={() => focus(asset.id)} onContextMenu={(event) => openMenu(asset, event)}>
               <strong>{asset.id}</strong>
               <span>{asset.name || 'Sin nombre'}</span>
-              <small>{asset.area || 'Sin area'} - {asset.system || 'Sin sistema'}</small>
+              <small>{areaLabel(asset.areaCode)} - {asset.system || 'Sin sistema'}</small>
             </button>
           ))}
         </div>
@@ -138,6 +150,16 @@ export function ObjectLibrary() {
       )}
 
       <div className="library-scroll">
+        <p className="panel-copy">Conteo por area</p>
+        <div className="area-counts">
+          <div className={areaFilter === AREA_FILTER_ALL ? 'active' : ''}><span>Todas</span><strong>{areaCounts.get(AREA_FILTER_ALL) ?? 0}</strong></div>
+          {PLANT_AREAS.map((area) => (
+            <div key={area.code} className={areaFilter === area.code ? 'active' : ''}>
+              <span>{area.code === 'UNASSIGNED' ? 'Sin asignar' : area.code}</span>
+              <strong>{areaCounts.get(area.code) ?? 0}</strong>
+            </div>
+          ))}
+        </div>
         <LibrarySection title="Primitive Geometry" entries={primitiveEntries} objects={objects} onAdd={add} />
         <p className="panel-copy">Industrial Assets</p>
         <LibrarySection title="Mechanical" entries={mechanicalEntries} objects={objects} onAdd={add} />

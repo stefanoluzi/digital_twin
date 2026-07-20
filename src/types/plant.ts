@@ -1,3 +1,5 @@
+import type { AreaFilter, PlantAreaCode } from '../config/areas'
+
 export const assetTypes = [
   'box',
   'long_box',
@@ -14,6 +16,7 @@ export const assetTypes = [
   'rolling_stand',
   'steader_3_roll',
   'piercer_drive',
+  'piercer_machine',
   'electric_motor_horizontal',
   'electric_motor_vertical',
   'gearbox_horizontal',
@@ -49,14 +52,15 @@ export const assetTypes = [
 ] as const
 
 export type AssetType = (typeof assetTypes)[number]
-export type IndustrialParamKey = 'length' | 'rollerSpacing' | 'rollerDiameter' | 'rollerCount' | 'rollerLength' | 'rollerColor' | 'frameColor' | 'showTubePlaceholder' | 'showHydraulics' | 'railCount' | 'railHeight' | 'railWidth' | 'supportSpacing' | 'showCrossSupports' | 'pumpCount' | 'accumulatorCount' | 'filterCount' | 'valveSections' | 'starCount' | 'chainCount' | 'chainWidth' | 'chainHeight' | 'showSupports' | 'count' | 'spacing' | 'shaftDiameter' | 'shaftLength' | 'supportHeight' | 'pivotAngle' | 'armCount' | 'transferDiameter' | 'columnHeight' | 'vWidth' | 'vOpening' | 'clawLength' | 'clawOpening' | 'width' | 'height' | 'depth'
+export type IndustrialParamKey = 'length' | 'rollerSpacing' | 'rollerDiameter' | 'rollerCount' | 'rollerLength' | 'rollerColor' | 'frameColor' | 'showTubePlaceholder' | 'showHydraulics' | 'railCount' | 'railHeight' | 'railWidth' | 'supportSpacing' | 'showCrossSupports' | 'pumpCount' | 'accumulatorCount' | 'filterCount' | 'valveSections' | 'starCount' | 'chainCount' | 'chainWidth' | 'chainHeight' | 'showSupports' | 'count' | 'spacing' | 'shaftDiameter' | 'shaftLength' | 'supportHeight' | 'pivotAngle' | 'armCount' | 'transferDiameter' | 'columnHeight' | 'vWidth' | 'vOpening' | 'clawLength' | 'clawOpening' | 'baseHeight' | 'openingWidth' | 'openingHeight' | 'frameThickness' | 'rollDiameter' | 'rollAngle' | 'mandrelDiameter' | 'width' | 'height' | 'depth'
 export type IndustrialParamValue = number | string
 export type Criticality = 'A' | 'B' | 'C' | 'D' | ''
 export type PlantSystem = '' | 'mecanico' | 'hidraulico' | 'lubricacion' | 'electrico' | 'instrumentacion'
 export type EditMode = 'move' | 'rotate' | 'scale'
-export type LabelMode = 'id' | 'name'
-export type ColorMode = 'manual' | 'criticality'
+export type LabelMode = 'id' | 'name' | 'area'
+export type ColorMode = 'manual' | 'criticality' | 'area'
 export type ThemeMode = 'dark' | 'light'
+export type CameraViewMode = 'fit_all' | 'fit_selection' | 'fit_layout' | 'isometric' | 'top'
 
 export interface Vector3Data { x: number; y: number; z: number }
 export interface AssetSize { width: number; height: number; depth: number }
@@ -76,6 +80,7 @@ export interface IndustrialAsset {
   name: string
   type: AssetType
   area: string
+  areaCode: PlantAreaCode
   system: PlantSystem
   position: Vector3Data
   rotation: Vector3Data
@@ -89,15 +94,50 @@ export interface IndustrialAsset {
   dataSources: DataSources
 }
 
-export interface LayoutImage {
-  dataUrl: string
+export interface ReferenceLayoutPoint {
+  u: number
+  v: number
+}
+
+export interface ReferenceLayoutCalibration {
+  pointA?: ReferenceLayoutPoint
+  pointB?: ReferenceLayoutPoint
+  realDistance?: number
+  calibrated: boolean
+}
+
+export interface ReferenceLayoutCrop {
+  enabled: boolean
+  uMin: number
+  vMin: number
+  uMax: number
+  vMax: number
+}
+
+export interface ReferenceLayout {
+  textureDataUrl?: string
+  layoutPath: string
   fileName: string
   mimeType: string
   widthPx: number
   heightPx: number
-  scale: number
+  naturalWidth: number
+  naturalHeight: number
+  aspectRatio: number
+  baseWidth: number
+  baseHeight: number
+  uniformScale: number
+  stretchWidth: number
+  stretchHeight: number
+  position: Vector3Data
+  rotation: Vector3Data
   opacity: number
   visible: boolean
+  locked: boolean
+  lockAspectRatio: boolean
+  calibration: ReferenceLayoutCalibration
+  crop: ReferenceLayoutCrop
+  missing: boolean
 }
 
 export interface SnapSettings {
@@ -112,13 +152,16 @@ export interface ViewSettings {
   showResizeHandles: boolean
   labelMode: LabelMode
   colorMode: ColorMode
+  areaFilter: AreaFilter
+  editLayout: boolean
   theme: ThemeMode
 }
 
 export interface PlantSceneDocument {
   version: 2
   objects: IndustrialAsset[]
-  layout: LayoutImage | null
+  referenceLayout: ReferenceLayout | null
+  layout?: ReferenceLayout | null
   snap: SnapSettings
   view: ViewSettings
 }

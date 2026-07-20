@@ -3,6 +3,7 @@ import { Edges, Html } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
 import type * as THREE from 'three'
 import { Color } from 'three'
+import { AREA_BY_CODE } from '../../config/areas'
 import type { IndustrialAsset, ViewSettings } from '../../types/plant'
 import { Bancal } from '../../industrialAssets/Bancal'
 import { Cabinet } from '../../industrialAssets/Cabinet'
@@ -22,6 +23,7 @@ import { HydraulicPowerUnit } from '../../industrialAssets/HydraulicPowerUnit'
 import { IndustrialFan } from '../../industrialAssets/IndustrialFan'
 import { MotorGearboxParallel } from '../../industrialAssets/MotorGearboxParallel'
 import { PiercerDrive } from '../../industrialAssets/PiercerDrive'
+import { PiercerMachine } from '../../industrialAssets/process/PiercerMachine'
 import { PipeRackSimple } from '../../industrialAssets/PipeRackSimple'
 import { Platform } from '../../industrialAssets/Platform'
 import { RailBedMulti } from '../../industrialAssets/RailBedMulti'
@@ -59,6 +61,7 @@ const criticalityColors: Record<string, string> = {
 
 function displayColor(asset: IndustrialAsset, colorMode: ViewSettings['colorMode']) {
   if (colorMode === 'manual') return asset.color
+  if (colorMode === 'area') return AREA_BY_CODE[asset.areaCode]?.color ?? AREA_BY_CODE.UNASSIGNED.color
   return criticalityColors[asset.criticality || 'none']
 }
 
@@ -115,6 +118,8 @@ function AssetGeometry({ asset, selected, view }: Pick<Props, 'asset' | 'selecte
       return <Steader3Roll asset={asset} color={color} />
     case 'piercer_drive':
       return <PiercerDrive asset={asset} color={color} />
+    case 'piercer_machine':
+      return <PiercerMachine asset={asset} color={color} />
     case 'electric_motor_horizontal':
       return <ElectricMotorHorizontal asset={asset} color={color} />
     case 'electric_motor_vertical':
@@ -201,7 +206,7 @@ export const IndustrialObject = forwardRef<THREE.Group, Props>(function Industri
   onContextMenu,
 }, ref) {
   const click = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(event) }
-  const label = (view.labelMode === 'name' ? asset.name : asset.id) || asset.id || asset.name || 'Sin ID'
+  const label = (view.labelMode === 'name' ? asset.name : view.labelMode === 'area' ? asset.areaCode : asset.id) || asset.id || asset.name || 'Sin ID'
 
   return (
     <group

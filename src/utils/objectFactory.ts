@@ -1,4 +1,5 @@
 import type { AssetType, IndustrialAsset, IndustrialParamKey, IndustrialParamValue } from '../types/plant'
+import { DEFAULT_AREA_CODE } from '../config/areas'
 
 export const definitions: Record<AssetType, { prefix: string; name: string; size: IndustrialAsset['size']; color: string; params?: Partial<Record<IndustrialParamKey, IndustrialParamValue>> }> = {
   box: { prefix: 'BOX', name: 'Box', size: { width: 2, height: 1.5, depth: 2 }, color: '#707b86' },
@@ -80,6 +81,13 @@ export const definitions: Record<AssetType, { prefix: string; name: string; size
     color: '#287c8e',
     params: { length: 7.2, width: 2.6, height: 3.2 },
   },
+  piercer_machine: {
+    prefix: 'PRF',
+    name: 'Piercer Machine',
+    size: { width: 6, height: 3, depth: 2 },
+    color: '#6b7280',
+    params: { length: 6, width: 2, height: 3, baseHeight: 0.3, openingWidth: 2.2, openingHeight: 1.3, frameThickness: 0.55, rollDiameter: 0.45, rollAngle: 25, mandrelDiameter: 0.18 },
+  },
   electric_motor_horizontal: { prefix: 'EMH', name: 'Motor Electrico Horizontal', size: { width: 2.8, height: 1.35, depth: 1.35 }, color: '#287c8e' },
   electric_motor_vertical: { prefix: 'EMV', name: 'Motor Electrico Vertical', size: { width: 1.55, height: 2.5, depth: 1.55 }, color: '#287c8e' },
   gearbox_horizontal: { prefix: 'GBH', name: 'Caja Reductora Horizontal', size: { width: 2.5, height: 1.45, depth: 1.55 }, color: '#6b7b8c' },
@@ -149,6 +157,7 @@ export function createIndustrialObject(type: AssetType, existing: IndustrialAsse
     name: `${def.name} ${index - 1}`,
     type,
     area: '',
+    areaCode: DEFAULT_AREA_CODE,
     system: '',
     position: { x: 0, y: def.size.height / 2, z: 0 },
     rotation: { x: 0, y: 0, z: 0 },

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import initialPlant from '../data/plant.json'
+import { AREA_FILTER_ALL, normalizeAreaCode, type AreaFilter } from '../config/areas'
 import { normalizeParamsForType, sizeFromParams } from '../utils/assetParams'
 import type {
   EditMode,
@@ -7,11 +8,12 @@ import type {
   AssetType,
   Criticality,
   IndustrialAsset,
-  LayoutImage,
   PlantSceneDocument,
   PlantSystem,
+  ReferenceLayout,
   SnapSettings,
   ViewSettings,
+  CameraViewMode,
 } from '../types/plant'
 import { assetTypes as allAssetTypes } from '../types/plant'
 
@@ -20,9 +22,10 @@ const THEME_KEY = 'industrial-twin-theme'
 
 const defaultSnap: SnapSettings = { enabled: false, gridSize: 0.5, rotationDegrees: 15, scaleStep: 0.1 }
 const storedTheme = typeof localStorage !== 'undefined' && localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'
-const defaultView: ViewSettings = { showLabels: true, showResizeHandles: true, labelMode: 'id', colorMode: 'manual', theme: storedTheme }
+const defaultView: ViewSettings = { showLabels: true, showResizeHandles: true, labelMode: 'id', colorMode: 'manual', areaFilter: AREA_FILTER_ALL, editLayout: false, theme: storedTheme }
 const finiteOr = (value: unknown, fallback: number) => typeof value === 'number' && Number.isFinite(value) ? value : fallback
 const positiveOr = (value: unknown, fallback: number) => typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback
+const clampScale = (value: unknown, fallback = 1) => Math.min(1000, Math.max(0.01, positiveOr(value, fallback)))
 const normalizeRadians = (value: unknown, fallback = 0) => {
   const radians = finiteOr(value, fallback)
   const fullTurn = Math.PI * 2
@@ -31,8 +34,8 @@ const normalizeRadians = (value: unknown, fallback = 0) => {
 const assetTypes = new Set<AssetType>(allAssetTypes)
 const systems = new Set<PlantSystem>(['', 'mecanico', 'hidraulico', 'lubricacion', 'electrico', 'instrumentacion'])
 const criticalities = new Set<Criticality>(['', 'A', 'B', 'C', 'D'])
-const labelModes = new Set<ViewSettings['labelMode']>(['id', 'name'])
-const colorModes = new Set<ViewSettings['colorMode']>(['manual', 'criticality'])
+const labelModes = new Set<ViewSettings['labelMode']>(['id', 'name', 'area'])
+const colorModes = new Set<ViewSettings['colorMode']>(['manual', 'criticality', 'area'])
 const themeModes = new Set<ViewSettings['theme']>(['dark', 'light'])
 
 function safeString(value: unknown, fallback = '') {
@@ -88,6 +91,7 @@ function normalizeObject(object: Partial<IndustrialAsset> | unknown): Industrial
     name: safeString(raw.name, safeString(raw.id, 'Activo sin nombre')),
     type,
     area: safeString(raw.area),
+    areaCode: normalizeAreaCode(raw.areaCode),
     system,
     position: {
       x: finiteOr(raw.position?.x, 0),
@@ -145,21 +149,100 @@ function normalizeView(view?: Partial<ViewSettings>): ViewSettings {
     showResizeHandles: view?.showResizeHandles ?? defaultView.showResizeHandles,
     labelMode: labelModes.has(view?.labelMode as ViewSettings['labelMode']) ? view?.labelMode as ViewSettings['labelMode'] : defaultView.labelMode,
     colorMode: colorModes.has(view?.colorMode as ViewSettings['colorMode']) ? view?.colorMode as ViewSettings['colorMode'] : defaultView.colorMode,
+    areaFilter: view?.areaFilter === AREA_FILTER_ALL ? AREA_FILTER_ALL : normalizeAreaCode(view?.areaFilter),
+    editLayout: Boolean(view?.editLayout),
     theme: themeModes.has(view?.theme as ViewSettings['theme']) ? view?.theme as ViewSettings['theme'] : defaultView.theme,
   }
 }
 
-function normalizeLayout(layout?: Partial<LayoutImage> | null): LayoutImage | null {
-  if (!layout || typeof layout.dataUrl !== 'string' || !layout.dataUrl.startsWith('data:image/')) return null
+function normalizeLayout(layout?: Partial<ReferenceLayout> | null): ReferenceLayout | null {
+  if (!layout) return null
+  const legacy = layout as Partial<ReferenceLayout> & {
+    dataUrl?: unknown
+    scale?: number | { x?: unknown; y?: unknown }
+    stretchX?: unknown
+    stretchY?: unknown
+  }
+  const textureDataUrl = typeof layout.textureDataUrl === 'string'
+    ? layout.textureDataUrl
+    : typeof legacy.dataUrl === 'string' ? legacy.dataUrl : undefined
+  const naturalWidth = positiveOr(layout.naturalWidth, positiveOr(layout.widthPx, 1))
+  const naturalHeight = positiveOr(layout.naturalHeight, positiveOr(layout.heightPx, 1))
+  const aspectRatio = positiveOr(layout.aspectRatio, naturalWidth / naturalHeight)
+  const baseWidth = positiveOr(layout.baseWidth, 20)
+  const baseHeight = positiveOr(layout.baseHeight, baseWidth / Math.max(0.0001, aspectRatio))
+  const legacyScale = typeof legacy.scale === 'number' ? legacy.scale : undefined
+  const legacyScaleX = typeof legacy.scale === 'object' && legacy.scale ? legacy.scale.x : legacyScale
+  const legacyScaleY = typeof legacy.scale === 'object' && legacy.scale ? legacy.scale.y : legacyScale
+  const lockAspectRatio = layout.lockAspectRatio !== false
+  const legacyScaleXFallback = typeof legacyScaleX === 'number' ? legacyScaleX : 1
+  const legacyScaleYFallback = typeof legacyScaleY === 'number' ? legacyScaleY : 1
+  const uniformScale = clampScale(layout.uniformScale, lockAspectRatio ? legacyScaleXFallback : 1)
+  const stretchWidth = lockAspectRatio ? 1 : clampScale(layout.stretchWidth ?? legacy.stretchX, legacyScaleXFallback)
+  const stretchHeight = lockAspectRatio ? 1 : clampScale(layout.stretchHeight ?? legacy.stretchY, legacyScaleYFallback)
+  const calibration = layout.calibration && typeof layout.calibration === 'object' ? layout.calibration : undefined
+  const pointA = calibration?.pointA
+  const pointB = calibration?.pointB
+  const normalizePoint = (point: typeof pointA) => point && typeof point.u === 'number' && typeof point.v === 'number'
+    ? { u: Math.min(1, Math.max(0, point.u)), v: Math.min(1, Math.max(0, point.v)) }
+    : undefined
+  const crop = layout.crop && typeof layout.crop === 'object' ? layout.crop : undefined
+  const uMin = Math.min(1, Math.max(0, finiteOr(crop?.uMin, 0)))
+  const vMin = Math.min(1, Math.max(0, finiteOr(crop?.vMin, 0)))
+  const uMax = Math.min(1, Math.max(0, finiteOr(crop?.uMax, 1)))
+  const vMax = Math.min(1, Math.max(0, finiteOr(crop?.vMax, 1)))
   return {
-    dataUrl: layout.dataUrl,
+    textureDataUrl,
+    layoutPath: safeString(layout.layoutPath, safeString(layout.fileName, 'reference-layout')),
     fileName: safeString(layout.fileName, 'layout'),
     mimeType: safeString(layout.mimeType, 'image/*'),
     widthPx: positiveOr(layout.widthPx, 1),
     heightPx: positiveOr(layout.heightPx, 1),
-    scale: positiveOr(layout.scale, 1),
-    opacity: Math.min(1, Math.max(0.05, finiteOr(layout.opacity, 0.72))),
+    naturalWidth,
+    naturalHeight,
+    aspectRatio,
+    baseWidth,
+    baseHeight,
+    uniformScale,
+    stretchWidth,
+    stretchHeight,
+    position: {
+      x: finiteOr(layout.position?.x, 0),
+      y: Math.max(0.028, finiteOr(layout.position?.y, 0.035)),
+      z: finiteOr(layout.position?.z, 0),
+    },
+    rotation: {
+      x: normalizeRadians(layout.rotation?.x),
+      y: normalizeRadians(layout.rotation?.y),
+      z: normalizeRadians(layout.rotation?.z),
+    },
+    opacity: Math.min(1, Math.max(0, finiteOr(layout.opacity, 0.4))),
     visible: layout.visible !== false,
+    locked: Boolean(layout.locked),
+    lockAspectRatio,
+    calibration: {
+      pointA: normalizePoint(pointA),
+      pointB: normalizePoint(pointB),
+      realDistance: positiveOr(calibration?.realDistance, 0),
+      calibrated: Boolean(calibration?.calibrated),
+    },
+    crop: {
+      enabled: Boolean(crop?.enabled),
+      uMin: Math.min(uMin, uMax - 0.01),
+      vMin: Math.min(vMin, vMax - 0.01),
+      uMax: Math.max(uMax, uMin + 0.01),
+      vMax: Math.max(vMax, vMin + 0.01),
+    },
+    missing: Boolean(layout.missing) || !textureDataUrl,
+  }
+}
+
+function serializeLayout(layout: ReferenceLayout | null, includeTexture: boolean): ReferenceLayout | null {
+  if (!layout) return null
+  return {
+    ...layout,
+    textureDataUrl: includeTexture ? layout.textureDataUrl : undefined,
+    missing: includeTexture ? layout.missing : !layout.textureDataUrl,
   }
 }
 
@@ -171,10 +254,14 @@ interface SceneState {
   selectedObjectIds: string[]
   primarySelectedObjectId: string | null
   editMode: EditMode
-  layout: LayoutImage | null
+  referenceLayout: ReferenceLayout | null
   snap: SnapSettings
   view: ViewSettings
   focusRequest: { id: string; nonce: number } | null
+  focusAreaRequest: { areaFilter: AreaFilter; nonce: number } | null
+  cameraViewRequest: { mode: CameraViewMode; nonce: number } | null
+  layoutCalibration: { active: boolean; pointA?: ReferenceLayout['calibration']['pointA']; pointB?: ReferenceLayout['calibration']['pointB'] }
+  layoutCrop: { active: boolean; draft?: ReferenceLayout['crop'] }
   addObject: (object: IndustrialAsset) => void
   updateObject: (id: string, update: Partial<IndustrialAsset>) => void
   deleteObject: (id: string) => void
@@ -184,17 +271,28 @@ interface SceneState {
   toggleObjectSelection: (id: string) => void
   clearSelection: () => void
   setEditMode: (mode: EditMode) => void
-  setLayout: (layout: LayoutImage | null) => void
-  updateLayout: (update: Partial<LayoutImage>) => void
+  setLayout: (layout: ReferenceLayout | null) => void
+  updateLayout: (update: Partial<ReferenceLayout>) => void
   centerLayout: () => void
+  startLayoutCalibration: () => void
+  cancelLayoutCalibration: () => void
+  setLayoutCalibrationDraft: (draft: { pointA?: ReferenceLayout['calibration']['pointA']; pointB?: ReferenceLayout['calibration']['pointB'] }) => void
+  clearLayoutCalibration: () => void
+  startLayoutCrop: () => void
+  cancelLayoutCrop: () => void
+  updateLayoutCropDraft: (crop: ReferenceLayout['crop']) => void
+  applyLayoutCrop: () => void
+  resetLayoutCrop: () => void
   updateSnap: (update: Partial<SnapSettings>) => void
   updateView: (update: Partial<ViewSettings>) => void
   focusObject: (id: string) => void
+  focusArea: () => void
+  requestCameraView: (mode: CameraViewMode) => void
   clearScene: () => void
   loadScene: (document: PlantSceneDocument | IndustrialAsset[]) => void
   saveToLocalStorage: () => void
   loadFromLocalStorage: () => boolean
-  exportScene: () => string
+  exportScene: (options?: { includeReferenceTexture?: boolean }) => string
   importScene: (json: string) => void
 }
 
@@ -212,10 +310,14 @@ export const useSceneStore = create<SceneState>((set, get) => ({
   selectedObjectIds: [],
   primarySelectedObjectId: null,
   editMode: 'move',
-  layout: null,
+  referenceLayout: null,
   snap: defaultSnap,
   view: defaultView,
   focusRequest: null,
+  focusAreaRequest: null,
+  cameraViewRequest: null,
+  layoutCalibration: { active: false },
+  layoutCrop: { active: false },
   addObject: (object) => set((state) => {
     const normalized = normalizeObject(object)
     normalized.id = makeUniqueId(normalized.id, state.objects)
@@ -225,6 +327,7 @@ export const useSceneStore = create<SceneState>((set, get) => ({
       selectedObjectIds: [normalized.id],
       primarySelectedObjectId: normalized.id,
       focusRequest: null,
+      focusAreaRequest: null,
     }
   }),
   updateObject: (id, update) => set((state) => ({
@@ -247,6 +350,7 @@ export const useSceneStore = create<SceneState>((set, get) => ({
       selectedObjectIds,
       primarySelectedObjectId,
       focusRequest: state.focusRequest?.id === id ? null : state.focusRequest,
+      focusAreaRequest: state.focusAreaRequest,
     }
   }),
   deleteObjects: (ids) => set((state) => {
@@ -261,6 +365,7 @@ export const useSceneStore = create<SceneState>((set, get) => ({
       primarySelectedObjectId,
       selectedObjectId: primarySelectedObjectId,
       focusRequest: state.focusRequest && targets.has(state.focusRequest.id) ? null : state.focusRequest,
+      focusAreaRequest: state.focusAreaRequest,
     }
   }),
   duplicateObject: (id) => set((state) => {
@@ -280,6 +385,7 @@ export const useSceneStore = create<SceneState>((set, get) => ({
       selectedObjectIds: [nextId],
       primarySelectedObjectId: nextId,
       focusRequest: null,
+      focusAreaRequest: null,
     }
   }),
   selectObject: (id) => set({
@@ -303,34 +409,65 @@ export const useSceneStore = create<SceneState>((set, get) => ({
   }),
   clearSelection: () => set({ selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null }),
   setEditMode: (mode) => set({ editMode: mode }),
-  setLayout: (layout) => set({ layout: layout ? normalizeLayout(layout) : null }),
-  updateLayout: (update) => set((state) => ({ layout: state.layout ? normalizeLayout({ ...state.layout, ...update }) : null })),
-  centerLayout: () => set((state) => ({ layout: state.layout ? { ...state.layout } : null })),
+  setLayout: (layout) => set({ referenceLayout: layout ? normalizeLayout(layout) : null }),
+  updateLayout: (update) => set((state) => ({ referenceLayout: state.referenceLayout ? normalizeLayout({ ...state.referenceLayout, ...update }) : null })),
+  centerLayout: () => set((state) => ({ referenceLayout: state.referenceLayout ? { ...state.referenceLayout, position: { x: 0, y: 0.035, z: 0 }, rotation: { x: 0, y: 0, z: 0 } } : null })),
+  startLayoutCalibration: () => set({ layoutCalibration: { active: true }, selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null }),
+  cancelLayoutCalibration: () => set({ layoutCalibration: { active: false, pointA: undefined, pointB: undefined } }),
+  setLayoutCalibrationDraft: (draft) => set((state) => ({ layoutCalibration: { active: state.layoutCalibration.active, ...draft } })),
+  clearLayoutCalibration: () => set((state) => ({
+    referenceLayout: state.referenceLayout ? normalizeLayout({ ...state.referenceLayout, calibration: { calibrated: false } }) : null,
+    layoutCalibration: { active: false },
+  })),
+  startLayoutCrop: () => set((state) => ({
+    layoutCrop: { active: true, draft: state.referenceLayout?.crop ?? { enabled: false, uMin: 0, vMin: 0, uMax: 1, vMax: 1 } },
+    layoutCalibration: { active: false },
+    selectedObjectId: null,
+    selectedObjectIds: [],
+    primarySelectedObjectId: null,
+  })),
+  cancelLayoutCrop: () => set({ layoutCrop: { active: false } }),
+  updateLayoutCropDraft: (crop) => set({ layoutCrop: { active: true, draft: normalizeLayout({ crop } as Partial<ReferenceLayout>)?.crop ?? crop } }),
+  applyLayoutCrop: () => set((state) => ({
+    referenceLayout: state.referenceLayout ? normalizeLayout({ ...state.referenceLayout, crop: { ...(state.layoutCrop.draft ?? state.referenceLayout.crop), enabled: true } }) : null,
+    layoutCrop: { active: false },
+  })),
+  resetLayoutCrop: () => set((state) => ({
+    referenceLayout: state.referenceLayout ? normalizeLayout({ ...state.referenceLayout, crop: { enabled: false, uMin: 0, vMin: 0, uMax: 1, vMax: 1 } }) : null,
+    layoutCrop: { active: false },
+  })),
   updateSnap: (update) => set((state) => ({ snap: normalizeSnap({ ...state.snap, ...update }) })),
   updateView: (update) => set((state) => {
     const view = normalizeView({ ...state.view, ...update })
+    const visible = (object: IndustrialAsset) => view.areaFilter === AREA_FILTER_ALL || object.areaCode === view.areaFilter
+    const selectedObjectIds = state.selectedObjectIds.filter((id) => state.objects.some((object) => object.id === id && visible(object)))
+    const primarySelectedObjectId = selectedObjectIds.includes(state.primarySelectedObjectId ?? '') ? state.primarySelectedObjectId : selectedObjectIds[0] ?? null
     localStorage.setItem(THEME_KEY, view.theme)
-    return { view }
+    return { view, selectedObjectIds, primarySelectedObjectId, selectedObjectId: primarySelectedObjectId }
   }),
   focusObject: (id) => set({ selectedObjectId: id, selectedObjectIds: [id], primarySelectedObjectId: id, focusRequest: { id, nonce: Date.now() } }),
-  clearScene: () => set({ objects: [], selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null, focusRequest: null }),
+  focusArea: () => set((state) => ({ focusAreaRequest: { areaFilter: state.view.areaFilter, nonce: Date.now() } })),
+  requestCameraView: (mode) => set({ cameraViewRequest: { mode, nonce: Date.now() } }),
+  clearScene: () => set({ objects: [], selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null, focusRequest: null, focusAreaRequest: null, cameraViewRequest: null }),
   loadScene: (document) => {
     if (Array.isArray(document)) {
-      set({ objects: normalizeObjects(document), selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null, focusRequest: null })
+      set({ objects: normalizeObjects(document), selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null, focusRequest: null, focusAreaRequest: null, cameraViewRequest: null })
       return
     }
     set({
       objects: normalizeObjects(document.objects),
-      layout: normalizeLayout(document.layout),
+      referenceLayout: normalizeLayout(document.referenceLayout ?? document.layout),
       snap: normalizeSnap(document.snap),
       view: normalizeView(document.view),
       selectedObjectId: null,
       selectedObjectIds: [],
       primarySelectedObjectId: null,
       focusRequest: null,
+      focusAreaRequest: null,
+      cameraViewRequest: null,
     })
   },
-  saveToLocalStorage: () => localStorage.setItem(STORAGE_KEY, get().exportScene()),
+  saveToLocalStorage: () => localStorage.setItem(STORAGE_KEY, get().exportScene({ includeReferenceTexture: true })),
   loadFromLocalStorage: () => {
     const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('industrial-twin-scene-v1')
     if (!raw) return false
@@ -340,17 +477,15 @@ export const useSceneStore = create<SceneState>((set, get) => ({
     else throw new Error('El contenido guardado no es una escena valida.')
     return true
   },
-  exportScene: () => {
+  exportScene: (options) => {
     const state = get()
     const document: PlantSceneDocument = {
       version: 2,
       objects: state.objects,
-      layout: state.layout,
+      referenceLayout: serializeLayout(state.referenceLayout, Boolean(options?.includeReferenceTexture)),
       snap: state.snap,
       view: state.view,
     }
-    // La imagen del layout se exporta como data URL cuando el navegador lo permite.
-    // Si en el futuro se usan archivos muy pesados, conviene guardar solo metadata y pedir re-vincular el archivo.
     return JSON.stringify(document, null, 2)
   },
   importScene: (json) => {

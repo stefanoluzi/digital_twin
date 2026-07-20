@@ -81,6 +81,7 @@ export function sizeFromParams(type: AssetType, params: Partial<Record<Industria
         depth: fallback.depth,
       }
     case 'piercer_drive':
+    case 'piercer_machine':
     case 'hydraulic_power_unit':
     case 'steader_3_roll':
       return {
