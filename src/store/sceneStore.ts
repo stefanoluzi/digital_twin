@@ -420,7 +420,12 @@ export const useSceneStore = create<SceneState>((set, get) => ({
     layoutCalibration: { active: false },
   })),
   startLayoutCrop: () => set((state) => ({
-    layoutCrop: { active: true, draft: state.referenceLayout?.crop ?? { enabled: false, uMin: 0, vMin: 0, uMax: 1, vMax: 1 } },
+    layoutCrop: {
+      active: true,
+      draft: state.referenceLayout?.crop.enabled
+        ? { ...state.referenceLayout.crop }
+        : { enabled: true, uMin: 0, vMin: 0, uMax: 1, vMax: 1 },
+    },
     layoutCalibration: { active: false },
     selectedObjectId: null,
     selectedObjectIds: [],
@@ -433,8 +438,14 @@ export const useSceneStore = create<SceneState>((set, get) => ({
     layoutCrop: { active: false },
   })),
   resetLayoutCrop: () => set((state) => ({
-    referenceLayout: state.referenceLayout ? normalizeLayout({ ...state.referenceLayout, crop: { enabled: false, uMin: 0, vMin: 0, uMax: 1, vMax: 1 } }) : null,
-    layoutCrop: { active: false },
+    referenceLayout: state.layoutCrop.active
+      ? state.referenceLayout
+      : state.referenceLayout
+        ? normalizeLayout({ ...state.referenceLayout, crop: { enabled: false, uMin: 0, vMin: 0, uMax: 1, vMax: 1 } })
+        : null,
+    layoutCrop: state.layoutCrop.active
+      ? { active: true, draft: { enabled: true, uMin: 0, vMin: 0, uMax: 1, vMax: 1 } }
+      : { active: false },
   })),
   updateSnap: (update) => set((state) => ({ snap: normalizeSnap({ ...state.snap, ...update }) })),
   updateView: (update) => set((state) => {

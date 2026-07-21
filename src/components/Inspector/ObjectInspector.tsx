@@ -501,7 +501,8 @@ function ReferenceLayoutPanel({
         <button className={layoutCrop.active ? 'active' : undefined} onClick={startLayoutCrop}>Recortar layout</button>
         {layoutCrop.active && <button onClick={applyLayoutCrop}>Aplicar recorte</button>}
         {layoutCrop.active && <button onClick={cancelLayoutCrop}>Cancelar</button>}
-        <button onClick={resetLayoutCrop}>Restablecer recorte</button>
+        {layoutCrop.active && <button onClick={resetLayoutCrop}>Restablecer al layout completo</button>}
+        {!layoutCrop.active && layout.crop.enabled && <button onClick={resetLayoutCrop}>Quitar recorte</button>}
         <button onClick={centerCropInOrigin}>Centrar recorte en origen</button>
       </div>
       {(layout.crop.enabled || layoutCrop.active) && (
