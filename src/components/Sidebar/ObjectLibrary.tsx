@@ -4,11 +4,13 @@ import { AREA_FILTER_ALL, AREA_BY_CODE, PLANT_AREAS, areaLabel } from '../../con
 import { useSceneStore } from '../../store/sceneStore'
 import type { AssetType, IndustrialAsset } from '../../types/plant'
 import { createIndustrialObject } from '../../utils/objectFactory'
+import { getCurrentInsertionPoint } from '../../services/viewportInsertionService'
 
-const primitiveEntries: Array<{ type: AssetType; label: string; icon: string }> = [
+const primitiveEntries: Array<{ type: AssetType; label: string; icon: string; description?: string }> = [
   { type: 'box', label: 'Box', icon: 'B' },
   { type: 'long_box', label: 'Long Box', icon: 'LB' },
   { type: 'cylinder', label: 'Cylinder', icon: 'CY' },
+  { type: 'hollow_cylinder', label: 'Cilindro Hueco', icon: '◎', description: 'Cilindro con agujero central pasante configurable.' },
   { type: 'pipe', label: 'Pipe', icon: 'P' },
   { type: 'beam', label: 'Beam', icon: 'I' },
   { type: 'plate', label: 'Plate', icon: 'PL' },
@@ -40,8 +42,9 @@ const processEntries: Array<{ type: AssetType; label: string; icon: string }> = 
   { type: 'piercer_machine', label: 'Piercer Machine', icon: 'PM' },
 ]
 
-const transportEntries: Array<{ type: AssetType; label: string; icon: string }> = [
+const transportEntries: Array<{ type: AssetType; label: string; icon: string; description?: string }> = [
   { type: 'rail_bed_multi', label: 'Bancal de Rieles', icon: 'BR' },
+  { type: 'lance_carrier_cart', label: 'Carro Porta Lanza', icon: 'CPL', description: 'Carro industrial de cuatro ruedas para transporte y soporte de lanza.' },
 ]
 
 const hydraulicEntries: Array<{ type: AssetType; label: string; icon: string }> = [
@@ -63,6 +66,7 @@ const infrastructureEntries: Array<{ type: AssetType; label: string; icon: strin
   { type: 'cabinet', label: 'Gabinete', icon: 'GB' },
   { type: 'tank_vertical', label: 'Tanque vertical', icon: 'TV' },
   { type: 'tank_horizontal', label: 'Tanque horizontal', icon: 'TH' },
+  { type: 'rectangular_pool', label: 'Pileta rectangular', icon: 'PLT' },
   { type: 'pipe_rack_simple', label: 'Pipe Rack simple', icon: 'PR' },
 ]
 
@@ -88,6 +92,7 @@ export function ObjectLibrary() {
   const objects = useSceneStore((state) => state.objects)
   const areaFilter = useSceneStore((state) => state.view.areaFilter)
   const add = useSceneStore((state) => state.addObject)
+  const snap = useSceneStore((state) => state.snap)
   const focus = useSceneStore((state) => state.focusObject)
   const select = useSceneStore((state) => state.selectObject)
   const remove = useSceneStore((state) => state.deleteObject)
@@ -119,6 +124,13 @@ export function ObjectLibrary() {
   const menuAction = (action: () => void) => {
     action()
     setMenu(null)
+  }
+
+  const addFromLibrary = (type: AssetType) => {
+    add(createIndustrialObject(type, objects, {
+      position: getCurrentInsertionPoint(),
+      snap,
+    }))
   }
 
   return (
@@ -160,14 +172,14 @@ export function ObjectLibrary() {
             </div>
           ))}
         </div>
-        <LibrarySection title="Primitive Geometry" entries={primitiveEntries} objects={objects} onAdd={add} />
+        <LibrarySection title="Primitive Geometry" entries={primitiveEntries} onAdd={addFromLibrary} />
         <p className="panel-copy">Industrial Assets</p>
-        <LibrarySection title="Mechanical" entries={mechanicalEntries} objects={objects} onAdd={add} />
-        <LibrarySection title="Process" entries={processEntries} objects={objects} onAdd={add} />
-        <LibrarySection title="Transporte" entries={transportEntries} objects={objects} onAdd={add} />
-        <LibrarySection title="Hidraulica" entries={hydraulicEntries} objects={objects} onAdd={add} />
-        <LibrarySection title="Transferidores" entries={transferEntries} objects={objects} onAdd={add} />
-        <LibrarySection title="Infrastructure" entries={infrastructureEntries} objects={objects} onAdd={add} />
+        <LibrarySection title="Mechanical" entries={mechanicalEntries} onAdd={addFromLibrary} />
+        <LibrarySection title="Process" entries={processEntries} onAdd={addFromLibrary} />
+        <LibrarySection title="Transporte" entries={transportEntries} onAdd={addFromLibrary} />
+        <LibrarySection title="Hidraulica" entries={hydraulicEntries} onAdd={addFromLibrary} />
+        <LibrarySection title="Transferidores" entries={transferEntries} onAdd={addFromLibrary} />
+        <LibrarySection title="Infrastructure" entries={infrastructureEntries} onAdd={addFromLibrary} />
         <div className="library-footer"><span className="status-dot" /> Escena local - Sin backend</div>
       </div>
     </aside>
@@ -177,21 +189,24 @@ export function ObjectLibrary() {
 function LibrarySection({
   title,
   entries,
-  objects,
   onAdd,
 }: {
   title: string
-  entries: Array<{ type: AssetType; label: string; icon: string }>
-  objects: IndustrialAsset[]
-  onAdd: (asset: IndustrialAsset) => void
+  entries: Array<{ type: AssetType; label: string; icon: string; description?: string }>
+  onAdd: (type: AssetType) => void
 }) {
   return (
     <>
       <p className="panel-copy">{title}</p>
       <div className="asset-library">
         {entries.map((entry) => (
-          <button key={entry.type} className="library-button" onClick={() => onAdd(createIndustrialObject(entry.type, objects))}>
-            <span className="library-icon">{entry.icon}</span><span>{entry.label}</span><span className="add-mark">+</span>
+          <button key={entry.type} className="library-button" onClick={() => onAdd(entry.type)}>
+            <span className="library-icon">{entry.icon}</span>
+            <span className="library-entry-copy">
+              <span>{entry.label}</span>
+              {entry.description && <small>{entry.description}</small>}
+            </span>
+            <span className="add-mark">+</span>
           </button>
         ))}
       </div>

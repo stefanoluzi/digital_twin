@@ -1,23 +1,32 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
-import { AREA_FILTER_ALL, PLANT_AREAS, areaLabel, type AreaFilter } from '../../config/areas'
+import type { AreaFilter } from '../../config/areas'
+import { fileToDataUrl } from '../../services/dataUrlService'
+import { downloadProjectFile, estimateProjectSize, parseProjectFile, sanitizeProjectFileName, serializeProject } from '../../services/projectFileService'
+import { createProjectFile, projectToSceneDocument } from '../../services/projectSerializer'
+import { useProjectStore } from '../../store/projectStore'
 import { useSceneStore } from '../../store/sceneStore'
-import type { ColorMode, EditMode, LabelMode, ReferenceLayout } from '../../types/plant'
+import type { ReferenceLayout } from '../../types/plant'
+import type { AlignmentAxis, AlignmentMode } from '../../types/plant'
+import type { CameraPresetId, PlantFrontDirection } from '../../config/cameraPresets'
+import { AreaFilterControl } from './AreaFilterControl'
+import { EditMenu } from './EditMenu'
+import { FileMenu } from './FileMenu'
+import { LayoutMenu } from './LayoutMenu'
+import { SnapMenu } from './SnapMenu'
+import { TransformModeControl } from './TransformModeControl'
+import { ViewMenu } from './ViewMenu'
+import { VisualizationMenu } from './VisualizationMenu'
 
 GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
-
-const numberFromInput = (input: HTMLInputElement, fallback: number) => {
-  const value = input.valueAsNumber
-  if (Number.isFinite(value)) return value
-  const parsed = Number(input.value.replace(',', '.'))
-  return Number.isFinite(parsed) ? parsed : fallback
-}
 
 function makeReferenceLayout(file: File, textureDataUrl: string, widthPx: number, heightPx: number, mimeType = file.type): ReferenceLayout {
   const aspectRatio = widthPx / Math.max(1, heightPx)
   const baseWidth = 20
   return {
     textureDataUrl,
+    sourceDataUrl: textureDataUrl,
+    sourceType: mimeType === 'application/pdf' ? 'pdf' : 'image',
     layoutPath: file.name,
     fileName: file.name,
     mimeType,
@@ -59,6 +68,7 @@ function readImage(file: File): Promise<ReferenceLayout> {
 }
 
 async function readPdf(file: File): Promise<ReferenceLayout> {
+  const sourceDataUrl = await fileToDataUrl(file)
   const pdf = await getDocument({ data: await file.arrayBuffer() }).promise
   const page = await pdf.getPage(1)
   const viewport = page.getViewport({ scale: 2 })
@@ -68,7 +78,7 @@ async function readPdf(file: File): Promise<ReferenceLayout> {
   canvas.width = Math.ceil(viewport.width)
   canvas.height = Math.ceil(viewport.height)
   await page.render({ canvas, canvasContext: context, viewport }).promise
-  return makeReferenceLayout(file, canvas.toDataURL('image/png'), canvas.width, canvas.height, 'application/pdf')
+  return { ...makeReferenceLayout(file, canvas.toDataURL('image/png'), canvas.width, canvas.height, 'application/pdf'), sourceDataUrl, sourceType: 'pdf' }
 }
 
 function readReferenceLayout(file: File) {
@@ -78,10 +88,47 @@ function readReferenceLayout(file: File) {
 export function Toolbar() {
   const jsonInputRef = useRef<HTMLInputElement>(null)
   const layoutInputRef = useRef<HTMLInputElement>(null)
+  const sessionInputRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState('Listo')
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
   const store = useSceneStore()
+  const projectState = useProjectStore()
   const notify = (text: string) => { setMessage(text); window.setTimeout(() => setMessage('Listo'), 2400) }
-  const action = (fn: () => void, ok: string) => { try { fn(); notify(ok) } catch (error) { notify(error instanceof Error ? error.message : 'Ocurrio un error') } }
+  const cameraModeForPreset: Partial<Record<CameraPresetId, Parameters<typeof store.requestCameraView>[0]>> = {
+    TOP: 'top',
+    FRONT: 'front',
+    BACK: 'back',
+    LEFT: 'left',
+    RIGHT: 'right',
+    ISO_FRONT: 'isometric',
+    ISO_BACK: 'isometric_back',
+  }
+  const changePlantFrontDirection = (plantFrontDirection: PlantFrontDirection) => {
+    const activeMode = cameraModeForPreset[store.view.activeCameraPreset]
+    store.updateView({ plantFrontDirection })
+    if (activeMode) store.requestCameraView(activeMode)
+  }
+
+  useEffect(() => {
+    if (!store.editorFeedback) return
+    setMessage(store.editorFeedback.message)
+    const timer = window.setTimeout(() => setMessage('Listo'), 2400)
+    return () => window.clearTimeout(timer)
+  }, [store.editorFeedback])
+
+  useEffect(() => {
+    const closeMenus = () => setOpenMenu(null)
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') closeMenus() }
+    document.addEventListener('pointerdown', closeMenus)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeMenus)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [])
+
+  const toggleMenu = (id: string) => setOpenMenu((current) => current === id ? null : id)
+  const runMenuAction = (action: () => void) => { setOpenMenu(null); action() }
 
   const exportFile = () => {
     const blob = new Blob([store.exportScene()], { type: 'application/json' })
@@ -114,67 +161,193 @@ export function Toolbar() {
     }
   }
 
-  const modeButton = (mode: EditMode, label: string) => (
-    <button className={store.editMode === mode ? 'active' : ''} onClick={() => store.setEditMode(mode)}>{label}</button>
-  )
+  const confirmDiscard = () => !useProjectStore.getState().isDirty || window.confirm('Hay cambios sin guardar. ¿Deseas descartarlos?')
+
+  const newProject = () => {
+    if (!confirmDiscard()) return
+    const projects = useProjectStore.getState()
+    projects.beginHydration()
+    try {
+      useSceneStore.getState().resetProject()
+      projects.createNewProject()
+    } finally {
+      projects.endHydration()
+    }
+    notify('Nuevo proyecto creado')
+  }
+
+  const saveSession = (saveAs = false) => {
+    const projects = useProjectStore.getState()
+    let projectName = projects.metadata.name
+    if (saveAs || !projects.fileName) {
+      const requested = window.prompt('Nombre del proyecto', projectName)
+      if (requested === null) return
+      projectName = requested.trim() || 'Proyecto LACO3D'
+    }
+    const updatedMetadata = { ...projects.metadata, name: projectName, updatedAt: new Date().toISOString() }
+    const scene = useSceneStore.getState()
+    const project = createProjectFile({
+      objects: scene.objects,
+      referenceLayout: scene.referenceLayout,
+      snap: scene.snap,
+      view: scene.view,
+    }, updatedMetadata, projects.camera)
+    const text = serializeProject(project)
+    const size = estimateProjectSize(text)
+    if (size > 50 * 1024 * 1024 && !window.confirm(`La sesion ocupa ${(size / 1024 / 1024).toFixed(1)} MB. ¿Deseas continuar?`)) return
+    const fileName = sanitizeProjectFileName(saveAs || !projects.fileName ? projectName : projects.fileName)
+    downloadProjectFile(text, fileName)
+    projects.markSaved(fileName, project.project)
+    notify(`Sesion guardada (${(size / 1024 / 1024).toFixed(1)} MB)`)
+  }
+
+  const openSession = async (file?: File) => {
+    if (!file || !confirmDiscard()) return
+    try {
+      const project = parseProjectFile(await file.text())
+      const projects = useProjectStore.getState()
+      projects.beginHydration()
+      try {
+        useSceneStore.getState().loadScene(projectToSceneDocument(project))
+        projects.replaceProject(project.project, project.scene.camera, file.name)
+      } finally {
+        projects.endHydration()
+      }
+      notify('Sesion LACO3D abierta')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'El archivo seleccionado no es una sesion valida de LACO3D.')
+    }
+  }
+
+  const align = (axis: AlignmentAxis, mode: AlignmentMode) => {
+    const result = store.alignSelected(axis, mode, store.primarySelectedObjectId ?? undefined)
+    const skipped = result.locked + result.missing
+    notify(`${result.aligned} objetos alineados${skipped ? `, ${result.locked} bloqueados y ${result.missing} sin referencia omitidos` : ''}`)
+  }
+
+  const duplicateSelection = () => {
+    if (store.selectedObjectIds.length === 1) {
+      store.duplicateObject(store.selectedObjectIds[0])
+      return
+    }
+    store.copySelection()
+    useSceneStore.getState().pasteClipboard()
+  }
+
+  const deleteSelection = () => {
+    if (store.selectedObjectIds.length === 1) {
+      store.deleteObject(store.selectedObjectIds[0])
+      return
+    }
+    store.deleteObjects(store.selectedObjectIds)
+  }
 
   return (
     <header className="toolbar">
-      <div className="brand"><div className="brand-mark">DT</div><div><strong>INDUSTRIAL TWIN</strong><small>PLANT EDITOR / MVP</small></div></div>
+      <div className="brand"><div className="brand-mark">DT</div><div><strong>{projectState.metadata.name}{projectState.isDirty ? ' *' : ''}</strong><small>PLANT EDITOR / MVP</small></div></div>
       <div className="toolbar-actions">
-        <button onClick={() => action(store.clearScene, 'Escena nueva')}>+ Nuevo</button>
-        <button onClick={() => action(store.saveToLocalStorage, 'Guardado localmente')}>Guardar</button>
-        <button onClick={() => action(() => { if (!store.loadFromLocalStorage()) throw new Error('No hay una escena guardada') }, 'Escena cargada')}>Cargar</button>
-        <span className="separator" />
-        <button onClick={exportFile}>Exportar JSON</button>
-        <button onClick={() => jsonInputRef.current?.click()}>Importar JSON</button>
+        <FileMenu
+          open={openMenu === 'file'}
+          onToggle={toggleMenu}
+          onAction={runMenuAction}
+          onNew={newProject}
+          onOpen={() => sessionInputRef.current?.click()}
+          onSave={() => saveSession(false)}
+          onSaveAs={() => saveSession(true)}
+          onImportLayout={() => layoutInputRef.current?.click()}
+          onExportJson={exportFile}
+          onImportJson={() => jsonInputRef.current?.click()}
+        />
+        <input ref={sessionInputRef} hidden type="file" accept=".laco3d,.json,application/json" onChange={(e) => { void openSession(e.target.files?.[0]); e.target.value = '' }} />
         <input ref={jsonInputRef} hidden type="file" accept="application/json,.json" onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = '' }} />
-        <button onClick={() => layoutInputRef.current?.click()}>Importar Layout</button>
         <input ref={layoutInputRef} hidden type="file" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg" onChange={(e) => { void importLayout(e.target.files?.[0]); e.target.value = '' }} />
-        <span className="separator" />
-        {modeButton('move', 'Mover')}
-        {modeButton('rotate', 'Rotar')}
-        {modeButton('scale', 'Escalar')}
-        <span className="separator" />
-        <label className="toolbar-check"><input type="checkbox" checked={store.snap.enabled} onChange={(e) => store.updateSnap({ enabled: e.target.checked })} /> Snap</label>
-        <label className="toolbar-number">Grilla <input type="number" min="0.1" step="0.1" value={store.snap.gridSize} onChange={(e) => store.updateSnap({ gridSize: Math.max(0.1, numberFromInput(e.currentTarget, store.snap.gridSize || 0.5)) })} /></label>
-        <label className="toolbar-check"><input type="checkbox" checked={store.view.showLabels} onChange={(e) => store.updateView({ showLabels: e.target.checked })} /> Labels</label>
-        <label className="toolbar-check"><input type="checkbox" checked={store.view.showResizeHandles} onChange={(e) => store.updateView({ showResizeHandles: e.target.checked })} /> Resize handles</label>
-        <select value={store.view.labelMode} onChange={(e) => store.updateView({ labelMode: e.target.value as LabelMode })}>
-          <option value="id">ID</option>
-          <option value="name">Nombre</option>
-          <option value="area">Area</option>
-        </select>
-        <select value={store.view.colorMode} onChange={(e) => store.updateView({ colorMode: e.target.value as ColorMode })}>
-          <option value="manual">Color manual</option>
-          <option value="criticality">Por criticidad</option>
-          <option value="area">Por area</option>
-        </select>
-        <select value={store.view.areaFilter} onChange={(e) => store.updateView({ areaFilter: e.target.value as AreaFilter })}>
-          <option value={AREA_FILTER_ALL}>Todas las areas</option>
-          {PLANT_AREAS.map((area) => <option key={area.code} value={area.code}>{areaLabel(area.code)}</option>)}
-        </select>
-        <button disabled={store.view.areaFilter === AREA_FILTER_ALL} onClick={store.focusArea}>Enfocar area</button>
-        <button onClick={() => store.requestCameraView('fit_all')}>Fit All</button>
-        <button disabled={!store.referenceLayout} onClick={() => store.requestCameraView('fit_layout')}>Fit Layout</button>
-        <button disabled={store.selectedObjectIds.length === 0} onClick={() => store.requestCameraView('fit_selection')}>Fit Selection</button>
-        <button onClick={() => store.requestCameraView('isometric')}>Vista isometrica</button>
-        <button onClick={() => store.requestCameraView('top')}>Vista superior</button>
-        <button onClick={() => store.updateView({ theme: store.view.theme === 'dark' ? 'light' : 'dark' })}>
-          {store.view.theme === 'dark' ? 'Light mode' : 'Dark mode'}
+
+        <EditMenu open={openMenu === 'edit'} canCopy={store.selectedObjectIds.length > 0} canPaste={Boolean(store.clipboard?.objects.length)} onToggle={toggleMenu} onAction={runMenuAction} onCopy={store.copySelection} onPaste={store.pasteClipboard} />
+
+        <div className="toolbar-history" role="group" aria-label="Historial">
+        <button
+          disabled={store.historyPast.length === 0}
+          title={store.historyPast.length ? `Deshacer: ${store.historyPast[store.historyPast.length - 1]?.label} (Ctrl+Z)` : 'Deshacer (Ctrl+Z)'}
+          aria-label="Deshacer (Ctrl+Z)"
+          onClick={() => store.undo()}
+        >
+          ↶
         </button>
-        <span className="separator" />
-        <button disabled={!store.selectedObjectId} onClick={() => store.selectedObjectId && store.duplicateObject(store.selectedObjectId)}>Duplicar</button>
-        <button className="danger" disabled={!store.selectedObjectId} onClick={() => store.selectedObjectId && store.deleteObject(store.selectedObjectId)}>Eliminar</button>
+        <button
+          disabled={store.historyFuture.length === 0}
+          title={store.historyFuture.length ? `Rehacer: ${store.historyFuture[0]?.label} (Ctrl+Shift+Z)` : 'Rehacer (Ctrl+Shift+Z)'}
+          aria-label="Rehacer (Ctrl+Shift+Z)"
+          onClick={() => store.redo()}
+        >
+          ↷
+        </button>
+        </div>
+
+        <TransformModeControl mode={store.editMode} onChange={store.setEditMode} />
+        <SnapMenu open={openMenu === 'snap'} snap={store.snap} onToggle={toggleMenu} onUpdate={store.updateSnap} />
+
+        <div className="toolbar-fit" role="group" aria-label="Encuadre de cámara">
+          <button title="Encuadrar toda la planta" onClick={() => store.requestCameraView('fit_all')}>Fit All</button>
+          <button title="Encuadrar selección" disabled={store.selectedObjectIds.length === 0} onClick={() => store.requestCameraView('fit_selection')}>Fit Selection</button>
+        </div>
+
+        <AreaFilterControl value={store.view.areaFilter as AreaFilter} onChange={(areaFilter) => store.updateView({ areaFilter })} onFocus={store.focusArea} />
+        <LayoutMenu
+          open={openMenu === 'layout'}
+          layout={store.referenceLayout}
+          editLayout={store.view.editLayout}
+          calibrationActive={store.layoutCalibration.active}
+          cropActive={store.layoutCrop.active}
+          onToggle={toggleMenu}
+          onClose={() => setOpenMenu(null)}
+          onUpdateLayout={store.updateLayout}
+          onEditLayout={(editLayout) => store.updateView({ editLayout })}
+          onCenter={store.centerLayout}
+          onFit={() => store.requestCameraView('fit_layout')}
+          onCalibrate={store.startLayoutCalibration}
+          onCrop={store.startLayoutCrop}
+          onResetCrop={store.resetLayoutCrop}
+        />
+        <VisualizationMenu open={openMenu === 'visualization'} view={store.view} onToggle={toggleMenu} onUpdate={store.updateView} />
+        <ViewMenu
+          open={openMenu === 'view'}
+          view={store.view}
+          onToggle={toggleMenu}
+          onClose={() => setOpenMenu(null)}
+          onTheme={() => store.updateView({ theme: store.view.theme === 'dark' ? 'light' : 'dark' })}
+          onRestore={projectState.requestCameraRestore}
+          onFrontChange={changePlantFrontDirection}
+        />
+
+        <div className="toolbar-quick-views" role="group" aria-label="Vistas rápidas">
+          <button className={store.view.activeCameraPreset === 'ISO_FRONT' ? 'active' : undefined} title="Vista isométrica frontal" onClick={() => store.requestCameraView('isometric')}>Isométrica</button>
+          <button className={store.view.activeCameraPreset === 'TOP' ? 'active' : undefined} title="Vista superior" onClick={() => store.requestCameraView('top')}>Superior</button>
+        </div>
+
+        {store.selectedObjectIds.length > 0 && <div className="toolbar-object-actions" role="group" aria-label="Acciones de la selección">
+          <button title="Duplicar selección" onClick={duplicateSelection}>{store.selectedObjectIds.length > 1 ? 'Duplicar selección' : 'Duplicar'}</button>
+          <button className="danger" title="Eliminar selección" onClick={deleteSelection}>{store.selectedObjectIds.length > 1 ? 'Eliminar seleccionados' : 'Eliminar'}</button>
+        </div>}
       </div>
-      {store.referenceLayout && (
-        <div className="layout-controls">
-          <label><input type="checkbox" checked={store.referenceLayout.visible} onChange={(e) => store.updateLayout({ visible: e.target.checked })} /> Mostrar Layout</label>
-          <label><input type="checkbox" checked={store.referenceLayout.locked} onChange={(e) => store.updateLayout({ locked: e.target.checked })} /> Lock Layout</label>
-          <label><input type="checkbox" checked={store.view.editLayout} onChange={(e) => store.updateView({ editLayout: e.target.checked })} /> Editar Layout</label>
-          <label>Opacity <input type="range" min="0" max="1" step="0.05" value={store.referenceLayout.opacity} onChange={(e) => store.updateLayout({ opacity: Number(e.target.value) })} /></label>
-          <button onClick={store.centerLayout}>Centrar en origen</button>
-          <span className="layout-name">{store.referenceLayout.fileName}</span>
+      {store.selectedObjectIds.length >= 2 && (
+        <div className="alignment-controls">
+          <strong>Alinear ({store.selectedObjectIds.length}) respecto al primario</strong>
+          <button onClick={() => align('x', 'center')}>Mismo X</button>
+          <button onClick={() => align('y', 'min')}>Misma base Y</button>
+          <button onClick={() => align('z', 'center')}>Mismo Z</button>
+          <span className="separator" />
+          <span>X</span>
+          <button onClick={() => align('x', 'min')}>Min</button>
+          <button onClick={() => align('x', 'center')}>Centro</button>
+          <button onClick={() => align('x', 'max')}>Max</button>
+          <span>Y</span>
+          <button onClick={() => align('y', 'min')}>Base</button>
+          <button onClick={() => align('y', 'center')}>Centro</button>
+          <button onClick={() => align('y', 'max')}>Tope</button>
+          <span>Z</span>
+          <button onClick={() => align('z', 'min')}>Min</button>
+          <button onClick={() => align('z', 'center')}>Centro</button>
+          <button onClick={() => align('z', 'max')}>Max</button>
         </div>
       )}
       <div className="toolbar-status"><span className="status-dot" /> {message}</div>

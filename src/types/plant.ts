@@ -1,9 +1,11 @@
 import type { AreaFilter, PlantAreaCode } from '../config/areas'
+import type { CameraPresetId, PlantFrontDirection } from '../config/cameraPresets'
 
 export const assetTypes = [
   'box',
   'long_box',
   'cylinder',
+  'hollow_cylinder',
   'pipe',
   'beam',
   'plate',
@@ -11,6 +13,7 @@ export const assetTypes = [
   'roller_table_biconical',
   'bancal',
   'rail_bed_multi',
+  'lance_carrier_cart',
   'centering_stars',
   'chain_bed',
   'rolling_stand',
@@ -40,6 +43,7 @@ export const assetTypes = [
   'cabinet',
   'tank_vertical',
   'tank_horizontal',
+  'rectangular_pool',
   'pipe_rack_simple',
   'gearbox',
   'motor',
@@ -52,7 +56,7 @@ export const assetTypes = [
 ] as const
 
 export type AssetType = (typeof assetTypes)[number]
-export type IndustrialParamKey = 'length' | 'rollerSpacing' | 'rollerDiameter' | 'rollerCount' | 'rollerLength' | 'rollerColor' | 'frameColor' | 'showTubePlaceholder' | 'showHydraulics' | 'railCount' | 'railHeight' | 'railWidth' | 'supportSpacing' | 'showCrossSupports' | 'pumpCount' | 'accumulatorCount' | 'filterCount' | 'valveSections' | 'starCount' | 'chainCount' | 'chainWidth' | 'chainHeight' | 'showSupports' | 'count' | 'spacing' | 'shaftDiameter' | 'shaftLength' | 'supportHeight' | 'pivotAngle' | 'armCount' | 'transferDiameter' | 'columnHeight' | 'vWidth' | 'vOpening' | 'clawLength' | 'clawOpening' | 'baseHeight' | 'openingWidth' | 'openingHeight' | 'frameThickness' | 'rollDiameter' | 'rollAngle' | 'mandrelDiameter' | 'width' | 'height' | 'depth'
+export type IndustrialParamKey = 'length' | 'outerDiameter' | 'innerDiameter' | 'radialSegments' | 'rollerSpacing' | 'rollerDiameter' | 'rollerWidth' | 'rollerCount' | 'rollerLength' | 'rollerColor' | 'frameColor' | 'showTubePlaceholder' | 'showHydraulics' | 'showBearingHousings' | 'housingWidth' | 'housingLength' | 'housingHeight' | 'housingBaseThickness' | 'housingCapHeight' | 'housingColor' | 'shaftExtension' | 'railCount' | 'railHeight' | 'railWidth' | 'supportSpacing' | 'showCrossSupports' | 'pumpCount' | 'accumulatorCount' | 'filterCount' | 'valveSections' | 'starCount' | 'chainCount' | 'chainWidth' | 'chainHeight' | 'showSupports' | 'count' | 'spacing' | 'shaftDiameter' | 'shaftLength' | 'supportHeight' | 'supportWidth' | 'pivotAngle' | 'armCount' | 'transferDiameter' | 'columnHeight' | 'vWidth' | 'vOpening' | 'clawLength' | 'clawOpening' | 'baseHeight' | 'openingWidth' | 'openingHeight' | 'frameThickness' | 'rollDiameter' | 'rollAngle' | 'mandrelDiameter' | 'bodyLength' | 'bodyDiameter' | 'bodyEndCapLength' | 'frontNeckLength' | 'frontNeckDiameter' | 'chassisLength' | 'chassisWidth' | 'wheelRadius' | 'wheelWidth' | 'wheelbase' | 'trackWidth' | 'showLance' | 'lanceLength' | 'lanceDiameter' | 'lanceOffsetY' | 'showTowBar' | 'lanceHeight' | 'chassisHeight' | 'wallThickness' | 'bottomThickness' | 'showLiquid' | 'liquidLevel' | 'liquidColor' | 'liquidOpacity' | 'showTopRim' | 'rimWidth' | 'rimHeight' | 'showExternalRibs' | 'ribCountLongSides' | 'ribThickness' | 'supportType' | 'showDrain' | 'drainDiameter' | 'drainSide' | 'bodyColor' | 'interiorColor' | 'width' | 'height' | 'depth'
 export type IndustrialParamValue = number | string
 export type Criticality = 'A' | 'B' | 'C' | 'D' | ''
 export type PlantSystem = '' | 'mecanico' | 'hidraulico' | 'lubricacion' | 'electrico' | 'instrumentacion'
@@ -60,7 +64,7 @@ export type EditMode = 'move' | 'rotate' | 'scale'
 export type LabelMode = 'id' | 'name' | 'area'
 export type ColorMode = 'manual' | 'criticality' | 'area'
 export type ThemeMode = 'dark' | 'light'
-export type CameraViewMode = 'fit_all' | 'fit_selection' | 'fit_layout' | 'isometric' | 'top'
+export type CameraViewMode = 'fit_all' | 'fit_selection' | 'fit_layout' | 'front' | 'back' | 'left' | 'right' | 'isometric' | 'isometric_back' | 'top'
 
 export interface Vector3Data { x: number; y: number; z: number }
 export interface AssetSize { width: number; height: number; depth: number }
@@ -85,6 +89,7 @@ export interface IndustrialAsset {
   position: Vector3Data
   rotation: Vector3Data
   size: AssetSize
+  uniformScale: number
   params: Partial<Record<IndustrialParamKey, IndustrialParamValue>>
   color: string
   criticality: Criticality
@@ -116,6 +121,8 @@ export interface ReferenceLayoutCrop {
 
 export interface ReferenceLayout {
   textureDataUrl?: string
+  sourceDataUrl?: string
+  sourceType?: 'image' | 'pdf'
   layoutPath: string
   fileName: string
   mimeType: string
@@ -143,9 +150,14 @@ export interface ReferenceLayout {
 export interface SnapSettings {
   enabled: boolean
   gridSize: number
-  rotationDegrees: number
+  rotationSnapEnabled: boolean
+  rotationSnapAngle: number
   scaleStep: number
 }
+
+export type RotationAxis = 'x' | 'y' | 'z'
+export type AlignmentAxis = 'x' | 'y' | 'z'
+export type AlignmentMode = 'min' | 'center' | 'max'
 
 export interface ViewSettings {
   showLabels: boolean
@@ -155,6 +167,8 @@ export interface ViewSettings {
   areaFilter: AreaFilter
   editLayout: boolean
   theme: ThemeMode
+  plantFrontDirection: PlantFrontDirection
+  activeCameraPreset: CameraPresetId
 }
 
 export interface PlantSceneDocument {

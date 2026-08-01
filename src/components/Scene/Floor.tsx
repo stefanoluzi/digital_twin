@@ -2,7 +2,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 
 interface Props {
   color: string
-  onClearSelection: () => void
+  onClearSelection: (event: FloorEvent) => void
 }
 
 type FloorEvent = ThreeEvent<PointerEvent> | ThreeEvent<MouseEvent>
@@ -10,7 +10,7 @@ type FloorEvent = ThreeEvent<PointerEvent> | ThreeEvent<MouseEvent>
 export function Floor({ color, onClearSelection }: Props) {
   const clearSelection = (event: FloorEvent) => {
     event.stopPropagation()
-    onClearSelection()
+    onClearSelection(event)
   }
 
   return (

@@ -39,10 +39,14 @@ import { TransferClaw } from '../../industrialAssets/transfers/TransferClaw'
 import { TransferStar } from '../../industrialAssets/transfers/TransferStar'
 import { TransferV } from '../../industrialAssets/transfers/TransferV'
 import { VerticalPump } from '../../industrialAssets/VerticalPump'
+import { LanceCarrierCart } from '../../industrialAssets/transport/LanceCarrierCart'
+import { RectangularPool } from '../../industrialAssets/infrastructure/RectangularPool'
+import { HollowCylinder } from './primitives/HollowCylinder'
 
 interface Props {
   asset: IndustrialAsset
   selected: boolean
+  primary: boolean
   view: ViewSettings
   onSelect: (event: ThreeEvent<MouseEvent>) => void
   onPointerDown?: (event: ThreeEvent<PointerEvent>) => void
@@ -92,6 +96,8 @@ function AssetGeometry({ asset, selected, view }: Pick<Props, 'asset' | 'selecte
       return <mesh castShadow receiveShadow><boxGeometry args={[w, h, d]} />{material}</mesh>
     case 'cylinder':
       return <mesh castShadow receiveShadow><cylinderGeometry args={[w / 2, w / 2, h, 32]} />{material}</mesh>
+    case 'hollow_cylinder':
+      return <HollowCylinder asset={asset} material={material} />
     case 'pipe':
       return <group>
         <mesh rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow><cylinderGeometry args={[h / 2, h / 2, w, 24]} />{material}</mesh>
@@ -108,6 +114,8 @@ function AssetGeometry({ asset, selected, view }: Pick<Props, 'asset' | 'selecte
       return <Bancal asset={asset} color={color} />
     case 'rail_bed_multi':
       return <RailBedMulti asset={asset} color={color} />
+    case 'lance_carrier_cart':
+      return <LanceCarrierCart asset={asset} color={color} />
     case 'centering_stars':
       return <CenteringStars asset={asset} color={color} />
     case 'chain_bed':
@@ -166,6 +174,8 @@ function AssetGeometry({ asset, selected, view }: Pick<Props, 'asset' | 'selecte
       return <TankVertical asset={asset} color={color} />
     case 'tank_horizontal':
       return <TankHorizontal asset={asset} color={color} />
+    case 'rectangular_pool':
+      return <RectangularPool asset={asset} color={color} />
     case 'pipe_rack_simple':
       return <PipeRackSimple asset={asset} color={color} />
     case 'motor':
@@ -198,6 +208,7 @@ function AssetGeometry({ asset, selected, view }: Pick<Props, 'asset' | 'selecte
 export const IndustrialObject = forwardRef<THREE.Group, Props>(function IndustrialObject({
   asset,
   selected,
+  primary,
   view,
   onSelect,
   onPointerDown,
@@ -213,6 +224,7 @@ export const IndustrialObject = forwardRef<THREE.Group, Props>(function Industri
       ref={ref}
       position={[asset.position.x, asset.position.y, asset.position.z]}
       rotation={[asset.rotation.x, asset.rotation.y, asset.rotation.z]}
+      scale={[asset.uniformScale, asset.uniformScale, asset.uniformScale]}
       onClick={click}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -222,14 +234,14 @@ export const IndustrialObject = forwardRef<THREE.Group, Props>(function Industri
       userData={{ assetId: asset.id }}
     >
       <AssetGeometry asset={asset} selected={selected} view={view} />
-      {selected && <mesh scale={1.035} raycast={() => null}>
+      {selected && <mesh scale={1.035} raycast={() => null} userData={{ excludeFromAlignmentBounds: true }}>
         <boxGeometry args={[asset.size.width, asset.size.height, asset.size.depth]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        <Edges color="#ffd166" lineWidth={1.5} />
+        <Edges color={primary ? '#ffd166' : '#67b7ff'} lineWidth={primary ? 2.2 : 1.1} />
       </mesh>}
       {view.showLabels && (
         <Html position={[0, asset.size.height / 2 + 0.28, 0]} center style={{ pointerEvents: 'none' }}>
-          <span className={`asset-label ${selected ? 'selected' : ''}`}>{label}</span>
+          <span className={`asset-label ${selected ? 'selected' : ''}${primary ? ' primary' : ''}`}>{label}</span>
         </Html>
       )}
     </group>

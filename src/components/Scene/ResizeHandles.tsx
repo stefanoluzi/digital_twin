@@ -11,6 +11,8 @@ interface Props {
   asset: IndustrialAsset
   snap: SnapSettings
   onResize: (update: Pick<IndustrialAsset, 'position' | 'size'>) => void
+  onResizeStart: () => void
+  onResizeEnd: () => void
   setOrbitEnabled: (enabled: boolean) => void
 }
 
@@ -56,12 +58,12 @@ function worldMatrixFor(asset: IndustrialAsset) {
   matrix.compose(
     new THREE.Vector3(asset.position.x, asset.position.y, asset.position.z),
     quaternion,
-    new THREE.Vector3(1, 1, 1),
+    new THREE.Vector3(asset.uniformScale, asset.uniformScale, asset.uniformScale),
   )
   return matrix
 }
 
-export function ResizeHandles({ asset, snap, onResize, setOrbitEnabled }: Props) {
+export function ResizeHandles({ asset, snap, onResize, onResizeStart, onResizeEnd, setOrbitEnabled }: Props) {
   const dragRef = useRef<{
     sign: HandleSign
     plane: THREE.Plane
@@ -72,7 +74,7 @@ export function ResizeHandles({ asset, snap, onResize, setOrbitEnabled }: Props)
   } | null>(null)
 
   const handleSize = useMemo(() => Math.max(0.13, Math.min(0.32, Math.max(asset.size.width, asset.size.height, asset.size.depth) * 0.035)), [asset.size])
-  const matrix = useMemo(() => worldMatrixFor(asset), [asset.position, asset.rotation])
+  const matrix = useMemo(() => worldMatrixFor(asset), [asset.position, asset.rotation, asset.uniformScale])
 
   const hitOnPlane = (event: ThreeEvent<PointerEvent>, plane: THREE.Plane) => {
     const hit = new THREE.Vector3()
@@ -97,6 +99,7 @@ export function ResizeHandles({ asset, snap, onResize, setOrbitEnabled }: Props)
       baseSize: { ...asset.size },
       basePosition: { ...asset.position },
     }
+    onResizeStart()
     setOrbitEnabled(false)
     pointerTarget(event)?.setPointerCapture?.(event.pointerId)
   }
@@ -123,13 +126,14 @@ export function ResizeHandles({ asset, snap, onResize, setOrbitEnabled }: Props)
       ((depth - dragState.baseSize.depth) / 2) * dragState.sign.z,
     )
     const rotationMatrix = new THREE.Matrix4().extractRotation(matrix)
-    const offsetWorld = offsetLocal.applyMatrix4(rotationMatrix)
+    const offsetWorld = offsetLocal.multiplyScalar(asset.uniformScale).applyMatrix4(rotationMatrix)
+    const baseElevation = dragState.basePosition.y - dragState.baseSize.height * asset.uniformScale / 2
 
     onResize({
       size: { width, height, depth },
       position: {
         x: dragState.basePosition.x + offsetWorld.x,
-        y: height / 2,
+        y: baseElevation + height * asset.uniformScale / 2,
         z: dragState.basePosition.z + offsetWorld.z,
       },
     })
@@ -139,12 +143,13 @@ export function ResizeHandles({ asset, snap, onResize, setOrbitEnabled }: Props)
     if (!dragRef.current) return
     event.stopPropagation()
     dragRef.current = null
+    onResizeEnd()
     setOrbitEnabled(true)
     pointerTarget(event)?.releasePointerCapture?.(event.pointerId)
   }
 
   return (
-    <group position={[asset.position.x, asset.position.y, asset.position.z]} rotation={[asset.rotation.x, asset.rotation.y, asset.rotation.z]}>
+    <group position={[asset.position.x, asset.position.y, asset.position.z]} rotation={[asset.rotation.x, asset.rotation.y, asset.rotation.z]} scale={[asset.uniformScale, asset.uniformScale, asset.uniformScale]}>
       <mesh scale={1.015}>
         <boxGeometry args={[asset.size.width, asset.size.height, asset.size.depth]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
