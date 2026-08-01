@@ -1,14 +1,19 @@
 import { forwardRef as ReactForwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { GizmoHelper, GizmoViewport, OrbitControls, TransformControls } from '@react-three/drei'
+import { GizmoHelper, GizmoViewport, Html, OrbitControls, TransformControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { AREA_FILTER_ALL } from '../../config/areas'
+import { applyCameraPreset, DEFAULT_CAMERA_POSITION, getCameraPresetDirection, type CameraPresetId } from '../../config/cameraPresets'
 import { useSceneStore } from '../../store/sceneStore'
+import { useProjectStore } from '../../store/projectStore'
+import { registerInsertionPointProvider } from '../../services/viewportInsertionService'
+import { getObjectWorldBounds, registerObjectBoundsProvider } from '../../services/objectBoundsService'
+import { clampUniformScale, MAX_UNIFORM_SCALE, MIN_UNIFORM_SCALE } from '../../utils/uniformScale'
 import type { IndustrialAsset, ReferenceLayout, ReferenceLayoutPoint } from '../../types/plant'
 import { Floor } from './Floor'
 import { IndustrialObject } from './IndustrialObject'
 import { ResizeHandles } from './ResizeHandles'
-import { YRotationHandle } from './YRotationHandle'
+import { getNumberValidationMessage } from '../Inspector/ValidatedNumberInput'
 
 const roundTo = (value: number, step: number) => step > 0 ? Math.round(value / step) * step : value
 const changed = (a: number, b: number) => Math.abs(a - b) > 0.0005
@@ -21,7 +26,9 @@ const CAMERA_FAR = 10000
 const ORTHO_MIN_ZOOM = 0.001
 const ORTHO_MAX_ZOOM = 220
 const DEBUG_TRANSFORM = false
+const DEBUG_GROUP_TRANSFORM = false
 const DEBUG_LAYOUT_SCALE = false
+const DEBUG_VIEW_CHANGE = false
 const DEBUG_CALIBRATION = false
 const DEBUG_CROP_HANDLES = false
 const DEBUG_CROP_VERTICAL = false
@@ -75,7 +82,6 @@ const sceneColors = {
 function snapAsset(asset: IndustrialAsset, snap = useSceneStore.getState().snap): IndustrialAsset {
   if (!snap.enabled) return asset
   const gridSize = positiveOr(snap.gridSize, 0.5)
-  const rotationStep = (positiveOr(snap.rotationDegrees, 15) * Math.PI) / 180
   const scaleStep = positiveOr(snap.scaleStep, 0.1)
   return {
     ...asset,
@@ -84,11 +90,7 @@ function snapAsset(asset: IndustrialAsset, snap = useSceneStore.getState().snap)
       y: finiteOr(asset.position.y, asset.size.height / 2),
       z: roundTo(finiteOr(asset.position.z, 0), gridSize),
     },
-    rotation: {
-      x: finiteOr(asset.rotation.x, 0),
-      y: roundTo(finiteOr(asset.rotation.y, 0), rotationStep),
-      z: finiteOr(asset.rotation.z, 0),
-    },
+    rotation: { ...asset.rotation },
     size: {
       width: Math.max(0.1, roundTo(finiteOr(asset.size.width, 1), scaleStep)),
       height: Math.max(0.1, roundTo(finiteOr(asset.size.height, 1), scaleStep)),
@@ -97,31 +99,16 @@ function snapAsset(asset: IndustrialAsset, snap = useSceneStore.getState().snap)
   }
 }
 
-function combinedSelectionCenter(objects: IndustrialAsset[]) {
-  if (objects.length === 0) return new THREE.Vector3()
-  const min = new THREE.Vector3(Infinity, Infinity, Infinity)
-  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity)
-  objects.forEach((asset) => {
-    min.x = Math.min(min.x, asset.position.x - asset.size.width / 2)
-    min.y = Math.min(min.y, asset.position.y - asset.size.height / 2)
-    min.z = Math.min(min.z, asset.position.z - asset.size.depth / 2)
-    max.x = Math.max(max.x, asset.position.x + asset.size.width / 2)
-    max.y = Math.max(max.y, asset.position.y + asset.size.height / 2)
-    max.z = Math.max(max.z, asset.position.z + asset.size.depth / 2)
-  })
-  return min.add(max).multiplyScalar(0.5)
-}
-
 function assetBounds(objects: IndustrialAsset[]) {
   const min = new THREE.Vector3(Infinity, Infinity, Infinity)
   const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity)
   objects.forEach((asset) => {
-    min.x = Math.min(min.x, asset.position.x - asset.size.width / 2)
-    min.y = Math.min(min.y, asset.position.y - asset.size.height / 2)
-    min.z = Math.min(min.z, asset.position.z - asset.size.depth / 2)
-    max.x = Math.max(max.x, asset.position.x + asset.size.width / 2)
-    max.y = Math.max(max.y, asset.position.y + asset.size.height / 2)
-    max.z = Math.max(max.z, asset.position.z + asset.size.depth / 2)
+    min.x = Math.min(min.x, asset.position.x - asset.size.width * asset.uniformScale / 2)
+    min.y = Math.min(min.y, asset.position.y - asset.size.height * asset.uniformScale / 2)
+    min.z = Math.min(min.z, asset.position.z - asset.size.depth * asset.uniformScale / 2)
+    max.x = Math.max(max.x, asset.position.x + asset.size.width * asset.uniformScale / 2)
+    max.y = Math.max(max.y, asset.position.y + asset.size.height * asset.uniformScale / 2)
+    max.z = Math.max(max.z, asset.position.z + asset.size.depth * asset.uniformScale / 2)
   })
   return { min, max, center: min.clone().add(max).multiplyScalar(0.5), size: max.clone().sub(min) }
 }
@@ -166,8 +153,8 @@ function referenceLayoutBounds(layout: ReferenceLayout) {
 
 function objectBounds(asset: IndustrialAsset) {
   return new THREE.Box3(
-    new THREE.Vector3(asset.position.x - asset.size.width / 2, asset.position.y - asset.size.height / 2, asset.position.z - asset.size.depth / 2),
-    new THREE.Vector3(asset.position.x + asset.size.width / 2, asset.position.y + asset.size.height / 2, asset.position.z + asset.size.depth / 2),
+    new THREE.Vector3(asset.position.x - asset.size.width * asset.uniformScale / 2, asset.position.y - asset.size.height * asset.uniformScale / 2, asset.position.z - asset.size.depth * asset.uniformScale / 2),
+    new THREE.Vector3(asset.position.x + asset.size.width * asset.uniformScale / 2, asset.position.y + asset.size.height * asset.uniformScale / 2, asset.position.z + asset.size.depth * asset.uniformScale / 2),
   )
 }
 
@@ -194,8 +181,11 @@ export function PlantScene() {
   const updateLayout = useSceneStore((state) => state.updateLayout)
   const cancelLayoutCalibration = useSceneStore((state) => state.cancelLayoutCalibration)
   const setLayoutCalibrationDraft = useSceneStore((state) => state.setLayoutCalibrationDraft)
+  const requestCameraView = useSceneStore((state) => state.requestCameraView)
+  const activeCameraPreset = useSceneStore((state) => state.view.activeCameraPreset)
   const transformInteractingRef = useRef(false)
   const transformReleaseTimerRef = useRef<number | null>(null)
+  const clearSelectionTimerRef = useRef<number | null>(null)
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [calibrationDistanceInput, setCalibrationDistanceInput] = useState('')
   const [calibrationError, setCalibrationError] = useState('')
@@ -219,6 +209,10 @@ export function PlantScene() {
       transformReleaseTimerRef.current = null
     }
     if (active) {
+      if (clearSelectionTimerRef.current !== null) {
+        window.clearTimeout(clearSelectionTimerRef.current)
+        clearSelectionTimerRef.current = null
+      }
       transformInteractingRef.current = true
       return
     }
@@ -228,10 +222,16 @@ export function PlantScene() {
     }, 80)
   }
 
-  const clearSelection = () => {
+  const clearSelection = (event?: { ctrlKey?: boolean; metaKey?: boolean }) => {
     if (transformInteractingRef.current) return
-    select(null)
-    setMenu(null)
+    if (event?.ctrlKey || event?.metaKey) return
+    if (clearSelectionTimerRef.current !== null) window.clearTimeout(clearSelectionTimerRef.current)
+    clearSelectionTimerRef.current = window.setTimeout(() => {
+      clearSelectionTimerRef.current = null
+      if (transformInteractingRef.current) return
+      select(null)
+      setMenu(null)
+    }, 0)
   }
 
   useEffect(() => {
@@ -266,6 +266,7 @@ export function PlantScene() {
       window.removeEventListener('pointerdown', close)
       window.removeEventListener('keydown', close)
       if (transformReleaseTimerRef.current !== null) window.clearTimeout(transformReleaseTimerRef.current)
+      if (clearSelectionTimerRef.current !== null) window.clearTimeout(clearSelectionTimerRef.current)
     }
   }, [])
 
@@ -328,10 +329,10 @@ export function PlantScene() {
     <div className={`scene${layoutCalibration.active || layoutCrop.active ? ' calibrating' : ''}`} onContextMenu={(event) => event.preventDefault()}>
       <Canvas
         orthographic
-        camera={{ position: [14, 12, 14], zoom: 48, near: CAMERA_NEAR, far: CAMERA_FAR }}
+        camera={{ position: [...DEFAULT_CAMERA_POSITION], zoom: 48, near: CAMERA_NEAR, far: CAMERA_FAR }}
         dpr={[1, 1.75]}
         onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
-        onPointerMissed={clearSelection}
+        onPointerMissed={(event) => clearSelection(event as unknown as { ctrlKey?: boolean; metaKey?: boolean })}
       >
         <SceneContent
           onAssetContextMenu={openMenu}
@@ -339,6 +340,15 @@ export function PlantScene() {
           isTransformInteracting={() => transformInteractingRef.current}
         />
       </Canvas>
+      <div className="view-cube" aria-label="Vistas estándar de cámara">
+        <button className={`view-cube__top${activeCameraPreset === 'TOP' ? ' active' : ''}`} title="Vista superior" onClick={() => requestCameraView('top')}>TOP</button>
+        <button className={`view-cube__left${activeCameraPreset === 'LEFT' ? ' active' : ''}`} title="Vista izquierda" onClick={() => requestCameraView('left')}>LEFT</button>
+        <button className={`view-cube__front${activeCameraPreset === 'FRONT' ? ' active' : ''}`} title="Vista frontal" onClick={() => requestCameraView('front')}>FRONT</button>
+        <button className={`view-cube__right${activeCameraPreset === 'RIGHT' ? ' active' : ''}`} title="Vista derecha" onClick={() => requestCameraView('right')}>RIGHT</button>
+        <button className={`view-cube__back${activeCameraPreset === 'BACK' ? ' active' : ''}`} title="Vista trasera" onClick={() => requestCameraView('back')}>BACK</button>
+        <button className={`view-cube__iso-front${activeCameraPreset === 'ISO_FRONT' ? ' active' : ''}`} title="Isométrica frontal" onClick={() => requestCameraView('isometric')}>ISO FRONT</button>
+        <button className={`view-cube__iso-back${activeCameraPreset === 'ISO_BACK' ? ' active' : ''}`} title="Isométrica trasera" onClick={() => requestCameraView('isometric_back')}>ISO BACK</button>
+      </div>
       {menu && (
         <div className="context-menu" style={{ left: menu.x, top: menu.y }} onPointerDown={(event) => event.stopPropagation()}>
           <button onClick={() => menuAction(() => select(menu.id))}>Editar</button>
@@ -355,20 +365,26 @@ export function PlantScene() {
             {currentCalibrationDistance !== null && <p>Distancia actual: {currentCalibrationDistance.toFixed(2)} m</p>}
             <label>
               <span>Metros</span>
-              <input
-                autoFocus
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={calibrationDistanceInput}
-                onChange={(event) => setCalibrationDistanceInput(event.currentTarget.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') confirmCalibrationDistance()
-                  if (event.key === 'Escape') retrySecondCalibrationPoint()
-                }}
-              />
+              <div className={`numeric-field${calibrationError ? ' numeric-field--error' : ''}`}>
+                <input
+                  autoFocus
+                  type="text"
+                  inputMode="decimal"
+                  aria-invalid={Boolean(calibrationError)}
+                  value={calibrationDistanceInput}
+                  onChange={(event) => {
+                    const draft = event.currentTarget.value
+                    setCalibrationDistanceInput(draft)
+                    setCalibrationError(getNumberValidationMessage(draft, 0.01, undefined, false, 'm'))
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') confirmCalibrationDistance()
+                    if (event.key === 'Escape') retrySecondCalibrationPoint()
+                  }}
+                />
+                {calibrationError && <span className="numeric-field__message">{calibrationError}</span>}
+              </div>
             </label>
-            {calibrationError && <p className="error">{calibrationError}</p>}
             <div className="calibration-actions">
               <button onClick={confirmCalibrationDistance}>Confirmar</button>
               <button onClick={retrySecondCalibrationPoint}>Elegir P2 de nuevo</button>
@@ -408,25 +424,37 @@ function SceneContent({
   const update = useSceneStore((state) => state.updateObject)
   const setLayoutCalibrationDraft = useSceneStore((state) => state.setLayoutCalibrationDraft)
   const updateLayoutCropDraft = useSceneStore((state) => state.updateLayoutCropDraft)
+  const setActiveRotationAxis = useSceneStore((state) => state.setActiveRotationAxis)
+  const updateObjectsTransform = useSceneStore((state) => state.updateObjectsTransform)
+  const beginHistoryTransaction = useSceneStore((state) => state.beginHistoryTransaction)
+  const commitHistoryTransaction = useSceneStore((state) => state.commitHistoryTransaction)
+  const cameraRestoreRequest = useProjectStore((state) => state.cameraRestoreRequest)
+  const setProjectCamera = useProjectStore((state) => state.setCamera)
   const controlsRef = useRef<any>(null)
   const transformRef = useRef<any>(null)
-  const multiTransformRef = useRef<any>(null)
   const layoutTransformRef = useRef<any>(null)
   const layoutGroupRef = useRef<THREE.Group | null>(null)
-  const multiGroupRef = useRef<THREE.Group | null>(null)
+  const selectionGroupRef = useRef<THREE.Group | null>(null)
   const objectRefs = useRef(new Map<string, THREE.Group>())
   const transformBaseRef = useRef<IndustrialAsset | null>(null)
-  const multiTransformBaseRef = useRef<{ center: THREE.Vector3; positions: Map<string, THREE.Vector3> } | null>(null)
+  const groupTransformBaseRef = useRef<{
+    groupMatrixWorld: THREE.Matrix4
+    objects: Array<{ id: string; uniformScale: number; worldMatrix: THREE.Matrix4; parentWorldInverse: THREE.Matrix4 }>
+  } | null>(null)
+  const isGroupTransformDraggingRef = useRef(false)
   const layoutScaleBaseRef = useRef<{ uniformScale: number; stretchWidth: number; stretchHeight: number } | null>(null)
   const lastCameraViewNonceRef = useRef<number | null>(null)
+  const lastCameraRestoreNonceRef = useRef<number | null>(null)
   const floorDragRef = useRef<{
     id: string
     plane: THREE.Plane
     offset: THREE.Vector3
   } | null>(null)
   const [targetObject, setTargetObject] = useState<THREE.Group | null>(null)
-  const [multiTargetObject, setMultiTargetObject] = useState<THREE.Group | null>(null)
+  const [selectionGroupTarget, setSelectionGroupTarget] = useState<THREE.Group | null>(null)
   const [layoutTargetObject, setLayoutTargetObject] = useState<THREE.Group | null>(null)
+  const [altPressed, setAltPressed] = useState(false)
+  const [rotationIndicator, setRotationIndicator] = useState<{ degrees: number; snapped: boolean } | null>(null)
   const { camera, gl, size: viewportSize } = useThree()
   const colors = sceneColors[view.theme]
   const visibleObjects = useMemo(() => (
@@ -435,12 +463,112 @@ function SceneContent({
   const selectedAssets = useMemo(() => selectedIds.map((id) => objects.find((object) => object.id === id)).filter(Boolean) as IndustrialAsset[], [objects, selectedIds])
   const selectedAsset = selectedId ? objects.find((object) => object.id === selectedId) ?? null : null
   const multiSelection = selectedAssets.length > 1
-  const movableSelectedAssets = selectedAssets.filter((asset) => !asset.locked)
-  const multiCenter = useMemo(() => combinedSelectionCenter(selectedAssets), [selectedAssets])
+  const groupHasLockedObjects = multiSelection && selectedAssets.some((asset) => asset.locked)
+  const transformTarget = multiSelection ? selectionGroupTarget : targetObject
+  const transformTargetIsCurrent = multiSelection
+    ? Boolean(selectionGroupTarget?.parent)
+    : Boolean(targetObject?.parent && targetObject.name === selectedId)
+  const selectionCanTransform = multiSelection ? !groupHasLockedObjects : Boolean(selectedAsset && !selectedAsset.locked)
   const orbitMouseButtons = useMemo(
     () => getOrbitMouseButtons(layoutCrop.active, layoutCalibration.active),
     [layoutCalibration.active, layoutCrop.active],
   )
+
+  useEffect(() => registerInsertionPointProvider(() => {
+    const raycaster = new THREE.Raycaster()
+    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+    const intersection = new THREE.Vector3()
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera)
+
+    if (Math.abs(raycaster.ray.direction.y) > 0.0001
+      && raycaster.ray.intersectPlane(floorPlane, intersection)
+      && Number.isFinite(intersection.x)
+      && Number.isFinite(intersection.z)) {
+      return { x: intersection.x, y: 0, z: intersection.z }
+    }
+
+    const target = controlsRef.current?.target as THREE.Vector3 | undefined
+    if (target && Number.isFinite(target.x) && Number.isFinite(target.z)) {
+      return { x: target.x, y: 0, z: target.z }
+    }
+
+    return { x: 0, y: 0, z: 0 }
+  }), [camera])
+
+  useEffect(() => registerObjectBoundsProvider((id) => {
+    const object = objectRefs.current.get(id)
+    if (!object) return null
+    object.updateWorldMatrix(true, true)
+    const box = new THREE.Box3()
+    object.traverse((child) => {
+      let cursor: THREE.Object3D | null = child
+      while (cursor && cursor !== object) {
+        if (cursor.userData.excludeFromAlignmentBounds) return
+        cursor = cursor.parent
+      }
+      const geometry = (child as THREE.Mesh).geometry
+      if (!geometry) return
+      if (!geometry.boundingBox) geometry.computeBoundingBox()
+      if (geometry.boundingBox) box.union(geometry.boundingBox.clone().applyMatrix4(child.matrixWorld))
+    })
+    if (box.isEmpty()) return null
+    return {
+      min: { x: box.min.x, y: box.min.y, z: box.min.z },
+      max: { x: box.max.x, y: box.max.y, z: box.max.z },
+    }
+  }), [])
+
+  const registerSelectionGroup = useCallback((node: THREE.Group | null) => {
+    selectionGroupRef.current = node
+    setSelectionGroupTarget(node)
+  }, [])
+
+  const recenterSelectionGroup = useCallback(() => {
+    const group = selectionGroupRef.current
+    if (DEBUG_GROUP_TRANSFORM) console.log(`[GroupTransform] recenter request ${JSON.stringify({ hasGroup: Boolean(group), selectedIds, dragging: isGroupTransformDraggingRef.current })}`)
+    if (!group || selectedIds.length < 2 || isGroupTransformDraggingRef.current) return
+    const combined = new THREE.Box3()
+    selectedIds.forEach((id) => {
+      const bounds = getObjectWorldBounds(id)
+      if (DEBUG_GROUP_TRANSFORM) console.log('[GroupTransform] bounds', id, bounds)
+      if (!bounds) return
+      combined.expandByPoint(new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.min.z))
+      combined.expandByPoint(new THREE.Vector3(bounds.max.x, bounds.max.y, bounds.max.z))
+    })
+    if (combined.isEmpty()) return
+    group.position.copy(combined.getCenter(new THREE.Vector3()))
+    group.quaternion.identity()
+    group.scale.set(1, 1, 1)
+    group.updateMatrixWorld(true)
+    if (DEBUG_GROUP_TRANSFORM) console.debug('[GroupTransform] pivot', {
+      selectedObjectIds: selectedIds,
+      box: { min: combined.min.toArray(), max: combined.max.toArray() },
+      pivot: group.position.toArray(),
+    })
+  }, [selectedIds])
+
+  useEffect(() => {
+    isGroupTransformDraggingRef.current = false
+    groupTransformBaseRef.current = null
+  }, [selectedIds])
+
+  useEffect(() => {
+    recenterSelectionGroup()
+  }, [objects, recenterSelectionGroup, selectionGroupTarget])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Alt') setAltPressed(true) }
+    const onKeyUp = (event: KeyboardEvent) => { if (event.key === 'Alt') setAltPressed(false) }
+    const onBlur = () => setAltPressed(false)
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [])
 
   useEffect(() => {
     if (!controlsRef.current) return
@@ -534,13 +662,55 @@ function SceneContent({
     if (DEBUG_CROP_HANDLES) console.log('OrbitControls enabled', nextEnabled)
   }
 
+  const captureProjectCamera = useCallback((dirty = false) => {
+    if (!controlsRef.current) return
+    const ortho = camera as THREE.OrthographicCamera
+    const perspective = camera as THREE.PerspectiveCamera
+    setProjectCamera({
+      type: ortho.isOrthographicCamera ? 'orthographic' : 'perspective',
+      position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+      target: {
+        x: controlsRef.current.target.x,
+        y: controlsRef.current.target.y,
+        z: controlsRef.current.target.z,
+      },
+      zoom: ortho.isOrthographicCamera ? ortho.zoom : undefined,
+      fov: perspective.isPerspectiveCamera ? perspective.fov : undefined,
+    }, dirty)
+  }, [camera, setProjectCamera])
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => captureProjectCamera(false))
+    return () => window.cancelAnimationFrame(frame)
+  }, [captureProjectCamera])
+
+  useEffect(() => {
+    if (!cameraRestoreRequest || !controlsRef.current) return
+    if (lastCameraRestoreNonceRef.current === cameraRestoreRequest.nonce) return
+    lastCameraRestoreNonceRef.current = cameraRestoreRequest.nonce
+    const saved = cameraRestoreRequest.camera
+    camera.position.set(saved.position.x, saved.position.y, saved.position.z)
+    if ((camera as THREE.OrthographicCamera).isOrthographicCamera && saved.zoom) {
+      ;(camera as THREE.OrthographicCamera).zoom = saved.zoom
+    }
+    if ((camera as THREE.PerspectiveCamera).isPerspectiveCamera && saved.fov) {
+      ;(camera as THREE.PerspectiveCamera).fov = saved.fov
+    }
+    camera.updateProjectionMatrix()
+    controlsRef.current.target.set(saved.target.x, saved.target.y, saved.target.z)
+    controlsRef.current.update()
+    captureProjectCamera(false)
+  }, [camera, cameraRestoreRequest, captureProjectCamera])
+
   const fitBox = useCallback((box: THREE.Box3, direction = camera.position.clone().sub(controlsRef.current?.target ?? new THREE.Vector3()).normalize(), up = new THREE.Vector3(0, 1, 0)) => {
     if (box.isEmpty()) return
     if (DEBUG_CAMERA_RIGHT_CLICK) console.log('fit camera request')
     const orthoCamera = camera as THREE.OrthographicCamera
     const center = box.getCenter(new THREE.Vector3())
     const size = box.getSize(new THREE.Vector3())
-    const safeDirection = direction.lengthSq() > 0.0001 ? direction.clone().normalize() : new THREE.Vector3(1, 1, 1).normalize()
+    const safeDirection = direction.lengthSq() > 0.0001
+      ? direction.clone().normalize()
+      : getCameraPresetDirection('ISO_FRONT', view.plantFrontDirection)
     const distance = Math.max(size.length() * 2, 50)
     orthoCamera.near = CAMERA_NEAR
     orthoCamera.far = CAMERA_FAR
@@ -577,7 +747,8 @@ function SceneContent({
       controlsRef.current.target.copy(center)
       controlsRef.current.update()
     }
-  }, [camera, viewportSize.height, viewportSize.width])
+    captureProjectCamera(true)
+  }, [camera, captureProjectCamera, view.plantFrontDirection, viewportSize.height, viewportSize.width])
 
   const boundsForMode = useCallback((mode: string) => {
     const boxes: THREE.Box3[] = []
@@ -593,6 +764,33 @@ function SceneContent({
     if (referenceLayout?.visible) boxes.push(referenceLayoutBounds(referenceLayout))
     return combineBoxes(boxes)
   }, [referenceLayout, selectedAssets, visibleObjects])
+
+  const applyPreset = useCallback((preset: CameraPresetId) => {
+    const controls = controlsRef.current
+    if (!controls) return
+
+    const ortho = camera as THREE.OrthographicCamera
+    const perspective = camera as THREE.PerspectiveCamera
+    if (DEBUG_VIEW_CHANGE) console.log('view change before', {
+      preset,
+      target: controls.target.toArray(),
+      position: camera.position.toArray(),
+      distance: camera.position.distanceTo(controls.target),
+      zoom: ortho.isOrthographicCamera ? ortho.zoom : undefined,
+      fov: perspective.isPerspectiveCamera ? perspective.fov : undefined,
+    })
+
+    applyCameraPreset(camera, controls, preset, view.plantFrontDirection)
+    captureProjectCamera(true)
+
+    if (DEBUG_VIEW_CHANGE) console.log('view change after', {
+      target: controls.target.toArray(),
+      position: camera.position.toArray(),
+      distance: camera.position.distanceTo(controls.target),
+      zoom: ortho.isOrthographicCamera ? ortho.zoom : undefined,
+      fov: perspective.isPerspectiveCamera ? perspective.fov : undefined,
+    })
+  }, [camera, captureProjectCamera, view.plantFrontDirection])
 
   const releaseTransforming = () => {
     notifyTransformInteracting(false)
@@ -631,14 +829,15 @@ function SceneContent({
     if (!focusRequest) return
     const asset = useSceneStore.getState().objects.find((object) => object.id === focusRequest.id)
     if (!asset) return
-    const target = { x: asset.position.x, y: asset.size.height / 2, z: asset.position.z }
+    const target = { x: asset.position.x, y: asset.position.y, z: asset.position.z }
     camera.position.set(target.x + 12, target.y + 10, target.z + 12)
     camera.lookAt(target.x, target.y, target.z)
     if (controlsRef.current) {
       controlsRef.current.target.set(target.x, target.y, target.z)
       controlsRef.current.update()
     }
-  }, [camera, focusRequest])
+    captureProjectCamera(true)
+  }, [camera, captureProjectCamera, focusRequest])
 
   useEffect(() => {
     if (!focusAreaRequest) return
@@ -654,26 +853,30 @@ function SceneContent({
       controlsRef.current.target.set(bounds.center.x, bounds.center.y, bounds.center.z)
       controlsRef.current.update()
     }
-  }, [camera, focusAreaRequest])
+    captureProjectCamera(true)
+  }, [camera, captureProjectCamera, focusAreaRequest])
 
   useEffect(() => {
     if (!cameraViewRequest) return
     if (lastCameraViewNonceRef.current === cameraViewRequest.nonce) return
     lastCameraViewNonceRef.current = cameraViewRequest.nonce
-    const isoDirection = new THREE.Vector3(1, 0.85, 1).normalize()
-    if (cameraViewRequest.mode === 'isometric') {
-      const box = boundsForMode('fit_all') ?? new THREE.Box3(new THREE.Vector3(-10, 0, -10), new THREE.Vector3(10, 10, 10))
-      fitBox(box, isoDirection, new THREE.Vector3(0, 1, 0))
-      return
+    const presetByMode: Partial<Record<typeof cameraViewRequest.mode, CameraPresetId>> = {
+      front: 'FRONT',
+      back: 'BACK',
+      left: 'LEFT',
+      right: 'RIGHT',
+      isometric: 'ISO_FRONT',
+      isometric_back: 'ISO_BACK',
+      top: 'TOP',
     }
-    if (cameraViewRequest.mode === 'top') {
-      const box = boundsForMode('fit_all') ?? new THREE.Box3(new THREE.Vector3(-10, 0, -10), new THREE.Vector3(10, 10, 10))
-      fitBox(box, new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, -1))
+    const preset = presetByMode[cameraViewRequest.mode]
+    if (preset) {
+      applyPreset(preset)
       return
     }
     const box = boundsForMode(cameraViewRequest.mode)
     if (box) fitBox(box)
-  }, [boundsForMode, cameraViewRequest, fitBox])
+  }, [applyPreset, boundsForMode, cameraViewRequest, fitBox])
 
   useEffect(() => {
     if (!selectedId) {
@@ -691,13 +894,6 @@ function SceneContent({
     if (DEBUG_TRANSFORM) console.debug('[TransformControls] attach target', { id: selectedId, exists: Boolean(nextTarget), uuid: nextTarget?.uuid })
   }, [selectedId, visibleObjects, select])
 
-  useEffect(() => {
-    const group = multiGroupRef.current
-    if (!group || !multiSelection) return
-    group.position.copy(multiCenter)
-    setMultiTargetObject(group)
-  }, [multiCenter, multiSelection])
-
   useEffect(() => () => {
     releaseTransforming()
   }, [])
@@ -713,16 +909,29 @@ function SceneContent({
     if (editMode === 'scale') {
       if (!commitScale) return
       const base = transformBaseRef.current ?? current
-      const next = {
-        ...base,
-        size: {
-          width: Math.max(0.1, finiteOr(base.size.width * Math.abs(targetObject.scale.x), base.size.width)),
-          height: Math.max(0.1, finiteOr(base.size.height * Math.abs(targetObject.scale.y), base.size.height)),
-          depth: Math.max(0.1, finiteOr(base.size.depth * Math.abs(targetObject.scale.z), base.size.depth)),
-        },
+      const baseScale = clampUniformScale(base.uniformScale)
+      const factors = {
+        x: Math.abs(finiteOr(targetObject.scale.x / baseScale, 1)),
+        y: Math.abs(finiteOr(targetObject.scale.y / baseScale, 1)),
+        z: Math.abs(finiteOr(targetObject.scale.z / baseScale, 1)),
       }
-      next.position.y = next.size.height / 2
-      targetObject.scale.set(1, 1, 1)
+      const uniformTransform = Math.max(factors.x, factors.y, factors.z) - Math.min(factors.x, factors.y, factors.z) < 0.001
+      const baseElevation = base.position.y - base.size.height * baseScale / 2
+      const next = uniformTransform
+        ? {
+          ...base,
+          uniformScale: clampUniformScale(baseScale * (factors.x + factors.y + factors.z) / 3),
+        }
+        : {
+          ...base,
+          size: {
+            width: Math.max(0.1, finiteOr(base.size.width * factors.x, base.size.width)),
+            height: Math.max(0.1, finiteOr(base.size.height * factors.y, base.size.height)),
+            depth: Math.max(0.1, finiteOr(base.size.depth * factors.z, base.size.depth)),
+          },
+        }
+      next.position.y = baseElevation + next.size.height * next.uniformScale / 2
+      targetObject.scale.set(next.uniformScale, next.uniformScale, next.uniformScale)
       update(selectedId, snapAsset(next, snap))
       transformBaseRef.current = null
       return
@@ -753,67 +962,84 @@ function SceneContent({
     if (hasChanged) update(selectedId, snapAsset(next, snap))
   }
 
-  const beginMultiTransform = () => {
-    if (!multiTargetObject || movableSelectedAssets.length === 0) return
-    const positions = new Map<string, THREE.Vector3>()
-    movableSelectedAssets.forEach((asset) => {
-      positions.set(asset.id, new THREE.Vector3(asset.position.x, asset.position.y, asset.position.z))
-    })
-    multiTransformBaseRef.current = { center: multiTargetObject.position.clone(), positions }
-  }
-
-  const syncFromMultiTransform = () => {
-    const base = multiTransformBaseRef.current
-    if (!base || !multiTargetObject) return
-    const delta = multiTargetObject.position.clone().sub(base.center)
-    base.positions.forEach((position, id) => {
-      const current = useSceneStore.getState().objects.find((object) => object.id === id)
-      if (!current || current.locked) return
-      update(id, snapAsset({
-        ...current,
-        position: {
-          x: finiteOr(position.x + delta.x, current.position.x),
-          y: finiteOr(position.y + delta.y, current.position.y),
-          z: finiteOr(position.z + delta.z, current.position.z),
-        },
-      }, snap))
-    })
-  }
-
-  useEffect(() => {
-    const controls = transformRef.current
-    if (!controls?.addEventListener) return
-    const onDraggingChanged = (event: { value: boolean }) => {
-      if (DEBUG_TRANSFORM) console.debug('[TransformControls] dragging-changed', event.value, { selectedObjectId: useSceneStore.getState().selectedObjectId })
-      notifyTransformInteracting(event.value)
-      setOrbitEnabled(!event.value)
-      if (!event.value) syncFromTransform(true)
-    }
-    controls.addEventListener('dragging-changed', onDraggingChanged)
-    return () => {
-      controls.removeEventListener?.('dragging-changed', onDraggingChanged)
-      releaseTransforming()
-    }
-  }, [targetObject, selectedId, editMode, snap])
-
-  useEffect(() => {
-    const controls = multiTransformRef.current
-    if (!controls?.addEventListener) return
-    const onDraggingChanged = (event: { value: boolean }) => {
-      notifyTransformInteracting(event.value)
-      setOrbitEnabled(!event.value)
-      if (!event.value) {
-        syncFromMultiTransform()
-        multiTransformBaseRef.current = null
-        if (multiGroupRef.current) multiGroupRef.current.position.copy(combinedSelectionCenter(useSceneStore.getState().objects.filter((object) => useSceneStore.getState().selectedObjectIds.includes(object.id))))
+  const beginGroupTransform = () => {
+    const group = selectionGroupRef.current
+    if (!group || selectedIds.length < 2 || groupHasLockedObjects) return false
+    group.updateWorldMatrix(true, false)
+    const snapshots = selectedIds.map((id) => {
+      const object = objectRefs.current.get(id)
+      const asset = useSceneStore.getState().objects.find((item) => item.id === id)
+      if (!object || !asset) return null
+      object.updateWorldMatrix(true, false)
+      object.parent?.updateWorldMatrix(true, false)
+      return {
+        id,
+        uniformScale: asset.uniformScale,
+        worldMatrix: object.matrixWorld.clone(),
+        parentWorldInverse: object.parent ? object.parent.matrixWorld.clone().invert() : new THREE.Matrix4(),
       }
+    }).filter(Boolean) as Array<{ id: string; uniformScale: number; worldMatrix: THREE.Matrix4; parentWorldInverse: THREE.Matrix4 }>
+    if (snapshots.length !== selectedIds.length) return false
+    groupTransformBaseRef.current = {
+      groupMatrixWorld: group.matrixWorld.clone(),
+      objects: snapshots,
     }
-    controls.addEventListener('dragging-changed', onDraggingChanged)
-    return () => {
-      controls.removeEventListener?.('dragging-changed', onDraggingChanged)
-      releaseTransforming()
+    isGroupTransformDraggingRef.current = true
+    if (DEBUG_GROUP_TRANSFORM) console.debug('[GroupTransform] begin', {
+      selectedObjectIds: selectedIds,
+      mode: editMode,
+      groupMatrix: group.matrixWorld.toArray(),
+    })
+    return true
+  }
+
+  const syncFromGroupTransform = () => {
+    const group = selectionGroupRef.current
+    const base = groupTransformBaseRef.current
+    if (!group || !base) return
+
+    if (editMode === 'scale') {
+      const axis = String(transformRef.current?.axis ?? 'XYZ').toLowerCase()
+      const components = (['x', 'y', 'z'] as const).filter((component) => axis.includes(component))
+      const rawFactor = components.length > 0
+        ? components.reduce((sum, component) => sum + Math.abs(group.scale[component]), 0) / components.length
+        : (Math.abs(group.scale.x) + Math.abs(group.scale.y) + Math.abs(group.scale.z)) / 3
+      const minFactor = Math.max(...base.objects.map((snapshot) => MIN_UNIFORM_SCALE / clampUniformScale(snapshot.uniformScale)))
+      const maxFactor = Math.min(...base.objects.map((snapshot) => MAX_UNIFORM_SCALE / clampUniformScale(snapshot.uniformScale)))
+      const factor = Math.min(maxFactor, Math.max(minFactor, finiteOr(rawFactor, 1)))
+      group.scale.set(factor, factor, factor)
     }
-  }, [multiTargetObject, selectedIds, snap])
+
+    group.updateWorldMatrix(true, false)
+    const deltaMatrix = group.matrixWorld.clone().multiply(base.groupMatrixWorld.clone().invert())
+    const updates = base.objects.map((snapshot) => {
+      const localMatrix = snapshot.parentWorldInverse.clone().multiply(deltaMatrix.clone().multiply(snapshot.worldMatrix))
+      const position = new THREE.Vector3()
+      const quaternion = new THREE.Quaternion()
+      const scale = new THREE.Vector3()
+      localMatrix.decompose(position, quaternion, scale)
+      const rotation = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ')
+      return {
+        id: snapshot.id,
+        position: { x: position.x, y: position.y, z: position.z },
+        rotation: { x: rotation.x, y: rotation.y, z: rotation.z },
+        uniformScale: clampUniformScale((Math.abs(scale.x) + Math.abs(scale.y) + Math.abs(scale.z)) / 3),
+      }
+    })
+    updateObjectsTransform(updates)
+    if (DEBUG_GROUP_TRANSFORM) console.debug('[GroupTransform] update', {
+      deltaMatrix: deltaMatrix.toArray(),
+      updates,
+    })
+  }
+
+  const endGroupTransform = () => {
+    syncFromGroupTransform()
+    groupTransformBaseRef.current = null
+    isGroupTransformDraggingRef.current = false
+    window.requestAnimationFrame(recenterSelectionGroup)
+    if (DEBUG_GROUP_TRANSFORM) console.debug('[GroupTransform] dragging', false)
+  }
 
   useEffect(() => {
     const controls = layoutTransformRef.current
@@ -843,6 +1069,7 @@ function SceneContent({
     if (event.ctrlKey || event.shiftKey || event.metaKey || multiSelection) return
     if (event.button !== 0 || editMode !== 'move' || asset.locked) return
     event.stopPropagation()
+    beginHistoryTransaction(`Mover ${asset.id}`)
     select(asset.id)
     notifyTransformInteracting(true)
     setOrbitEnabled(false)
@@ -869,7 +1096,7 @@ function SceneContent({
       ...current,
       position: {
         x: finiteOr(hit.x - drag.offset.x, current.position.x),
-        y: current.size.height / 2,
+        y: current.position.y,
         z: finiteOr(hit.z - drag.offset.z, current.position.z),
       },
     }, snap))
@@ -880,6 +1107,7 @@ function SceneContent({
     event.stopPropagation()
     if (DEBUG_TRANSFORM) console.debug('[TransformControls] floor drag end', { id: floorDragRef.current.id })
     floorDragRef.current = null
+    commitHistoryTransaction()
     releaseTransforming()
     event.target?.releasePointerCapture?.(event.pointerId)
   }
@@ -890,7 +1118,9 @@ function SceneContent({
       <ambientLight intensity={2.1} />
       <directionalLight position={[12, 18, 10]} intensity={1.25} />
       <hemisphereLight args={['#d8edf8', '#303942', 1.1]} />
-      <Floor color={colors.floor} onClearSelection={() => guardedSelect(null)} />
+      <Floor color={colors.floor} onClearSelection={(event) => {
+        if (!event.ctrlKey && !event.metaKey) guardedSelect(null)
+      }} />
       <gridHelper args={[GRID_SIZE, GRID_DIVISIONS, colors.gridCenter, colors.grid]} position={[0, 0.022, 0]} />
       {referenceLayout?.visible && (
         <ReferenceLayoutPlane
@@ -915,8 +1145,9 @@ function SceneContent({
           key={asset.id}
           asset={asset}
           selected={selectedIds.includes(asset.id)}
+          primary={selectedId === asset.id}
           registerObjectRef={registerObjectRef}
-          onSelect={(event) => guardedSelect(asset.id, event.ctrlKey || event.shiftKey || event.metaKey)}
+          onSelect={(event) => guardedSelect(asset.id, event.ctrlKey || event.metaKey)}
           view={view}
           onContextMenu={(id, x, y) => onAssetContextMenu(id, x, y)}
           onPointerDown={(event) => beginFloorDrag(asset, event)}
@@ -924,95 +1155,97 @@ function SceneContent({
           onPointerUp={endFloorDrag}
         />
       ))}
-      {multiSelection && (
-        <group ref={(node) => {
-          multiGroupRef.current = node
-          setMultiTargetObject(node)
-          if (node) node.position.copy(multiCenter)
-        }} />
-      )}
-      {selectedAsset && targetObject && !multiSelection && !selectedAsset.locked && editMode !== 'rotate' && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
+      {multiSelection && <group ref={registerSelectionGroup} name="selection-transform-proxy" />}
+      {selectedAsset && transformTarget && transformTargetIsCurrent && selectionCanTransform && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
         <TransformControls
           ref={transformRef}
-          object={targetObject}
+          object={transformTarget}
           mode={editMode === 'move' ? 'translate' : editMode}
           size={1.2}
-          space="world"
+          space={multiSelection ? 'world' : editMode === 'rotate' ? 'local' : 'world'}
           showX
           showY
           showZ
           translationSnap={snap.enabled ? positiveOr(snap.gridSize, 0.5) : undefined}
-          rotationSnap={snap.enabled ? (positiveOr(snap.rotationDegrees, 15) * Math.PI) / 180 : undefined}
+          rotationSnap={editMode === 'rotate' && snap.rotationSnapEnabled && !altPressed ? (positiveOr(snap.rotationSnapAngle, 90) * Math.PI) / 180 : undefined}
           scaleSnap={snap.enabled ? positiveOr(snap.scaleStep, 0.1) : undefined}
           onObjectChange={(event) => {
             ;(event as any)?.stopPropagation?.()
-            syncFromTransform(editMode !== 'scale')
+            if (multiSelection) syncFromGroupTransform()
+            else syncFromTransform(editMode !== 'scale')
+            if (!multiSelection && editMode === 'rotate') {
+              const rawAxis = String(transformRef.current?.axis ?? '').charAt(0).toLowerCase()
+              if (rawAxis === 'x' || rawAxis === 'y' || rawAxis === 'z') {
+                setActiveRotationAxis(rawAxis)
+                const value = transformTarget.rotation[rawAxis]
+                const degrees = ((value * 180 / Math.PI) % 360 + 360) % 360
+                const step = positiveOr(snap.rotationSnapAngle, 90)
+                setRotationIndicator({ degrees, snapped: snap.rotationSnapEnabled && !altPressed && Math.abs(degrees / step - Math.round(degrees / step)) < 0.001 })
+              }
+            }
             if (DEBUG_TRANSFORM) {
               console.debug('[TransformControls] objectChange', {
                 axis: transformRef.current?.axis,
                 selectedObjectId: useSceneStore.getState().selectedObjectId,
-                position: targetObject.position.toArray(),
+                position: transformTarget.position.toArray(),
               })
             }
           }}
           onMouseDown={(event) => {
             ;(event as any)?.stopPropagation?.()
             notifyTransformInteracting(true)
-            transformBaseRef.current = structuredClone(selectedAsset)
+            const action = editMode === 'move' ? 'Mover' : editMode === 'rotate' ? 'Rotar' : 'Escalar'
+            beginHistoryTransaction(`${action} ${multiSelection ? `${selectedIds.length} objetos` : selectedAsset.id}`)
+            if (multiSelection) beginGroupTransform()
+            else transformBaseRef.current = structuredClone(selectedAsset)
             setOrbitEnabled(false)
-            if (DEBUG_TRANSFORM) console.debug('[TransformControls] mouseDown', { axis: transformRef.current?.axis, id: selectedAsset.id, uuid: targetObject.uuid })
+            const rawAxis = String(transformRef.current?.axis ?? '').charAt(0).toLowerCase()
+            if (editMode === 'rotate' && (rawAxis === 'x' || rawAxis === 'y' || rawAxis === 'z')) setActiveRotationAxis(rawAxis)
+            if (DEBUG_GROUP_TRANSFORM && multiSelection) console.debug('[GroupTransform] dragging', true)
+            if (DEBUG_TRANSFORM) console.debug('[TransformControls] mouseDown', { axis: transformRef.current?.axis, id: selectedAsset.id, uuid: transformTarget.uuid })
           }}
           onMouseUp={(event) => {
             ;(event as any)?.stopPropagation?.()
-            syncFromTransform(true)
+            if (multiSelection) endGroupTransform()
+            else syncFromTransform(true)
+            commitHistoryTransaction()
+            setRotationIndicator(null)
             releaseTransforming()
             if (DEBUG_TRANSFORM) console.debug('[TransformControls] mouseUp', { selectedAfter: useSceneStore.getState().selectedObjectId })
           }}
         />
       )}
-      {multiSelection && multiTargetObject && movableSelectedAssets.length > 0 && editMode === 'move' && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
-        <TransformControls
-          ref={multiTransformRef}
-          object={multiTargetObject}
-          mode="translate"
-          size={1.35}
-          space="world"
-          showX
-          showY
-          showZ
-          translationSnap={snap.enabled ? positiveOr(snap.gridSize, 0.5) : undefined}
-          onObjectChange={(event) => {
-            ;(event as any)?.stopPropagation?.()
-            syncFromMultiTransform()
-          }}
-          onMouseDown={(event) => {
-            ;(event as any)?.stopPropagation?.()
-            notifyTransformInteracting(true)
-            beginMultiTransform()
-            setOrbitEnabled(false)
-          }}
-          onMouseUp={(event) => {
-            ;(event as any)?.stopPropagation?.()
-            syncFromMultiTransform()
-            multiTransformBaseRef.current = null
-            releaseTransforming()
-          }}
-        />
-      )}
-      {selectedAsset && targetObject && !multiSelection && !selectedAsset.locked && editMode === 'rotate' && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
-        <YRotationHandle
-          asset={selectedAsset}
-          snap={snap}
-          onRotate={(rotation) => update(selectedAsset.id, snapAsset({ ...selectedAsset, rotation }, snap))}
-          setOrbitEnabled={setOrbitEnabled}
-          setTransformInteracting={notifyTransformInteracting}
-        />
+      {selectedAsset && rotationIndicator && (
+        <Html position={[selectedAsset.position.x, selectedAsset.position.y + selectedAsset.size.height / 2 + 0.8, selectedAsset.position.z]} center pointerEvents="none">
+          <div className={`rotation-indicator${rotationIndicator.snapped ? ' snapped' : ''}`}>{Math.round(rotationIndicator.degrees)}°</div>
+        </Html>
       )}
       {selectedAsset && targetObject && !multiSelection && view.showResizeHandles && editMode === 'scale' && !selectedAsset.locked && !transformIsInteracting() && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
         <ResizeHandles
           asset={selectedAsset}
           snap={snap}
-          onResize={(resizeUpdate) => update(selectedAsset.id, snapAsset({ ...selectedAsset, ...resizeUpdate }, snap))}
+          onResizeStart={() => beginHistoryTransaction(`Redimensionar ${selectedAsset.id}`)}
+          onResizeEnd={() => commitHistoryTransaction()}
+          onResize={(resizeUpdate) => {
+            if (selectedAsset.type === 'hollow_cylinder') {
+              const innerDiameter = Number(selectedAsset.params.innerDiameter ?? 0.5)
+              const outerDiameter = Math.max(resizeUpdate.size.width, resizeUpdate.size.depth, innerDiameter + 0.02)
+              const length = resizeUpdate.size.height
+              const resized = snapAsset({
+                ...selectedAsset,
+                ...resizeUpdate,
+                size: { width: outerDiameter, height: length, depth: outerDiameter },
+              }, snap)
+              const snappedOuterDiameter = Math.max(resized.size.width, resized.size.depth, innerDiameter + 0.02)
+              update(selectedAsset.id, {
+                ...resized,
+                size: { width: snappedOuterDiameter, height: resized.size.height, depth: snappedOuterDiameter },
+                params: { ...selectedAsset.params, outerDiameter: snappedOuterDiameter, length: resized.size.height },
+              })
+              return
+            }
+            update(selectedAsset.id, snapAsset({ ...selectedAsset, ...resizeUpdate }, snap))
+          }}
           setOrbitEnabled={setOrbitEnabled}
         />
       )}
@@ -1057,6 +1290,7 @@ function SceneContent({
         maxZoom={ORTHO_MAX_ZOOM}
         enabled
         mouseButtons={orbitMouseButtons as any}
+        onEnd={() => captureProjectCamera(true)}
       />
       <GizmoHelper alignment="bottom-right" margin={[72, 72]}><GizmoViewport labelColor="white" axisHeadScale={0.8} /></GizmoHelper>
     </>
@@ -1066,6 +1300,7 @@ function SceneContent({
 function SceneAsset({
   asset,
   selected,
+  primary,
   registerObjectRef,
   onSelect,
   view,
@@ -1076,6 +1311,7 @@ function SceneAsset({
 }: {
   asset: IndustrialAsset
   selected: boolean
+  primary: boolean
   registerObjectRef: (id: string, node: THREE.Group | null) => void
   onSelect: (event: any) => void
   view: ReturnType<typeof useSceneStore.getState>['view']
@@ -1099,6 +1335,7 @@ function SceneAsset({
       ref={setObjectRef}
       asset={asset}
       selected={selected}
+      primary={primary}
       view={view}
       onSelect={onSelect}
       onPointerDown={onPointerDown}
