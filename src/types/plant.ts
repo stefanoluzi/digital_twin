@@ -1,5 +1,6 @@
 import type { AreaFilter, PlantAreaCode } from '../config/areas'
 import type { CameraPresetId, PlantFrontDirection } from '../config/cameraPresets'
+import type { InsertionLevelCode, PlantLevelCode, PlantLevelDefinition, VisibleLevelFilter } from '../config/plantLevels'
 
 export const assetTypes = [
   'box',
@@ -20,6 +21,10 @@ export const assetTypes = [
   'steader_3_roll',
   'piercer_drive',
   'piercer_machine',
+  'billet_tong',
+  'bundle_saw',
+  'linsinger_vertical_saw',
+  'cooling_bed',
   'electric_motor_horizontal',
   'electric_motor_vertical',
   'gearbox_horizontal',
@@ -56,15 +61,16 @@ export const assetTypes = [
 ] as const
 
 export type AssetType = (typeof assetTypes)[number]
-export type IndustrialParamKey = 'length' | 'outerDiameter' | 'innerDiameter' | 'radialSegments' | 'rollerSpacing' | 'rollerDiameter' | 'rollerWidth' | 'rollerCount' | 'rollerLength' | 'rollerColor' | 'frameColor' | 'showTubePlaceholder' | 'showHydraulics' | 'showBearingHousings' | 'housingWidth' | 'housingLength' | 'housingHeight' | 'housingBaseThickness' | 'housingCapHeight' | 'housingColor' | 'shaftExtension' | 'railCount' | 'railHeight' | 'railWidth' | 'supportSpacing' | 'showCrossSupports' | 'pumpCount' | 'accumulatorCount' | 'filterCount' | 'valveSections' | 'starCount' | 'chainCount' | 'chainWidth' | 'chainHeight' | 'showSupports' | 'count' | 'spacing' | 'shaftDiameter' | 'shaftLength' | 'supportHeight' | 'supportWidth' | 'pivotAngle' | 'armCount' | 'transferDiameter' | 'columnHeight' | 'vWidth' | 'vOpening' | 'clawLength' | 'clawOpening' | 'baseHeight' | 'openingWidth' | 'openingHeight' | 'frameThickness' | 'rollDiameter' | 'rollAngle' | 'mandrelDiameter' | 'bodyLength' | 'bodyDiameter' | 'bodyEndCapLength' | 'frontNeckLength' | 'frontNeckDiameter' | 'chassisLength' | 'chassisWidth' | 'wheelRadius' | 'wheelWidth' | 'wheelbase' | 'trackWidth' | 'showLance' | 'lanceLength' | 'lanceDiameter' | 'lanceOffsetY' | 'showTowBar' | 'lanceHeight' | 'chassisHeight' | 'wallThickness' | 'bottomThickness' | 'showLiquid' | 'liquidLevel' | 'liquidColor' | 'liquidOpacity' | 'showTopRim' | 'rimWidth' | 'rimHeight' | 'showExternalRibs' | 'ribCountLongSides' | 'ribThickness' | 'supportType' | 'showDrain' | 'drainDiameter' | 'drainSide' | 'bodyColor' | 'interiorColor' | 'width' | 'height' | 'depth'
+export type IndustrialParamKey = 'length' | 'outerDiameter' | 'innerDiameter' | 'radialSegments' | 'rollerSpacing' | 'rollerDiameter' | 'rollerWidth' | 'rollerCount' | 'rollerLength' | 'rollerColor' | 'frameColor' | 'showTubePlaceholder' | 'showHydraulics' | 'showBearingHousings' | 'housingWidth' | 'housingLength' | 'housingHeight' | 'housingBaseThickness' | 'housingCapHeight' | 'housingColor' | 'shaftExtension' | 'railCount' | 'railHeight' | 'railWidth' | 'supportSpacing' | 'showCrossSupports' | 'pumpCount' | 'accumulatorCount' | 'filterCount' | 'valveSections' | 'starCount' | 'chainCount' | 'chainWidth' | 'chainHeight' | 'showSupports' | 'count' | 'spacing' | 'shaftDiameter' | 'shaftLength' | 'shaftHeight' | 'shaftFrontOffset' | 'supportHeight' | 'supportWidth' | 'pivotAngle' | 'armCount' | 'armLength' | 'armWidth' | 'armHeight' | 'transferDiameter' | 'columnHeight' | 'vWidth' | 'vOpening' | 'clawLength' | 'clawOpening' | 'jawLength' | 'jawWidth' | 'jawThickness' | 'jawOpening' | 'jawAngleMax' | 'frameWidth' | 'frameDepth' | 'showReferenceBillet' | 'showHydraulicCylinders' | 'baseHeight' | 'openingWidth' | 'openingHeight' | 'frameThickness' | 'sidePlateThickness' | 'topModuleWidth' | 'topModuleHeight' | 'topModuleDepth' | 'centralGap' | 'rollDiameter' | 'rollEndDiameter' | 'rollLength' | 'rollAngle' | 'rollSkewAngle' | 'upperRollTiltAngle' | 'lowerRollTiltAngle' | 'rollHorizontalOffset' | 'rollVerticalOffset' | 'rollCenterDistance' | 'showReferenceTube' | 'referenceTubeDiameter' | 'referenceTubeLength' | 'referenceTubeOffsetY' | 'upperRollRotation' | 'lowerRollRotation' | 'upperRollAngle' | 'lowerRollAngle' | 'tubePresent' | 'machineRunning' | 'mandrelDiameter' | 'bodyLength' | 'bodyDiameter' | 'bodyEndCapLength' | 'frontNeckLength' | 'frontNeckDiameter' | 'chassisLength' | 'chassisWidth' | 'wheelRadius' | 'wheelWidth' | 'wheelbase' | 'trackWidth' | 'showLance' | 'lanceLength' | 'lanceDiameter' | 'lanceOffsetY' | 'showTowBar' | 'lanceHeight' | 'chassisHeight' | 'bladeDiameter' | 'bladeThickness' | 'bladeHubDiameter' | 'showBladeTeeth' | 'bladeToothCount' | 'showBladeGuard' | 'bladeRunning' | 'drivenPulleyDiameter' | 'drivenPulleyWidth' | 'drivenPulleyGrooves' | 'motorPulleyDiameter' | 'showBelts' | 'beltWidth' | 'showBeltGuard' | 'motorLength' | 'motorDiameter' | 'motorHeight' | 'motorOffsetX' | 'motorOffsetY' | 'motorOffsetZ' | 'totalHeight' | 'columnWidth' | 'columnDepth' | 'topBeamHeight' | 'headWidth' | 'headHeight' | 'headDepth' | 'headPosition' | 'verticalStroke' | 'headMinHeight' | 'headMaxHeight' | 'showBillet' | 'billetDiameter' | 'billetLength' | 'billetHeight' | 'showBilletSupports' | 'showClamps' | 'verticalDriveType' | 'cylinderDiameter' | 'cylinderStroke' | 'frameHeight' | 'screwCount' | 'screwSpacing' | 'screwLength' | 'helixOuterDiameter' | 'helixPitch' | 'helixThickness' | 'helixDirection' | 'detailLevel' | 'supportBeamWidth' | 'showDriveUnits' | 'driveMode' | 'driveGroupSize' | 'motorScale' | 'showReferenceTubes' | 'referenceTubeCount' | 'tubeLength' | 'tubeDiameter' | 'tubeSpacing' | 'tubeProgress' | 'showWalkways' | 'walkwayEveryNRows' | 'screwColor' | 'screwRotation' | 'wallThickness' | 'bottomThickness' | 'showLiquid' | 'liquidLevel' | 'liquidColor' | 'liquidOpacity' | 'showTopRim' | 'rimWidth' | 'rimHeight' | 'showExternalRibs' | 'ribCountLongSides' | 'ribThickness' | 'supportType' | 'showDrain' | 'drainDiameter' | 'drainSide' | 'bodyColor' | 'interiorColor' | 'width' | 'height' | 'depth'
 export type IndustrialParamValue = number | string
+export type LevelPlacementParamKey = 'placementMode' | 'startLevel' | 'endLevel' | 'startElevationOffset' | 'endElevationOffset' | 'horizontalRun' | 'inclinationAngle' | 'supportToGround'
 export type Criticality = 'A' | 'B' | 'C' | 'D' | ''
 export type PlantSystem = '' | 'mecanico' | 'hidraulico' | 'lubricacion' | 'electrico' | 'instrumentacion'
 export type EditMode = 'move' | 'rotate' | 'scale'
 export type LabelMode = 'id' | 'name' | 'area'
 export type ColorMode = 'manual' | 'criticality' | 'area'
 export type ThemeMode = 'dark' | 'light'
-export type CameraViewMode = 'fit_all' | 'fit_selection' | 'fit_layout' | 'front' | 'back' | 'left' | 'right' | 'isometric' | 'isometric_back' | 'top'
+export type CameraViewMode = 'fit_all' | 'fit_selection' | 'fit_layout' | 'fit_level' | 'front' | 'back' | 'left' | 'right' | 'isometric' | 'isometric_back' | 'top'
 
 export interface Vector3Data { x: number; y: number; z: number }
 export interface AssetSize { width: number; height: number; depth: number }
@@ -85,12 +91,13 @@ export interface IndustrialAsset {
   type: AssetType
   area: string
   areaCode: PlantAreaCode
+  levelCode: PlantLevelCode
   system: PlantSystem
   position: Vector3Data
   rotation: Vector3Data
   size: AssetSize
   uniformScale: number
-  params: Partial<Record<IndustrialParamKey, IndustrialParamValue>>
+  params: Partial<Record<IndustrialParamKey | LevelPlacementParamKey, IndustrialParamValue>>
   color: string
   criticality: Criticality
   locked: boolean
@@ -120,6 +127,8 @@ export interface ReferenceLayoutCrop {
 }
 
 export interface ReferenceLayout {
+  levelCode: PlantLevelCode
+  positionMode: 'level-relative'
   textureDataUrl?: string
   sourceDataUrl?: string
   sourceType?: 'image' | 'pdf'
@@ -178,4 +187,9 @@ export interface PlantSceneDocument {
   layout?: ReferenceLayout | null
   snap: SnapSettings
   view: ViewSettings
+  plantLevels: PlantLevelDefinition[]
+  activeLevel: InsertionLevelCode
+  visibleLevelFilter: VisibleLevelFilter
+  showLevel0Grid: boolean
+  showLevel1Grid: boolean
 }

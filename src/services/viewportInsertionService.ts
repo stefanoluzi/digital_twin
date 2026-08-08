@@ -12,6 +12,7 @@ export function registerInsertionPointProvider(provider: InsertionPointProvider)
   }
 }
 
-export function getCurrentInsertionPoint(): Vector3Data {
-  return activeProvider?.() ?? { x: 0, y: 0, z: 0 }
+export function getCurrentInsertionPoint(elevation?: number): Vector3Data {
+  const point = activeProvider?.() ?? { x: 0, y: 0, z: 0 }
+  return typeof elevation === 'number' && Number.isFinite(elevation) ? { ...point, y: elevation } : point
 }

@@ -24,6 +24,10 @@ import { IndustrialFan } from '../../industrialAssets/IndustrialFan'
 import { MotorGearboxParallel } from '../../industrialAssets/MotorGearboxParallel'
 import { PiercerDrive } from '../../industrialAssets/PiercerDrive'
 import { PiercerMachine } from '../../industrialAssets/process/PiercerMachine'
+import { BundleSaw } from '../../industrialAssets/process/BundleSaw'
+import { LinsingerVerticalSaw } from '../../industrialAssets/cutting/LinsingerVerticalSaw'
+import { CoolingBed } from '../../industrialAssets/cooling/CoolingBed'
+import { BilletTong } from '../../industrialAssets/furnace/BilletTong'
 import { PipeRackSimple } from '../../industrialAssets/PipeRackSimple'
 import { Platform } from '../../industrialAssets/Platform'
 import { RailBedMulti } from '../../industrialAssets/RailBedMulti'
@@ -128,6 +132,14 @@ function AssetGeometry({ asset, selected, view }: Pick<Props, 'asset' | 'selecte
       return <PiercerDrive asset={asset} color={color} />
     case 'piercer_machine':
       return <PiercerMachine asset={asset} color={color} />
+    case 'billet_tong':
+      return <BilletTong asset={asset} color={color} />
+    case 'bundle_saw':
+      return <BundleSaw asset={asset} color={color} />
+    case 'linsinger_vertical_saw':
+      return <LinsingerVerticalSaw asset={asset} color={color} />
+    case 'cooling_bed':
+      return <CoolingBed asset={asset} color={color} />
     case 'electric_motor_horizontal':
       return <ElectricMotorHorizontal asset={asset} color={color} />
     case 'electric_motor_vertical':

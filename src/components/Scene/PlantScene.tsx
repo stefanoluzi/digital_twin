@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { GizmoHelper, GizmoViewport, Html, OrbitControls, TransformControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { AREA_FILTER_ALL } from '../../config/areas'
+import { LEVEL_0, LEVEL_1, REFERENCE_LAYOUT_Y_OFFSET, getLevelElevation, isLevelVisible } from '../../config/plantLevels'
 import { applyCameraPreset, DEFAULT_CAMERA_POSITION, getCameraPresetDirection, type CameraPresetId } from '../../config/cameraPresets'
 import { useSceneStore } from '../../store/sceneStore'
 import { useProjectStore } from '../../store/projectStore'
@@ -131,14 +132,14 @@ function referenceLayoutFullSize(layout: ReferenceLayout) {
   }
 }
 
-function referenceLayoutBounds(layout: ReferenceLayout) {
+function referenceLayoutBounds(layout: ReferenceLayout, worldY: number) {
   const size = referenceLayoutSize(layout)
   const crop = layout.crop.enabled ? layout.crop : { enabled: false, uMin: 0, vMin: 0, uMax: 1, vMax: 1 }
   const full = referenceLayoutFullSize(layout)
   const centerU = (crop.uMin + crop.uMax) / 2
   const centerV = (crop.vMin + crop.vMax) / 2
   const matrix = new THREE.Matrix4().compose(
-    new THREE.Vector3(layout.position.x, layout.position.y, layout.position.z),
+    new THREE.Vector3(layout.position.x, worldY, layout.position.z),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2 + layout.rotation.x, layout.rotation.y, layout.rotation.z)),
     new THREE.Vector3(1, 1, 1),
   )
@@ -414,6 +415,11 @@ function SceneContent({
   const referenceLayout = useSceneStore((state) => state.referenceLayout)
   const snap = useSceneStore((state) => state.snap)
   const view = useSceneStore((state) => state.view)
+  const plantLevels = useSceneStore((state) => state.plantLevels)
+  const activeLevel = useSceneStore((state) => state.activeLevel)
+  const visibleLevelFilter = useSceneStore((state) => state.visibleLevelFilter)
+  const showLevel0Grid = useSceneStore((state) => state.showLevel0Grid)
+  const showLevel1Grid = useSceneStore((state) => state.showLevel1Grid)
   const focusRequest = useSceneStore((state) => state.focusRequest)
   const focusAreaRequest = useSceneStore((state) => state.focusAreaRequest)
   const cameraViewRequest = useSceneStore((state) => state.cameraViewRequest)
@@ -457,9 +463,17 @@ function SceneContent({
   const [rotationIndicator, setRotationIndicator] = useState<{ degrees: number; snapped: boolean } | null>(null)
   const { camera, gl, size: viewportSize } = useThree()
   const colors = sceneColors[view.theme]
+  const activeElevation = getLevelElevation(plantLevels, activeLevel)
+  const level0Elevation = getLevelElevation(plantLevels, LEVEL_0)
+  const level1Elevation = getLevelElevation(plantLevels, LEVEL_1)
+  const referenceLayoutLevelElevation = referenceLayout
+    ? getLevelElevation(plantLevels, referenceLayout.levelCode === LEVEL_0 ? LEVEL_0 : LEVEL_1)
+    : 0
+  const referenceLayoutWorldY = referenceLayoutLevelElevation + (referenceLayout?.position.y ?? 0) + REFERENCE_LAYOUT_Y_OFFSET
   const visibleObjects = useMemo(() => (
-    view.areaFilter === AREA_FILTER_ALL ? objects : objects.filter((object) => object.areaCode === view.areaFilter)
-  ), [objects, view.areaFilter])
+    objects.filter((object) => (view.areaFilter === AREA_FILTER_ALL || object.areaCode === view.areaFilter) && isLevelVisible(object.levelCode, visibleLevelFilter))
+  ), [objects, view.areaFilter, visibleLevelFilter])
+  const referenceLayoutVisible = Boolean(referenceLayout?.visible && isLevelVisible(referenceLayout.levelCode, visibleLevelFilter))
   const selectedAssets = useMemo(() => selectedIds.map((id) => objects.find((object) => object.id === id)).filter(Boolean) as IndustrialAsset[], [objects, selectedIds])
   const selectedAsset = selectedId ? objects.find((object) => object.id === selectedId) ?? null : null
   const multiSelection = selectedAssets.length > 1
@@ -476,7 +490,7 @@ function SceneContent({
 
   useEffect(() => registerInsertionPointProvider(() => {
     const raycaster = new THREE.Raycaster()
-    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -activeElevation)
     const intersection = new THREE.Vector3()
     raycaster.setFromCamera(new THREE.Vector2(0, 0), camera)
 
@@ -484,16 +498,16 @@ function SceneContent({
       && raycaster.ray.intersectPlane(floorPlane, intersection)
       && Number.isFinite(intersection.x)
       && Number.isFinite(intersection.z)) {
-      return { x: intersection.x, y: 0, z: intersection.z }
+      return { x: intersection.x, y: activeElevation, z: intersection.z }
     }
 
     const target = controlsRef.current?.target as THREE.Vector3 | undefined
     if (target && Number.isFinite(target.x) && Number.isFinite(target.z)) {
-      return { x: target.x, y: 0, z: target.z }
+      return { x: target.x, y: activeElevation, z: target.z }
     }
 
-    return { x: 0, y: 0, z: 0 }
-  }), [camera])
+    return { x: 0, y: activeElevation, z: 0 }
+  }), [activeElevation, camera])
 
   useEffect(() => registerObjectBoundsProvider((id) => {
     const object = objectRefs.current.get(id)
@@ -612,8 +626,10 @@ function SceneContent({
   const updateLayout = useSceneStore((state) => state.updateLayout)
   const syncLayoutFromGroup = () => {
     const group = layoutGroupRef.current
-    const layout = useSceneStore.getState().referenceLayout
+    const sceneState = useSceneStore.getState()
+    const layout = sceneState.referenceLayout
     if (!group || !layout) return
+    const levelElevation = getLevelElevation(sceneState.plantLevels, layout.levelCode === LEVEL_0 ? LEVEL_0 : LEVEL_1)
     const groupScaleX = Math.min(1000, Math.max(0.01, group.scale.x))
     const groupScaleY = Math.min(1000, Math.max(0.01, group.scale.z))
     const base = layoutScaleBaseRef.current ?? {
@@ -634,7 +650,7 @@ function SceneContent({
     }
     group.scale.set(1, 1, 1)
     updateLayout({
-      position: { x: group.position.x, y: group.position.y, z: group.position.z },
+      position: { x: group.position.x, y: group.position.y - levelElevation - REFERENCE_LAYOUT_Y_OFFSET, z: group.position.z },
       rotation: { x: group.rotation.x + Math.PI / 2, y: group.rotation.y, z: group.rotation.z },
       uniformScale,
       stretchWidth,
@@ -753,7 +769,7 @@ function SceneContent({
   const boundsForMode = useCallback((mode: string) => {
     const boxes: THREE.Box3[] = []
     if (mode === 'fit_layout') {
-      if (referenceLayout?.visible) boxes.push(referenceLayoutBounds(referenceLayout))
+      if (referenceLayoutVisible && referenceLayout) boxes.push(referenceLayoutBounds(referenceLayout, referenceLayoutWorldY))
       return combineBoxes(boxes)
     }
     if (mode === 'fit_selection') {
@@ -761,9 +777,9 @@ function SceneContent({
       return combineBoxes(boxes)
     }
     visibleObjects.forEach((asset) => boxes.push(objectBounds(asset)))
-    if (referenceLayout?.visible) boxes.push(referenceLayoutBounds(referenceLayout))
+    if (mode !== 'fit_level' && referenceLayoutVisible && referenceLayout) boxes.push(referenceLayoutBounds(referenceLayout, referenceLayoutWorldY))
     return combineBoxes(boxes)
-  }, [referenceLayout, selectedAssets, visibleObjects])
+  }, [referenceLayout, referenceLayoutVisible, referenceLayoutWorldY, selectedAssets, visibleObjects])
 
   const applyPreset = useCallback((preset: CameraPresetId) => {
     const controls = controlsRef.current
@@ -842,8 +858,8 @@ function SceneContent({
   useEffect(() => {
     if (!focusAreaRequest) return
     const targets = focusAreaRequest.areaFilter === AREA_FILTER_ALL
-      ? useSceneStore.getState().objects
-      : useSceneStore.getState().objects.filter((object) => object.areaCode === focusAreaRequest.areaFilter)
+      ? visibleObjects
+      : visibleObjects.filter((object) => object.areaCode === focusAreaRequest.areaFilter)
     if (targets.length === 0) return
     const bounds = assetBounds(targets)
     const radius = Math.max(bounds.size.x, bounds.size.y, bounds.size.z, 4)
@@ -854,7 +870,7 @@ function SceneContent({
       controlsRef.current.update()
     }
     captureProjectCamera(true)
-  }, [camera, captureProjectCamera, focusAreaRequest])
+  }, [camera, captureProjectCamera, focusAreaRequest, visibleObjects])
 
   useEffect(() => {
     if (!cameraViewRequest) return
@@ -1118,14 +1134,16 @@ function SceneContent({
       <ambientLight intensity={2.1} />
       <directionalLight position={[12, 18, 10]} intensity={1.25} />
       <hemisphereLight args={['#d8edf8', '#303942', 1.1]} />
-      <Floor color={colors.floor} onClearSelection={(event) => {
+      <Floor color={colors.floor} elevation={activeElevation} onClearSelection={(event) => {
         if (!event.ctrlKey && !event.metaKey) guardedSelect(null)
       }} />
-      <gridHelper args={[GRID_SIZE, GRID_DIVISIONS, colors.gridCenter, colors.grid]} position={[0, 0.022, 0]} />
-      {referenceLayout?.visible && (
+      {showLevel0Grid && <gridHelper args={[GRID_SIZE, GRID_DIVISIONS, colors.gridCenter, colors.grid]} position={[0, level0Elevation + 0.022, 0]} />}
+      {showLevel1Grid && <gridHelper args={[GRID_SIZE, GRID_DIVISIONS, colors.gridCenter, colors.grid]} position={[0, level1Elevation + 0.022, 0]} />}
+      {referenceLayoutVisible && referenceLayout && (
         <ReferenceLayoutPlane
           ref={(node) => { layoutGroupRef.current = node; setLayoutTargetObject(node) }}
           layout={referenceLayout}
+          worldY={referenceLayoutWorldY}
           calibrationActive={layoutCalibration.active}
           cropActive={layoutCrop.active}
           cropDraft={layoutCrop.draft}
@@ -1139,7 +1157,7 @@ function SceneContent({
           }}
         />
       )}
-      <axesHelper args={[3]} position={[-10, 0.03, 8]} />
+      <axesHelper args={[3]} position={[-10, activeElevation + 0.03, 8]} />
       {visibleObjects.map((asset) => (
         <SceneAsset
           key={asset.id}
@@ -1249,7 +1267,7 @@ function SceneContent({
           setOrbitEnabled={setOrbitEnabled}
         />
       )}
-      {referenceLayout?.visible && view.editLayout && !referenceLayout.locked && layoutTargetObject && !layoutCalibration.active && !layoutCrop.active && (
+      {referenceLayoutVisible && referenceLayout && view.editLayout && !referenceLayout.locked && layoutTargetObject && !layoutCalibration.active && !layoutCrop.active && (
         <TransformControls
           ref={layoutTransformRef}
           object={layoutTargetObject}
@@ -1349,6 +1367,7 @@ function SceneAsset({
 const ReferenceLayoutPlane = ReactForwardRef(function ReferenceLayoutPlane(
   {
     layout,
+    worldY,
     calibrationActive,
     cropActive,
     cropDraft,
@@ -1359,6 +1378,7 @@ const ReferenceLayoutPlane = ReactForwardRef(function ReferenceLayoutPlane(
     onCropDraggingChange,
   }: {
     layout: ReferenceLayout
+    worldY: number
     calibrationActive: boolean
     cropActive: boolean
     cropDraft?: ReferenceLayout['crop']
@@ -1435,7 +1455,7 @@ const ReferenceLayoutPlane = ReactForwardRef(function ReferenceLayoutPlane(
         if (typeof ref === 'function') ref(node)
         else if (ref) ref.current = node
       }}
-      position={[layout.position.x, layout.position.y, layout.position.z]}
+      position={[layout.position.x, worldY, layout.position.z]}
       rotation={[-Math.PI / 2 + layout.rotation.x, layout.rotation.y, layout.rotation.z]}
       userData={{ referenceLayout: true }}
     >

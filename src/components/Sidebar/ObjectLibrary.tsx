@@ -5,6 +5,7 @@ import { useSceneStore } from '../../store/sceneStore'
 import type { AssetType, IndustrialAsset } from '../../types/plant'
 import { createIndustrialObject } from '../../utils/objectFactory'
 import { getCurrentInsertionPoint } from '../../services/viewportInsertionService'
+import { getLevelElevation } from '../../config/plantLevels'
 
 const primitiveEntries: Array<{ type: AssetType; label: string; icon: string; description?: string }> = [
   { type: 'box', label: 'Box', icon: 'B' },
@@ -42,9 +43,22 @@ const processEntries: Array<{ type: AssetType; label: string; icon: string }> = 
   { type: 'piercer_machine', label: 'Piercer Machine', icon: 'PM' },
 ]
 
+const rotaryFurnaceEntries: Array<{ type: AssetType; label: string; icon: string; description?: string }> = [
+  { type: 'billet_tong', label: 'Pinza de Tochos', icon: 'PIN', description: 'Pinza suspendida con brazo extractor largo y garra frontal para tochos.' },
+]
+
+const cuttingEntries: Array<{ type: AssetType; label: string; icon: string; description?: string }> = [
+  { type: 'bundle_saw', label: 'Sierra de Haces', icon: 'SHA' },
+  { type: 'linsinger_vertical_saw', label: 'Sierra Linsinger Vertical', icon: 'LSG', description: 'Portico vertical con cabezal movil para corte de tochos macizos.' },
+]
+
 const transportEntries: Array<{ type: AssetType; label: string; icon: string; description?: string }> = [
   { type: 'rail_bed_multi', label: 'Bancal de Rieles', icon: 'BR' },
   { type: 'lance_carrier_cart', label: 'Carro Porta Lanza', icon: 'CPL', description: 'Carro industrial de cuatro ruedas para transporte y soporte de lanza.' },
+]
+
+const coolingEntries: Array<{ type: AssetType; label: string; icon: string; description?: string }> = [
+  { type: 'cooling_bed', label: 'Plano de Enfriamiento', icon: 'PENF', description: 'Multiples tornillos sin fin paralelos para transportar y enfriar tubos.' },
 ]
 
 const hydraulicEntries: Array<{ type: AssetType; label: string; icon: string }> = [
@@ -96,6 +110,8 @@ export function ObjectLibrary() {
   const focus = useSceneStore((state) => state.focusObject)
   const select = useSceneStore((state) => state.selectObject)
   const remove = useSceneStore((state) => state.deleteObject)
+  const activeLevel = useSceneStore((state) => state.activeLevel)
+  const plantLevels = useSceneStore((state) => state.plantLevels)
   const results = useMemo(() => query.trim() ? objects.filter((asset) => matches(asset, query)).slice(0, 12) : [], [objects, query])
   const areaCounts = useMemo(() => {
     const counts = new Map<string, number>([[AREA_FILTER_ALL, objects.length]])
@@ -127,9 +143,11 @@ export function ObjectLibrary() {
   }
 
   const addFromLibrary = (type: AssetType) => {
+    const elevation = getLevelElevation(plantLevels, activeLevel)
     add(createIndustrialObject(type, objects, {
-      position: getCurrentInsertionPoint(),
+      position: getCurrentInsertionPoint(elevation),
       snap,
+      levelCode: activeLevel,
     }))
   }
 
@@ -176,7 +194,10 @@ export function ObjectLibrary() {
         <p className="panel-copy">Industrial Assets</p>
         <LibrarySection title="Mechanical" entries={mechanicalEntries} onAdd={addFromLibrary} />
         <LibrarySection title="Process" entries={processEntries} onAdd={addFromLibrary} />
+        <LibrarySection title="Horno Giratorio" entries={rotaryFurnaceEntries} onAdd={addFromLibrary} />
+        <LibrarySection title="Corte" entries={cuttingEntries} onAdd={addFromLibrary} />
         <LibrarySection title="Transporte" entries={transportEntries} onAdd={addFromLibrary} />
+        <LibrarySection title="Transporte y Enfriamiento" entries={coolingEntries} onAdd={addFromLibrary} />
         <LibrarySection title="Hidraulica" entries={hydraulicEntries} onAdd={addFromLibrary} />
         <LibrarySection title="Transferidores" entries={transferEntries} onAdd={addFromLibrary} />
         <LibrarySection title="Infrastructure" entries={infrastructureEntries} onAdd={addFromLibrary} />

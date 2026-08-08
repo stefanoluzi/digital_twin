@@ -1,4 +1,5 @@
 import type { IndustrialAsset, ReferenceLayout, SnapSettings, Vector3Data, ViewSettings } from './plant'
+import type { InsertionLevelCode, PlantLevelDefinition, VisibleLevelFilter } from '../config/plantLevels'
 
 export const PROJECT_FORMAT = 'LACO3D_PROJECT' as const
 export const PROJECT_SCHEMA_VERSION = 1 as const
@@ -35,6 +36,11 @@ export interface DigitalTwinProject {
     referenceLayout: ProjectReferenceLayout | null
     viewSettings: ViewSettings
     snapSettings: SnapSettings
+    plantLevels?: PlantLevelDefinition[]
+    activeLevel?: InsertionLevelCode
+    visibleLevelFilter?: VisibleLevelFilter
+    showLevel0Grid?: boolean
+    showLevel1Grid?: boolean
     camera: ProjectCameraState
   }
 }

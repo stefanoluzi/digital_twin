@@ -40,7 +40,7 @@ function restoreReferenceLayout(layout: ProjectReferenceLayout | null): Referenc
 }
 
 export function createProjectFile(
-  scene: Pick<PlantSceneDocument, 'objects' | 'referenceLayout' | 'snap' | 'view'>,
+  scene: Pick<PlantSceneDocument, 'objects' | 'referenceLayout' | 'snap' | 'view' | 'plantLevels' | 'activeLevel' | 'visibleLevelFilter' | 'showLevel0Grid' | 'showLevel1Grid'>,
   metadata: ProjectMetadata,
   camera: ProjectCameraState,
 ): DigitalTwinProject {
@@ -54,6 +54,11 @@ export function createProjectFile(
       referenceLayout: serializeReferenceLayout(scene.referenceLayout),
       viewSettings: structuredClone(scene.view),
       snapSettings: structuredClone(scene.snap),
+      plantLevels: structuredClone(scene.plantLevels),
+      activeLevel: scene.activeLevel,
+      visibleLevelFilter: scene.visibleLevelFilter,
+      showLevel0Grid: scene.showLevel0Grid,
+      showLevel1Grid: scene.showLevel1Grid,
       camera: structuredClone(camera),
     },
   }
@@ -77,6 +82,11 @@ export function normalizeProjectFile(data: unknown): DigitalTwinProject {
       referenceLayout: raw.scene.referenceLayout ?? null,
       viewSettings: raw.scene.viewSettings ?? {} as DigitalTwinProject['scene']['viewSettings'],
       snapSettings: raw.scene.snapSettings ?? {} as DigitalTwinProject['scene']['snapSettings'],
+      plantLevels: raw.scene.plantLevels,
+      activeLevel: raw.scene.activeLevel,
+      visibleLevelFilter: raw.scene.visibleLevelFilter,
+      showLevel0Grid: raw.scene.showLevel0Grid,
+      showLevel1Grid: raw.scene.showLevel1Grid,
       camera: normalizeCamera(raw.scene.camera),
     },
   }
@@ -89,6 +99,11 @@ export function projectToSceneDocument(project: DigitalTwinProject): PlantSceneD
     referenceLayout: restoreReferenceLayout(project.scene.referenceLayout),
     snap: project.scene.snapSettings,
     view: project.scene.viewSettings,
+    plantLevels: project.scene.plantLevels ?? [],
+    activeLevel: project.scene.activeLevel ?? 'LEVEL_1',
+    visibleLevelFilter: project.scene.visibleLevelFilter ?? 'LEVEL_1',
+    showLevel0Grid: project.scene.showLevel0Grid ?? false,
+    showLevel1Grid: project.scene.showLevel1Grid ?? true,
   }
 }
 

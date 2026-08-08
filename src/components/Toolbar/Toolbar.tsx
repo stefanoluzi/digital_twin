@@ -9,10 +9,12 @@ import { useSceneStore } from '../../store/sceneStore'
 import type { ReferenceLayout } from '../../types/plant'
 import type { AlignmentAxis, AlignmentMode } from '../../types/plant'
 import type { CameraPresetId, PlantFrontDirection } from '../../config/cameraPresets'
+import { LEVEL_1 } from '../../config/plantLevels'
 import { AreaFilterControl } from './AreaFilterControl'
 import { EditMenu } from './EditMenu'
 import { FileMenu } from './FileMenu'
 import { LayoutMenu } from './LayoutMenu'
+import { LevelsMenu } from './LevelsMenu'
 import { SnapMenu } from './SnapMenu'
 import { TransformModeControl } from './TransformModeControl'
 import { ViewMenu } from './ViewMenu'
@@ -24,6 +26,8 @@ function makeReferenceLayout(file: File, textureDataUrl: string, widthPx: number
   const aspectRatio = widthPx / Math.max(1, heightPx)
   const baseWidth = 20
   return {
+    levelCode: LEVEL_1,
+    positionMode: 'level-relative',
     textureDataUrl,
     sourceDataUrl: textureDataUrl,
     sourceType: mimeType === 'application/pdf' ? 'pdf' : 'image',
@@ -40,7 +44,7 @@ function makeReferenceLayout(file: File, textureDataUrl: string, widthPx: number
     uniformScale: 1,
     stretchWidth: 1,
     stretchHeight: 1,
-    position: { x: 0, y: 0.035, z: 0 },
+    position: { x: 0, y: 0, z: 0 },
     rotation: { x: 0, y: 0, z: 0 },
     opacity: 0.4,
     visible: true,
@@ -191,6 +195,11 @@ export function Toolbar() {
       referenceLayout: scene.referenceLayout,
       snap: scene.snap,
       view: scene.view,
+      plantLevels: scene.plantLevels,
+      activeLevel: scene.activeLevel,
+      visibleLevelFilter: scene.visibleLevelFilter,
+      showLevel0Grid: scene.showLevel0Grid,
+      showLevel1Grid: scene.showLevel1Grid,
     }, updatedMetadata, projects.camera)
     const text = serializeProject(project)
     const size = estimateProjectSize(text)
@@ -285,6 +294,7 @@ export function Toolbar() {
 
         <TransformModeControl mode={store.editMode} onChange={store.setEditMode} />
         <SnapMenu open={openMenu === 'snap'} snap={store.snap} onToggle={toggleMenu} onUpdate={store.updateSnap} />
+        <LevelsMenu open={openMenu === 'levels'} store={store} onToggle={toggleMenu} />
 
         <div className="toolbar-fit" role="group" aria-label="Encuadre de cámara">
           <button title="Encuadrar toda la planta" onClick={() => store.requestCameraView('fit_all')}>Fit All</button>

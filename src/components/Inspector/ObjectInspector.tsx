@@ -7,6 +7,7 @@ import { assetTypes, type Criticality, type IndustrialAsset, type IndustrialPara
 import { UNIFORM_SCALE_FACTOR } from '../../utils/uniformScale'
 import { ValidatedNumberInput } from './ValidatedNumberInput'
 import { MIN_HOLLOW_CYLINDER_WALL_THICKNESS } from '../Scene/primitives/HollowCylinder'
+import { LEVEL_0, LEVEL_1, MULTI_LEVEL, type PlantLevelCode } from '../../config/plantLevels'
 
 type NumberGroup = 'position' | 'rotation'
 type SizeKey = keyof IndustrialAsset['size']
@@ -31,6 +32,10 @@ const labels: Record<string, string> = {
   steader_3_roll: 'Steader 3 Rodillos',
   piercer_drive: 'Piercer Drive',
   piercer_machine: 'Piercer Machine',
+  billet_tong: 'Pinza de Tochos',
+  bundle_saw: 'Sierra de Haces',
+  linsinger_vertical_saw: 'Sierra Linsinger Vertical',
+  cooling_bed: 'Plano de Enfriamiento',
   electric_motor_horizontal: 'Motor Electrico Horizontal',
   electric_motor_vertical: 'Motor Electrico Vertical',
   gearbox_horizontal: 'Caja Reductora Horizontal',
@@ -75,7 +80,41 @@ const systemOptions: Array<{ value: PlantSystem; label: string }> = [
   { value: 'instrumentacion', label: 'Instrumentacion' },
 ]
 
-type IndustrialParamField = { key: IndustrialParamKey; label: string; step?: number; min?: number; max?: number; kind?: 'number' | 'boolean' | 'color' | 'supportType' | 'drainSide'; group?: 'supports' }
+type IndustrialParamGroup = 'supports' | 'chassis' | 'shaft' | 'blade' | 'transmission' | 'motor' | 'frame' | 'head' | 'billet' | 'clamping' | 'verticalMotion' | 'dimensions' | 'screws' | 'coolingSupports' | 'drive' | 'reference' | 'visual' | 'topModules' | 'upperRoll' | 'lowerRoll' | 'angles' | 'piercerReference' | 'tongFrame' | 'tongArm' | 'tongJaw' | 'tongMotion' | 'tongReference' | 'tongVisual'
+type IndustrialParamField = { key: IndustrialParamKey; label: string; step?: number; min?: number; max?: number; kind?: 'number' | 'boolean' | 'color' | 'supportType' | 'drainSide' | 'range' | 'verticalDriveType' | 'helixDirection' | 'detailLevel' | 'driveMode'; group?: IndustrialParamGroup }
+
+const industrialParamGroupLabels: Record<IndustrialParamGroup, string> = {
+  chassis: 'Carro',
+  shaft: 'Eje frontal',
+  blade: 'Sierra',
+  transmission: 'Transmision',
+  motor: 'Motor',
+  supports: 'Soportes de rodillo',
+  frame: 'Bastidor',
+  head: 'Cabezal',
+  billet: 'Tocho',
+  clamping: 'Sujecion',
+  verticalMotion: 'Movimiento vertical',
+  dimensions: 'Dimensiones',
+  screws: 'Tornillos sin fin',
+  coolingSupports: 'Soportes',
+  drive: 'Accionamiento',
+  reference: 'Tubos de referencia',
+  visual: 'Visualizacion',
+  topModules: 'Modulos superiores',
+  upperRoll: 'Rodillo superior',
+  lowerRoll: 'Rodillo inferior',
+  angles: 'Angulos',
+  piercerReference: 'Tubo de referencia',
+  tongFrame: 'Bastidor suspendido',
+  tongArm: 'Brazo extractor',
+  tongJaw: 'Garra frontal',
+  tongMotion: 'Movimiento',
+  tongReference: 'Tocho de referencia',
+  tongVisual: 'Visualizacion',
+}
+
+const industrialParamGroupOrder: IndustrialParamGroup[] = ['dimensions', 'frame', 'tongFrame', 'chassis', 'shaft', 'tongArm', 'head', 'topModules', 'upperRoll', 'lowerRoll', 'tongJaw', 'angles', 'tongMotion', 'screws', 'blade', 'transmission', 'motor', 'coolingSupports', 'drive', 'billet', 'reference', 'piercerReference', 'tongReference', 'clamping', 'verticalMotion', 'visual', 'tongVisual', 'supports']
 
 const industrialParamFields: Partial<Record<IndustrialAsset['type'], IndustrialParamField[]>> = {
   hollow_cylinder: [
@@ -148,6 +187,105 @@ const industrialParamFields: Partial<Record<IndustrialAsset['type'], IndustrialP
     { key: 'lanceOffsetY', label: 'Offset vertical de lanza', step: 0.05, min: -1, max: 1 },
     { key: 'showTowBar', label: 'Mostrar enganche', kind: 'boolean' },
   ],
+  bundle_saw: [
+    { key: 'length', label: 'Largo del carro (m)', step: 0.1, min: 1, group: 'chassis' },
+    { key: 'width', label: 'Ancho del carro (m)', step: 0.1, min: 0.8, group: 'chassis' },
+    { key: 'chassisHeight', label: 'Altura del bastidor (m)', step: 0.05, min: 0.15, group: 'chassis' },
+    { key: 'wheelRadius', label: 'Radio de ruedas (m)', step: 0.05, min: 0.1, group: 'chassis' },
+    { key: 'wheelWidth', label: 'Ancho de ruedas (m)', step: 0.02, min: 0.05, group: 'chassis' },
+    { key: 'wheelbase', label: 'Distancia entre ejes (m)', step: 0.1, min: 0.5, group: 'chassis' },
+    { key: 'trackWidth', label: 'Trocha (m)', step: 0.1, min: 0.5, group: 'chassis' },
+    { key: 'shaftDiameter', label: 'Diametro (m)', step: 0.02, min: 0.05, group: 'shaft' },
+    { key: 'shaftLength', label: 'Largo (m)', step: 0.1, min: 0.8, group: 'shaft' },
+    { key: 'shaftHeight', label: 'Altura (m)', step: 0.05, min: 0.35, group: 'shaft' },
+    { key: 'shaftFrontOffset', label: 'Offset frontal Z (m)', step: 0.1, min: -10, max: 10, group: 'shaft' },
+    { key: 'bladeDiameter', label: 'Diametro de hoja (m)', step: 0.1, min: 0.4, group: 'blade' },
+    { key: 'bladeThickness', label: 'Espesor de hoja (m)', step: 0.01, min: 0.02, group: 'blade' },
+    { key: 'bladeHubDiameter', label: 'Diametro del cubo (m)', step: 0.05, min: 0.1, group: 'blade' },
+    { key: 'showBladeTeeth', label: 'Mostrar dientes', kind: 'boolean', group: 'blade' },
+    { key: 'bladeToothCount', label: 'Cantidad de dientes', step: 1, min: 8, max: 64, group: 'blade' },
+    { key: 'showBladeGuard', label: 'Mostrar guarda', kind: 'boolean', group: 'blade' },
+    { key: 'drivenPulleyDiameter', label: 'Diametro polea conducida (m)', step: 0.05, min: 0.25, group: 'transmission' },
+    { key: 'drivenPulleyWidth', label: 'Ancho polea conducida (m)', step: 0.02, min: 0.05, group: 'transmission' },
+    { key: 'drivenPulleyGrooves', label: 'Canales de polea', step: 1, min: 0, max: 6, group: 'transmission' },
+    { key: 'motorPulleyDiameter', label: 'Diametro polea motriz (m)', step: 0.05, min: 0.12, group: 'transmission' },
+    { key: 'showBelts', label: 'Mostrar correas', kind: 'boolean', group: 'transmission' },
+    { key: 'beltWidth', label: 'Ancho de correa (m)', step: 0.01, min: 0.02, group: 'transmission' },
+    { key: 'showBeltGuard', label: 'Mostrar proteccion', kind: 'boolean', group: 'transmission' },
+    { key: 'motorLength', label: 'Largo (m)', step: 0.1, min: 0.5, group: 'motor' },
+    { key: 'motorDiameter', label: 'Diametro (m)', step: 0.05, min: 0.25, group: 'motor' },
+    { key: 'motorHeight', label: 'Altura superior (m)', step: 0.05, min: 0.8, group: 'motor' },
+    { key: 'motorOffsetX', label: 'Offset X (m)', step: 0.05, min: -10, max: 10, group: 'motor' },
+    { key: 'motorOffsetZ', label: 'Offset Z (m)', step: 0.05, min: -10, max: 10, group: 'motor' },
+  ],
+  linsinger_vertical_saw: [
+    { key: 'width', label: 'Ancho total (m)', step: 0.1, min: 1.8, group: 'frame' },
+    { key: 'depth', label: 'Profundidad (m)', step: 0.1, min: 1, group: 'frame' },
+    { key: 'totalHeight', label: 'Altura total (m)', step: 0.1, min: 2.5, group: 'frame' },
+    { key: 'columnWidth', label: 'Ancho de columnas (m)', step: 0.05, min: 0.2, group: 'frame' },
+    { key: 'columnDepth', label: 'Profundidad de columnas (m)', step: 0.05, min: 0.25, group: 'frame' },
+    { key: 'topBeamHeight', label: 'Altura travesano superior (m)', step: 0.05, min: 0.25, group: 'frame' },
+    { key: 'headWidth', label: 'Ancho (m)', step: 0.1, min: 0.8, group: 'head' },
+    { key: 'headHeight', label: 'Altura (m)', step: 0.1, min: 0.5, group: 'head' },
+    { key: 'headDepth', label: 'Profundidad (m)', step: 0.1, min: 0.5, group: 'head' },
+    { key: 'bladeDiameter', label: 'Diametro de hoja (m)', step: 0.1, min: 0.4, group: 'blade' },
+    { key: 'bladeThickness', label: 'Espesor de hoja (m)', step: 0.01, min: 0.02, group: 'blade' },
+    { key: 'bladeHubDiameter', label: 'Diametro del cubo (m)', step: 0.05, min: 0.1, group: 'blade' },
+    { key: 'bladeToothCount', label: 'Cantidad de dientes', step: 1, min: 8, max: 64, group: 'blade' },
+    { key: 'showBladeTeeth', label: 'Mostrar dientes', kind: 'boolean', group: 'blade' },
+    { key: 'showBladeGuard', label: 'Mostrar guarda', kind: 'boolean', group: 'blade' },
+    { key: 'motorLength', label: 'Largo (m)', step: 0.1, min: 0.5, group: 'motor' },
+    { key: 'motorDiameter', label: 'Diametro (m)', step: 0.05, min: 0.25, group: 'motor' },
+    { key: 'motorOffsetX', label: 'Offset X (m)', step: 0.05, min: -10, max: 10, group: 'motor' },
+    { key: 'motorOffsetY', label: 'Offset Y (m)', step: 0.05, min: -10, max: 10, group: 'motor' },
+    { key: 'motorOffsetZ', label: 'Offset Z (m)', step: 0.05, min: -10, max: 10, group: 'motor' },
+    { key: 'showBillet', label: 'Mostrar tocho', kind: 'boolean', group: 'billet' },
+    { key: 'billetDiameter', label: 'Diametro (m)', step: 0.05, min: 0.15, group: 'billet' },
+    { key: 'billetLength', label: 'Largo (m)', step: 0.1, min: 1, group: 'billet' },
+    { key: 'billetHeight', label: 'Altura de eje (m)', step: 0.05, min: 0.1, group: 'billet' },
+    { key: 'showBilletSupports', label: 'Mostrar apoyos', kind: 'boolean', group: 'clamping' },
+    { key: 'supportSpacing', label: 'Separacion de apoyos (m)', step: 0.1, min: 0.5, group: 'clamping' },
+    { key: 'supportHeight', label: 'Altura de apoyos (m)', step: 0.05, min: 0.2, group: 'clamping' },
+    { key: 'showClamps', label: 'Mostrar mordazas', kind: 'boolean', group: 'clamping' },
+    { key: 'headPosition', label: 'Posicion cabezal', step: 0.01, min: 0, max: 1, kind: 'range', group: 'verticalMotion' },
+    { key: 'headMinHeight', label: 'Altura minima (m)', step: 0.05, min: 0.6, group: 'verticalMotion' },
+    { key: 'headMaxHeight', label: 'Altura maxima (m)', step: 0.05, min: 0.7, group: 'verticalMotion' },
+    { key: 'verticalStroke', label: 'Carrera vertical (m)', step: 0.1, min: 0.1, group: 'verticalMotion' },
+    { key: 'verticalDriveType', label: 'Tipo de accionamiento', kind: 'verticalDriveType', group: 'verticalMotion' },
+    { key: 'cylinderDiameter', label: 'Diametro cilindro (m)', step: 0.05, min: 0.1, group: 'verticalMotion' },
+    { key: 'cylinderStroke', label: 'Carrera cilindro (m)', step: 0.1, min: 0.2, group: 'verticalMotion' },
+  ],
+  cooling_bed: [
+    { key: 'length', label: 'Largo general (m)', step: 0.5, min: 4, group: 'dimensions' },
+    { key: 'width', label: 'Ancho minimo (m)', step: 0.5, min: 2, group: 'dimensions' },
+    { key: 'frameHeight', label: 'Altura del bastidor (m)', step: 0.1, min: 0.35, group: 'dimensions' },
+    { key: 'screwCount', label: 'Cantidad de tornillos', step: 1, min: 2, max: 60, group: 'screws' },
+    { key: 'screwSpacing', label: 'Separacion entre tornillos (m)', step: 0.1, min: 0.25, group: 'screws' },
+    { key: 'screwLength', label: 'Largo del tornillo (m)', step: 0.5, min: 2, group: 'screws' },
+    { key: 'shaftDiameter', label: 'Diametro del eje (m)', step: 0.02, min: 0.05, group: 'screws' },
+    { key: 'helixOuterDiameter', label: 'Diametro exterior helice (m)', step: 0.05, min: 0.12, group: 'screws' },
+    { key: 'helixPitch', label: 'Paso de helice (m)', step: 0.05, min: 0.1, group: 'screws' },
+    { key: 'helixThickness', label: 'Espesor de helice (m)', step: 0.01, min: 0.015, group: 'screws' },
+    { key: 'helixDirection', label: 'Sentido de helice', kind: 'helixDirection', group: 'screws' },
+    { key: 'detailLevel', label: 'Nivel de detalle', kind: 'detailLevel', group: 'screws' },
+    { key: 'housingWidth', label: 'Ancho de cajeras (m)', step: 0.05, min: 0.15, group: 'coolingSupports' },
+    { key: 'housingHeight', label: 'Altura de cajeras (m)', step: 0.05, min: 0.2, group: 'coolingSupports' },
+    { key: 'supportBeamWidth', label: 'Ancho de vigas soporte (m)', step: 0.05, min: 0.12, group: 'coolingSupports' },
+    { key: 'showDriveUnits', label: 'Mostrar accionamientos', kind: 'boolean', group: 'drive' },
+    { key: 'driveMode', label: 'Modo de accionamiento', kind: 'driveMode', group: 'drive' },
+    { key: 'driveGroupSize', label: 'Tornillos por grupo', step: 1, min: 1, max: 20, group: 'drive' },
+    { key: 'motorScale', label: 'Escala de motores', step: 0.1, min: 0.2, group: 'drive' },
+    { key: 'showReferenceTubes', label: 'Mostrar tubos', kind: 'boolean', group: 'reference' },
+    { key: 'referenceTubeCount', label: 'Cantidad de tubos', step: 1, min: 1, max: 8, group: 'reference' },
+    { key: 'tubeLength', label: 'Largo de tubos (m)', step: 0.5, min: 1, group: 'reference' },
+    { key: 'tubeDiameter', label: 'Diametro de tubos (m)', step: 0.05, min: 0.08, group: 'reference' },
+    { key: 'tubeSpacing', label: 'Separacion de tubos (m)', step: 0.1, min: 0.3, group: 'reference' },
+    { key: 'tubeProgress', label: 'Avance transversal', step: 0.01, min: 0, max: 1, kind: 'range', group: 'reference' },
+    { key: 'showWalkways', label: 'Mostrar pasarelas', kind: 'boolean', group: 'visual' },
+    { key: 'walkwayEveryNRows', label: 'Pasarela cada N filas', step: 1, min: 1, max: 20, group: 'visual' },
+    { key: 'bodyColor', label: 'Color del bastidor', kind: 'color', group: 'visual' },
+    { key: 'screwColor', label: 'Color de tornillos', kind: 'color', group: 'visual' },
+  ],
   rectangular_pool: [
     { key: 'length', label: 'Largo (m)', step: 0.1, min: 0.3 },
     { key: 'width', label: 'Ancho (m)', step: 0.1, min: 0.3 },
@@ -207,16 +345,50 @@ const industrialParamFields: Partial<Record<IndustrialAsset['type'], IndustrialP
     { key: 'height', label: 'Altura', step: 0.2, min: 0.5 },
   ],
   piercer_machine: [
-    { key: 'length', label: 'Largo', step: 0.5, min: 1 },
-    { key: 'width', label: 'Ancho', step: 0.2, min: 0.5 },
-    { key: 'height', label: 'Altura', step: 0.2, min: 0.8 },
-    { key: 'baseHeight', label: 'Altura base', step: 0.05, min: 0.1 },
-    { key: 'openingWidth', label: 'Ancho abertura', step: 0.1, min: 0.5 },
-    { key: 'openingHeight', label: 'Altura abertura', step: 0.1, min: 0.3 },
-    { key: 'frameThickness', label: 'Espesor bastidor', step: 0.05, min: 0.12 },
-    { key: 'rollDiameter', label: 'Diametro rodillos', step: 0.05, min: 0.1 },
-    { key: 'rollAngle', label: 'Angulo rodillos', step: 1, min: 0 },
-    { key: 'mandrelDiameter', label: 'Diametro mandril', step: 0.02, min: 0.05 },
+    { key: 'width', label: 'Ancho total X (m)', step: 0.1, min: 3, group: 'frame' },
+    { key: 'depth', label: 'Profundidad Z (m)', step: 0.1, min: 1.5, group: 'frame' },
+    { key: 'totalHeight', label: 'Altura total (m)', step: 0.1, min: 2.4, group: 'frame' },
+    { key: 'baseHeight', label: 'Altura de bancada (m)', step: 0.05, min: 0.2, group: 'frame' },
+    { key: 'openingWidth', label: 'Ancho de cavidad (m)', step: 0.1, min: 0.8, group: 'frame' },
+    { key: 'openingHeight', label: 'Altura de cavidad (m)', step: 0.1, min: 0.6, group: 'frame' },
+    { key: 'sidePlateThickness', label: 'Espesor de placas laterales (m)', step: 0.05, min: 0.18, group: 'frame' },
+    { key: 'topModuleWidth', label: 'Ancho de cada modulo (m)', step: 0.1, min: 0.65, group: 'topModules' },
+    { key: 'topModuleHeight', label: 'Altura de modulos (m)', step: 0.05, min: 0.35, group: 'topModules' },
+    { key: 'topModuleDepth', label: 'Profundidad de modulos (m)', step: 0.1, min: 0.8, group: 'topModules' },
+    { key: 'centralGap', label: 'Separacion central (m)', step: 0.05, min: 0.18, group: 'topModules' },
+    { key: 'rollLength', label: 'Largo de trabajo (m)', step: 0.1, min: 0.6, group: 'upperRoll' },
+    { key: 'rollDiameter', label: 'Diametro central (m)', step: 0.05, min: 0.2, group: 'upperRoll' },
+    { key: 'rollEndDiameter', label: 'Diametro de extremos (m)', step: 0.05, min: 0.15, group: 'upperRoll' },
+    { key: 'shaftDiameter', label: 'Diametro de munones (m)', step: 0.02, min: 0.08, group: 'upperRoll' },
+    { key: 'rollHorizontalOffset', label: 'Desplazamiento horizontal (m)', step: 0.05, min: 0, group: 'lowerRoll' },
+    { key: 'rollVerticalOffset', label: 'Desplazamiento vertical (m)', step: 0.05, min: 0, group: 'lowerRoll' },
+    { key: 'rollCenterDistance', label: 'Distancia entre centros (m)', step: 0.05, min: 0.25, group: 'lowerRoll' },
+    { key: 'rollSkewAngle', label: 'Roll skew angle (grados)', step: 1, min: -35, max: 35, group: 'angles' },
+    { key: 'upperRollTiltAngle', label: 'Upper roll tilt (grados)', step: 1, min: -35, max: 35, group: 'angles' },
+    { key: 'lowerRollTiltAngle', label: 'Lower roll tilt (grados)', step: 1, min: -35, max: 35, group: 'angles' },
+    { key: 'showReferenceTube', label: 'Mostrar tubo', kind: 'boolean', group: 'piercerReference' },
+    { key: 'referenceTubeDiameter', label: 'Diametro del tubo (m)', step: 0.02, min: 0.08, group: 'piercerReference' },
+    { key: 'referenceTubeLength', label: 'Largo del tubo (m)', step: 0.1, min: 0.8, group: 'piercerReference' },
+    { key: 'referenceTubeOffsetY', label: 'Offset vertical (m)', step: 0.05, min: -2, max: 2, group: 'piercerReference' },
+    { key: 'frameColor', label: 'Color del bastidor', kind: 'color', group: 'visual' },
+    { key: 'rollerColor', label: 'Color de rodillos', kind: 'color', group: 'visual' },
+  ],
+  billet_tong: [
+    { key: 'frameWidth', label: 'Ancho del bastidor (m)', step: 0.1, min: 1.2, group: 'tongFrame' },
+    { key: 'frameHeight', label: 'Altura del bastidor (m)', step: 0.1, min: 0.8, group: 'tongFrame' },
+    { key: 'frameDepth', label: 'Profundidad del bastidor (m)', step: 0.1, min: 0.6, group: 'tongFrame' },
+    { key: 'armLength', label: 'Largo del brazo (m)', step: 0.25, min: 1.5, group: 'tongArm' },
+    { key: 'armWidth', label: 'Ancho del brazo (m)', step: 0.05, min: 0.18, group: 'tongArm' },
+    { key: 'armHeight', label: 'Altura del brazo (m)', step: 0.05, min: 0.15, group: 'tongArm' },
+    { key: 'jawLength', label: 'Largo de contacto (m)', step: 0.1, min: 0.4, group: 'tongJaw' },
+    { key: 'jawWidth', label: 'Ancho de mordaza (m)', step: 0.02, min: 0.1, group: 'tongJaw' },
+    { key: 'jawThickness', label: 'Espesor de contacto (m)', step: 0.01, min: 0.06, group: 'tongJaw' },
+    { key: 'jawOpening', label: 'Apertura de mordazas', step: 0.01, min: 0, max: 1, kind: 'range', group: 'tongMotion' },
+    { key: 'jawAngleMax', label: 'Angulo maximo (grados)', step: 1, min: 0, max: 70, group: 'tongMotion' },
+    { key: 'showReferenceBillet', label: 'Mostrar tocho', kind: 'boolean', group: 'tongReference' },
+    { key: 'billetDiameter', label: 'Diametro del tocho (m)', step: 0.02, min: 0.08, group: 'tongReference' },
+    { key: 'billetLength', label: 'Largo del tocho (m)', step: 0.1, min: 0.5, group: 'tongReference' },
+    { key: 'showHydraulicCylinders', label: 'Mostrar cilindros hidraulicos', kind: 'boolean', group: 'tongVisual' },
   ],
   hydraulic_power_unit: [
     { key: 'length', label: 'Largo', step: 0.5, min: 1 },
@@ -275,6 +447,12 @@ const integerParamKeys = new Set<IndustrialParamKey>([
   'count',
   'armCount',
   'ribCountLongSides',
+  'bladeToothCount',
+  'drivenPulleyGrooves',
+  'screwCount',
+  'driveGroupSize',
+  'referenceTubeCount',
+  'walkwayEveryNRows',
 ])
 const radiansToDegrees = (radians: number) => Math.round((radians * 180 / Math.PI) * 100) / 100
 const degreesToRadians = (degrees: number) => degrees * Math.PI / 180
@@ -312,6 +490,9 @@ export function ObjectInspector() {
   const setPrimarySelection = useSceneStore((state) => state.setPrimarySelection)
   const alignSelected = useSceneStore((state) => state.alignSelected)
   const setSelectedLocked = useSceneStore((state) => state.setSelectedLocked)
+  const setSelectedLevel = useSceneStore((state) => state.setSelectedLevel)
+  const snapObjectToLevel = useSceneStore((state) => state.snapObjectToLevel)
+  const calculateChainBedInclination = useSceneStore((state) => state.calculateChainBedInclination)
   const primarySelectedObjectId = useSceneStore((state) => state.primarySelectedObjectId)
   const setEditMode = useSceneStore((state) => state.setEditMode)
   const selectOnly = useSceneStore((state) => state.selectOnly)
@@ -431,6 +612,13 @@ export function ObjectInspector() {
             </button>
             <p className="panel-copy">Aplicar a {editableAssets.length} {editableAssets.length === 1 ? 'objeto editable' : 'objetos editables'} sin modificar sus posiciones.</p>
           </Section>
+          <Section title="Nivel de planta">
+            <Field label="Asignar a seleccion"><select defaultValue="" onChange={(event) => { if (event.target.value) { setSelectedLevel(event.target.value as PlantLevelCode); event.target.value = '' } }}>
+              <option value="" disabled>Elegir nivel...</option>
+              <option value={LEVEL_0}>Nivel 0</option><option value={LEVEL_1}>Nivel 1</option><option value={MULTI_LEVEL}>Multi-nivel</option>
+            </select></Field>
+            <p className="panel-copy">La asignacion es logica y no modifica las posiciones. Los objetos bloqueados se omiten.</p>
+          </Section>
           {layoutPanel}
         </div>
       </aside>
@@ -483,7 +671,10 @@ export function ObjectInspector() {
   const paramFields = industrialParamFields[asset.type]
   const param = (key: IndustrialParamKey, value: number | string) => patch(applyParamUpdate(asset, key, value))
   const mainParamFields = paramFields?.filter((field) => field.group !== 'supports') ?? []
-  const supportParamFields = paramFields?.filter((field) => field.group === 'supports') ?? []
+  const groupedParamFields = industrialParamGroupOrder
+    .map((group) => ({ group, fields: paramFields?.filter((field) => field.group === group) ?? [] }))
+    .filter(({ fields }) => fields.length > 0)
+  const ungroupedParamFields = mainParamFields.filter((field) => !field.group)
   const validateParamValue = (key: IndustrialParamKey, value: number) => {
     if (asset.type !== 'hollow_cylinder') return ''
     const outerDiameter = key === 'outerDiameter' ? value : Number(asset.params.outerDiameter ?? 1)
@@ -517,6 +708,36 @@ export function ObjectInspector() {
         <select disabled={asset.locked} value={String(asset.params[field.key] ?? 'right')} onChange={(event) => param(field.key, event.currentTarget.value)}>
           <option value="left">Izquierda</option><option value="right">Derecha</option><option value="front">Frente</option><option value="rear">Trasera</option>
         </select>
+      ) : field.kind === 'verticalDriveType' ? (
+        <select disabled={asset.locked} value={String(asset.params[field.key] ?? 'hydraulicCylinder')} onChange={(event) => param(field.key, event.currentTarget.value)}>
+          <option value="hydraulicCylinder">Cilindro hidraulico</option><option value="screw">Husillo</option><option value="hidden">Oculto</option>
+        </select>
+      ) : field.kind === 'helixDirection' ? (
+        <select disabled={asset.locked} value={String(asset.params[field.key] ?? 'right')} onChange={(event) => param(field.key, event.currentTarget.value)}>
+          <option value="right">Derecha</option><option value="left">Izquierda</option><option value="alternating">Alternada</option>
+        </select>
+      ) : field.kind === 'detailLevel' ? (
+        <select disabled={asset.locked} value={String(asset.params[field.key] ?? 'low')} onChange={(event) => param(field.key, event.currentTarget.value)}>
+          <option value="low">Bajo</option><option value="medium">Medio</option>
+        </select>
+      ) : field.kind === 'driveMode' ? (
+        <select disabled={asset.locked} value={String(asset.params[field.key] ?? 'grouped')} onChange={(event) => param(field.key, event.currentTarget.value)}>
+          <option value="individual">Individual</option><option value="grouped">Agrupado</option><option value="hidden">Oculto</option>
+        </select>
+      ) : field.kind === 'range' ? (
+        <div className="param-range-control">
+          <input
+            disabled={asset.locked}
+            type="range"
+            min={field.min ?? 0}
+            max={field.max ?? 1}
+            step={field.step ?? 0.01}
+            value={Number(asset.params[field.key] ?? 0)}
+            aria-label={field.label}
+            onChange={(event) => param(field.key, Number(event.currentTarget.value))}
+          />
+          <output>{Math.round(Number(asset.params[field.key] ?? 0) * 100)}%</output>
+        </div>
       ) : (
         <ValidatedNumberInput
           disabled={asset.locked}
@@ -582,6 +803,12 @@ export function ObjectInspector() {
               {PLANT_AREAS.map((area) => <option key={area.code} value={area.code}>{areaLabel(area.code)}</option>)}
             </select>
           </Field>
+          <Field label="Nivel">
+            <select disabled={asset.locked} value={asset.levelCode} onChange={(event) => patch({ levelCode: event.target.value as PlantLevelCode })}>
+              <option value={LEVEL_0}>Nivel 0</option><option value={LEVEL_1}>Nivel 1</option><option value={MULTI_LEVEL}>Multi-nivel</option>
+            </select>
+          </Field>
+          <button className="uniform-scale-reset" disabled={asset.locked || asset.levelCode === MULTI_LEVEL} onClick={() => snapObjectToLevel(asset.id)}>Ajustar a elevacion del nivel</button>
           <Field label="Area libre / nota"><input value={asset.area} onChange={(e) => patch({ area: e.target.value })} placeholder="Ej: Tren acabador" /></Field>
           <Field label="Sistema">
             <select value={asset.system} onChange={(e) => patch({ system: e.target.value as PlantSystem })}>
@@ -596,15 +823,40 @@ export function ObjectInspector() {
 
         {paramFields ? (
           <Section title="Parametros del asset">
-            {mainParamFields.map(renderParamField)}
-            {supportParamFields.length > 0 && (
-              <details className="inspector-subsection" open>
-                <summary>Soportes de rodillo</summary>
-                <div className="inspector-subsection__content">{supportParamFields.map(renderParamField)}</div>
+            {ungroupedParamFields.map(renderParamField)}
+            {groupedParamFields.map(({ group, fields }) => (
+              <details key={group} className="inspector-subsection">
+                <summary>{industrialParamGroupLabels[group]}</summary>
+                <div className="inspector-subsection__content">
+                  {asset.type === 'piercer_machine' && group === 'angles' && (
+                    <p className="panel-copy">El eje base de los rodillos apunta desde la cara frontal hacia la cara trasera del perforador.</p>
+                  )}
+                  {fields.map(renderParamField)}
+                </div>
               </details>
-            )}
+            ))}
             {asset.type === 'hollow_cylinder' && (
               <p className="calculated-param">Espesor de pared: {((Number(asset.params.outerDiameter ?? 1) - Number(asset.params.innerDiameter ?? 0.5)) / 2).toFixed(3)} m</p>
+            )}
+            {asset.type === 'chain_bed' && (
+              <details className="inspector-subsection" open>
+                <summary>Colocacion entre niveles</summary>
+                <div className="inspector-subsection__content">
+                  <Field label="Modo"><select disabled={asset.locked} value={String(asset.params.placementMode ?? 'horizontal')} onChange={(event) => patch({ params: { ...asset.params, placementMode: event.target.value } })}>
+                    <option value="horizontal">Horizontal</option><option value="inclinedBetweenLevels">Inclinado entre niveles</option>
+                  </select></Field>
+                  {asset.params.placementMode === 'inclinedBetweenLevels' && <>
+                    <Field label="Nivel inicial"><select disabled={asset.locked} value={String(asset.params.startLevel ?? LEVEL_0)} onChange={(event) => patch({ params: { ...asset.params, startLevel: event.target.value } })}><option value={LEVEL_0}>Nivel 0</option><option value={LEVEL_1}>Nivel 1</option></select></Field>
+                    <Field label="Nivel final"><select disabled={asset.locked} value={String(asset.params.endLevel ?? LEVEL_1)} onChange={(event) => patch({ params: { ...asset.params, endLevel: event.target.value } })}><option value={LEVEL_0}>Nivel 0</option><option value={LEVEL_1}>Nivel 1</option></select></Field>
+                    <Field label="Offset inicial (m)"><ValidatedNumberInput disabled={asset.locked} step={0.1} value={Number(asset.params.startElevationOffset ?? 0)} resetKey={asset.id} ariaLabel="Offset inicial" onCommit={(value) => patch({ params: { ...asset.params, startElevationOffset: value } })} /></Field>
+                    <Field label="Offset final (m)"><ValidatedNumberInput disabled={asset.locked} step={0.1} value={Number(asset.params.endElevationOffset ?? 0)} resetKey={asset.id} ariaLabel="Offset final" onCommit={(value) => patch({ params: { ...asset.params, endElevationOffset: value } })} /></Field>
+                    <Field label="Recorrido horizontal (m)"><ValidatedNumberInput disabled={asset.locked} step={0.1} min={0.1} value={Number(asset.params.horizontalRun ?? asset.size.width)} resetKey={asset.id} ariaLabel="Recorrido horizontal" onCommit={(value) => patch({ params: { ...asset.params, horizontalRun: value } })} /></Field>
+                    <Field label="Soportes al suelo"><input disabled={asset.locked} type="checkbox" checked={Number(asset.params.supportToGround ?? 0) > 0} onChange={(event) => patch({ params: { ...asset.params, supportToGround: event.target.checked ? 1 : 0 } })} /></Field>
+                    <p className="calculated-param">Inclinacion: {Number(asset.params.inclinationAngle ?? 0).toFixed(2)}°</p>
+                    <button disabled={asset.locked} onClick={() => calculateChainBedInclination(asset.id)}>Calcular inclinacion y posicion</button>
+                  </>}
+                </div>
+              </details>
             )}
             {(asset.type === 'roller_table_biconical' || asset.type === 'roller_table_flat')
               && Number(asset.params.rollerWidth ?? 1.2) > asset.size.depth * 1.5
@@ -615,6 +867,10 @@ export function ObjectInspector() {
             {asset.type === 'rectangular_pool'
               && Number(asset.params.bottomThickness ?? 0.2) >= Number(asset.params.height ?? 1.5) - 0.011
               && <p className="field-error">El espesor de fondo fue limitado para conservar altura interior.</p>}
+            {asset.type === 'cooling_bed'
+              && asset.params.detailLevel === 'medium'
+              && Number(asset.params.screwCount ?? 16) > 24
+              && <p className="field-error">El nivel medio con mas de 24 tornillos puede reducir el rendimiento. Usa detalle bajo para planos grandes.</p>}
           </Section>
         ) : (
           <Section title="Geometria">
@@ -740,6 +996,9 @@ function ReferenceLayoutPanel({
     <Section title="Reference Layout">
       {layout.missing && <p className="panel-copy">Layout de referencia no encontrado.</p>}
       <Field label="Archivo"><input disabled value={layout.layoutPath || layout.fileName} /></Field>
+      <Field label="Nivel"><select disabled={layout.locked} value={layout.levelCode} onChange={(event) => updateLayout({ levelCode: event.target.value as PlantLevelCode })}>
+        <option value={LEVEL_0}>Nivel 0</option><option value={LEVEL_1}>Nivel 1</option>
+      </select></Field>
       <label className="field-check"><input type="checkbox" checked={layout.visible} onChange={(e) => updateLayout({ visible: e.target.checked })} /> Visible</label>
       <label className="field-check"><input type="checkbox" checked={layout.locked} onChange={(e) => updateLayout({ locked: e.target.checked })} /> Locked</label>
       <label className="field-check"><input type="checkbox" checked={layout.lockAspectRatio} onChange={(e) => setLockAspectRatio(e.target.checked)} /> Lock Aspect Ratio</label>

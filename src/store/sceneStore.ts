@@ -2,6 +2,24 @@ import { create } from 'zustand'
 import initialPlant from '../data/plant.json'
 import { AREA_FILTER_ALL, normalizeAreaCode, type AreaFilter } from '../config/areas'
 import { PLANT_FRONT_DIRECTION, type CameraPresetId, type PlantFrontDirection } from '../config/cameraPresets'
+import {
+  DEFAULT_ACTIVE_LEVEL,
+  DEFAULT_PLANT_LEVELS,
+  DEFAULT_VISIBLE_LEVEL_FILTER,
+  LEVEL_0,
+  LEVEL_1,
+  MULTI_LEVEL,
+  getLevelElevation,
+  isLevelVisible,
+  normalizeInsertionLevel,
+  normalizeLevelCode,
+  normalizePlantLevels,
+  normalizeVisibleLevelFilter,
+  type InsertionLevelCode,
+  type PlantLevelCode,
+  type PlantLevelDefinition,
+  type VisibleLevelFilter,
+} from '../config/plantLevels'
 import { normalizeParamsForType, sizeFromParams } from '../utils/assetParams'
 import type {
   EditMode,
@@ -113,10 +131,11 @@ function normalizeObject(object: Partial<IndustrialAsset> | unknown): Industrial
     type,
     area: safeString(raw.area),
     areaCode: normalizeAreaCode(raw.areaCode),
+    levelCode: normalizeLevelCode(raw.levelCode),
     system,
     position: {
       x: finiteOr(raw.position?.x, 0),
-      y: positiveOr(raw.position?.y, size.height / 2),
+      y: finiteOr(raw.position?.y, size.height / 2),
       z: finiteOr(raw.position?.z, 0),
     },
     rotation: {
@@ -181,7 +200,7 @@ function normalizeView(view?: Partial<ViewSettings>): ViewSettings {
   }
 }
 
-function normalizeLayout(layout?: Partial<ReferenceLayout> | null): ReferenceLayout | null {
+function normalizeLayout(layout?: Partial<ReferenceLayout> | null, legacyLevelElevation = 0): ReferenceLayout | null {
   if (!layout) return null
   const legacy = layout as Partial<ReferenceLayout> & {
     dataUrl?: unknown
@@ -219,7 +238,14 @@ function normalizeLayout(layout?: Partial<ReferenceLayout> | null): ReferenceLay
   const vMin = Math.min(1, Math.max(0, finiteOr(crop?.vMin, 0)))
   const uMax = Math.min(1, Math.max(0, finiteOr(crop?.uMax, 1)))
   const vMax = Math.min(1, Math.max(0, finiteOr(crop?.vMax, 1)))
+  const levelCode = layout.levelCode === LEVEL_0 ? LEVEL_0 : LEVEL_1
+  const rawPositionY = finiteOr(layout.position?.y, 0.035)
+  const positionY = layout.positionMode === 'level-relative' || legacyLevelElevation === 0 || rawPositionY < legacyLevelElevation - 0.5
+    ? rawPositionY
+    : rawPositionY - legacyLevelElevation
   return {
+    levelCode,
+    positionMode: 'level-relative',
     textureDataUrl,
     sourceDataUrl,
     sourceType,
@@ -238,7 +264,7 @@ function normalizeLayout(layout?: Partial<ReferenceLayout> | null): ReferenceLay
     stretchHeight,
     position: {
       x: finiteOr(layout.position?.x, 0),
-      y: Math.max(0.028, finiteOr(layout.position?.y, 0.035)),
+      y: positionY,
       z: finiteOr(layout.position?.z, 0),
     },
     rotation: {
@@ -280,6 +306,7 @@ const cloneInitial = () => normalizeObjects(structuredClone(initialPlant) as unk
 
 interface HistorySnapshot {
   objects: IndustrialAsset[]
+  plantLevels: PlantLevelDefinition[]
   selectedObjectId: string | null
   selectedObjectIds: string[]
   primarySelectedObjectId: string | null
@@ -307,7 +334,7 @@ interface ScaleSelectionResult {
 }
 
 const cloneObjects = (objects: IndustrialAsset[]) => structuredClone(objects)
-const snapshotsEqual = (left: HistorySnapshot, right: HistorySnapshot) => JSON.stringify(left.objects) === JSON.stringify(right.objects)
+const snapshotsEqual = (left: HistorySnapshot, right: HistorySnapshot) => JSON.stringify([left.objects, left.plantLevels]) === JSON.stringify([right.objects, right.plantLevels])
 
 function copyIdFor(sourceId: string, usedIds: Set<string>) {
   const numbered = sourceId.match(/^(.*?)(\d+)$/)
@@ -337,6 +364,11 @@ interface SceneState {
   referenceLayout: ReferenceLayout | null
   snap: SnapSettings
   view: ViewSettings
+  plantLevels: PlantLevelDefinition[]
+  activeLevel: InsertionLevelCode
+  visibleLevelFilter: VisibleLevelFilter
+  showLevel0Grid: boolean
+  showLevel1Grid: boolean
   focusRequest: { id: string; nonce: number } | null
   focusAreaRequest: { areaFilter: AreaFilter; nonce: number } | null
   cameraViewRequest: { mode: CameraViewMode; nonce: number } | null
@@ -392,6 +424,13 @@ interface SceneState {
   resetLayoutCrop: () => void
   updateSnap: (update: Partial<SnapSettings>) => void
   updateView: (update: Partial<ViewSettings>) => void
+  setActiveLevel: (level: InsertionLevelCode) => void
+  setVisibleLevelFilter: (filter: VisibleLevelFilter) => void
+  updateLevelElevation: (level: InsertionLevelCode, elevation: number) => void
+  setGridVisible: (level: InsertionLevelCode, visible: boolean) => void
+  setSelectedLevel: (level: PlantLevelCode) => void
+  snapObjectToLevel: (id: string) => void
+  calculateChainBedInclination: (id: string) => void
   focusObject: (id: string) => void
   focusArea: () => void
   requestCameraView: (mode: CameraViewMode) => void
@@ -419,6 +458,7 @@ export const useSceneStore = create<SceneState>((set, get) => {
     const state = get()
     return {
       objects: cloneObjects(state.objects),
+      plantLevels: structuredClone(state.plantLevels),
       selectedObjectId: state.selectedObjectId,
       selectedObjectIds: [...state.selectedObjectIds],
       primarySelectedObjectId: state.primarySelectedObjectId,
@@ -458,6 +498,7 @@ export const useSceneStore = create<SceneState>((set, get) => {
 
   const restoreSnapshot = (snapshot: HistorySnapshot) => ({
     objects: cloneObjects(snapshot.objects),
+    plantLevels: structuredClone(snapshot.plantLevels),
     selectedObjectId: snapshot.selectedObjectId,
     selectedObjectIds: [...snapshot.selectedObjectIds],
     primarySelectedObjectId: snapshot.primarySelectedObjectId,
@@ -475,6 +516,11 @@ export const useSceneStore = create<SceneState>((set, get) => {
   referenceLayout: null,
   snap: defaultSnap,
   view: defaultView,
+  plantLevels: structuredClone(DEFAULT_PLANT_LEVELS),
+  activeLevel: DEFAULT_ACTIVE_LEVEL,
+  visibleLevelFilter: DEFAULT_VISIBLE_LEVEL_FILTER,
+  showLevel0Grid: false,
+  showLevel1Grid: true,
   focusRequest: null,
   focusAreaRequest: null,
   cameraViewRequest: null,
@@ -855,7 +901,7 @@ export const useSceneStore = create<SceneState>((set, get) => {
   })),
   setLayout: (layout) => set({ referenceLayout: layout ? normalizeLayout(layout) : null }),
   updateLayout: (update) => set((state) => ({ referenceLayout: state.referenceLayout ? normalizeLayout({ ...state.referenceLayout, ...update }) : null })),
-  centerLayout: () => set((state) => ({ referenceLayout: state.referenceLayout ? { ...state.referenceLayout, position: { x: 0, y: 0.035, z: 0 }, rotation: { x: 0, y: 0, z: 0 } } : null })),
+  centerLayout: () => set((state) => ({ referenceLayout: state.referenceLayout ? { ...state.referenceLayout, position: { ...state.referenceLayout.position, x: 0, z: 0 } } : null })),
   startLayoutCalibration: () => set({ layoutCalibration: { active: true }, selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null }),
   cancelLayoutCalibration: () => set({ layoutCalibration: { active: false, pointA: undefined, pointB: undefined } }),
   setLayoutCalibrationDraft: (draft) => set((state) => ({ layoutCalibration: { active: state.layoutCalibration.active, ...draft } })),
@@ -894,12 +940,64 @@ export const useSceneStore = create<SceneState>((set, get) => {
   updateSnap: (update) => set((state) => ({ snap: normalizeSnap({ ...state.snap, ...update }) })),
   updateView: (update) => set((state) => {
     const view = normalizeView({ ...state.view, ...update })
-    const visible = (object: IndustrialAsset) => view.areaFilter === AREA_FILTER_ALL || object.areaCode === view.areaFilter
+    const visible = (object: IndustrialAsset) => (view.areaFilter === AREA_FILTER_ALL || object.areaCode === view.areaFilter)
+      && isLevelVisible(object.levelCode, state.visibleLevelFilter)
     const selectedObjectIds = state.selectedObjectIds.filter((id) => state.objects.some((object) => object.id === id && visible(object)))
     const primarySelectedObjectId = selectedObjectIds.includes(state.primarySelectedObjectId ?? '') ? state.primarySelectedObjectId : selectedObjectIds[0] ?? null
     localStorage.setItem(THEME_KEY, view.theme)
     return { view, selectedObjectIds, primarySelectedObjectId, selectedObjectId: primarySelectedObjectId }
   }),
+  setActiveLevel: (level) => set({
+    activeLevel: normalizeInsertionLevel(level),
+    showLevel0Grid: level === LEVEL_0,
+    showLevel1Grid: level === LEVEL_1,
+  }),
+  setVisibleLevelFilter: (filter) => set((state) => {
+    const visibleLevelFilter = normalizeVisibleLevelFilter(filter)
+    const visible = (object: IndustrialAsset) => (state.view.areaFilter === AREA_FILTER_ALL || object.areaCode === state.view.areaFilter)
+      && isLevelVisible(object.levelCode, visibleLevelFilter)
+    const selectedObjectIds = state.selectedObjectIds.filter((id) => state.objects.some((object) => object.id === id && visible(object)))
+    const primarySelectedObjectId = selectedObjectIds.includes(state.primarySelectedObjectId ?? '') ? state.primarySelectedObjectId : selectedObjectIds[0] ?? null
+    return { visibleLevelFilter, selectedObjectIds, primarySelectedObjectId, selectedObjectId: primarySelectedObjectId }
+  }),
+  updateLevelElevation: (level, elevation) => {
+    if (!Number.isFinite(elevation)) return
+    recordMutation(`Cambiar elevacion de ${level === LEVEL_0 ? 'Nivel 0' : 'Nivel 1'}`, () => set((state) => ({
+      plantLevels: state.plantLevels.map((item) => item.code === level ? { ...item, elevation } : item),
+    })))
+  },
+  setGridVisible: (level, visible) => set(level === LEVEL_0 ? { showLevel0Grid: visible } : { showLevel1Grid: visible }),
+  setSelectedLevel: (level) => recordMutation('Cambiar nivel de seleccion', () => set((state) => {
+    const selected = new Set(state.selectedObjectIds)
+    return { objects: state.objects.map((object) => selected.has(object.id) && !object.locked ? { ...object, levelCode: normalizeLevelCode(level) } : object) }
+  })),
+  snapObjectToLevel: (id) => recordMutation(`Ajustar ${id} a elevacion de nivel`, () => set((state) => ({
+    objects: state.objects.map((object) => {
+      if (object.id !== id || object.locked || object.levelCode === MULTI_LEVEL) return object
+      const elevation = getLevelElevation(state.plantLevels, object.levelCode)
+      return { ...object, position: { ...object.position, y: elevation + object.size.height * object.uniformScale / 2 } }
+    }),
+  }))),
+  calculateChainBedInclination: (id) => recordMutation(`Calcular inclinacion de ${id}`, () => set((state) => ({
+    objects: state.objects.map((object) => {
+      if (object.id !== id || object.type !== 'chain_bed' || object.locked) return object
+      const startLevel = normalizeInsertionLevel(object.params.startLevel)
+      const endLevel = normalizeInsertionLevel(object.params.endLevel)
+      const startOffset = finiteOr(object.params.startElevationOffset, 0)
+      const endOffset = finiteOr(object.params.endElevationOffset, 0)
+      const run = positiveOr(object.params.horizontalRun, positiveOr(object.params.length, object.size.width))
+      const startElevation = getLevelElevation(state.plantLevels, startLevel) + startOffset
+      const endElevation = getLevelElevation(state.plantLevels, endLevel) + endOffset
+      const angle = Math.atan2(endElevation - startElevation, run)
+      return normalizeObject({
+        ...object,
+        levelCode: MULTI_LEVEL,
+        position: { ...object.position, y: (startElevation + endElevation) / 2 + object.size.height * object.uniformScale / 2 },
+        rotation: { ...object.rotation, z: angle },
+        params: { ...object.params, placementMode: 'inclinedBetweenLevels', horizontalRun: run, inclinationAngle: angle * 180 / Math.PI },
+      })
+    }),
+  }))),
   focusObject: (id) => set({ selectedObjectId: id, selectedObjectIds: [id], primarySelectedObjectId: id, focusRequest: { id, nonce: Date.now() } }),
   focusArea: () => set((state) => ({ focusAreaRequest: { areaFilter: state.view.areaFilter, nonce: Date.now() } })),
   requestCameraView: (mode) => set((state) => {
@@ -925,6 +1023,11 @@ export const useSceneStore = create<SceneState>((set, get) => {
     referenceLayout: null,
     snap: { ...defaultSnap },
     view: { ...defaultView },
+    plantLevels: structuredClone(DEFAULT_PLANT_LEVELS),
+    activeLevel: DEFAULT_ACTIVE_LEVEL,
+    visibleLevelFilter: DEFAULT_VISIBLE_LEVEL_FILTER,
+    showLevel0Grid: false,
+    showLevel1Grid: true,
     focusRequest: null,
     focusAreaRequest: null,
     cameraViewRequest: null,
@@ -938,14 +1041,23 @@ export const useSceneStore = create<SceneState>((set, get) => {
   loadScene: (document) => {
     activeHistoryTransaction = null
     if (Array.isArray(document)) {
-      set({ objects: normalizeObjects(document), selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null, focusRequest: null, focusAreaRequest: null, cameraViewRequest: null, historyPast: [], historyFuture: [], clipboard: null })
+      set({ objects: normalizeObjects(document), plantLevels: structuredClone(DEFAULT_PLANT_LEVELS), activeLevel: DEFAULT_ACTIVE_LEVEL, visibleLevelFilter: DEFAULT_VISIBLE_LEVEL_FILTER, showLevel0Grid: false, showLevel1Grid: true, selectedObjectId: null, selectedObjectIds: [], primarySelectedObjectId: null, focusRequest: null, focusAreaRequest: null, cameraViewRequest: null, historyPast: [], historyFuture: [], clipboard: null })
       return
     }
+    const plantLevels = normalizePlantLevels(document.plantLevels)
+    const rawLayout = document.referenceLayout ?? document.layout
+    const layoutLevel = rawLayout?.levelCode === LEVEL_0 ? LEVEL_0 : LEVEL_1
+    const layoutElevation = getLevelElevation(plantLevels, layoutLevel)
     set({
       objects: normalizeObjects(document.objects),
-      referenceLayout: normalizeLayout(document.referenceLayout ?? document.layout),
+      referenceLayout: normalizeLayout(rawLayout, layoutElevation),
       snap: normalizeSnap(document.snap),
       view: normalizeView(document.view),
+      plantLevels,
+      activeLevel: normalizeInsertionLevel(document.activeLevel),
+      visibleLevelFilter: normalizeVisibleLevelFilter(document.visibleLevelFilter),
+      showLevel0Grid: typeof document.showLevel0Grid === 'boolean' ? document.showLevel0Grid : document.activeLevel === LEVEL_0,
+      showLevel1Grid: typeof document.showLevel1Grid === 'boolean' ? document.showLevel1Grid : document.activeLevel !== LEVEL_0,
       selectedObjectId: null,
       selectedObjectIds: [],
       primarySelectedObjectId: null,
@@ -975,6 +1087,11 @@ export const useSceneStore = create<SceneState>((set, get) => {
       referenceLayout: serializeLayout(state.referenceLayout, Boolean(options?.includeReferenceTexture)),
       snap: state.snap,
       view: state.view,
+      plantLevels: state.plantLevels,
+      activeLevel: state.activeLevel,
+      visibleLevelFilter: state.visibleLevelFilter,
+      showLevel0Grid: state.showLevel0Grid,
+      showLevel1Grid: state.showLevel1Grid,
     }
     return JSON.stringify(document, null, 2)
   },
