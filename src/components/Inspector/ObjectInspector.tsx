@@ -9,6 +9,8 @@ import { ValidatedNumberInput } from './ValidatedNumberInput'
 import { MIN_HOLLOW_CYLINDER_WALL_THICKNESS } from '../Scene/primitives/HollowCylinder'
 import { LEVEL_0, LEVEL_1, MULTI_LEVEL, type PlantLevelCode } from '../../config/plantLevels'
 import { navigate } from '../../shared/navigation'
+import { deleteAssetsWithMaintenancePolicy, renameAssetAndRelinkMaintenance } from '../../services/assetMaintenanceCommands'
+import { requestAssetDeletePolicy } from '../../services/maintenanceDeletePolicyDialog'
 
 type NumberGroup = 'position' | 'rotation'
 type SizeKey = keyof IndustrialAsset['size']
@@ -477,7 +479,6 @@ export function ObjectInspector() {
   const objects = useSceneStore((state) => state.objects)
   const asset = useSceneStore((state) => state.objects.find((object) => object.id === selectedId))
   const update = useSceneStore((state) => state.updateObject)
-  const renameObjectId = useSceneStore((state) => state.renameObjectId)
   const activeRotationAxis = useSceneStore((state) => state.activeRotationAxis)
   const setActiveRotationAxis = useSceneStore((state) => state.setActiveRotationAxis)
   const rotateSelectedByDegrees = useSceneStore((state) => state.rotateSelectedByDegrees)
@@ -486,7 +487,6 @@ export function ObjectInspector() {
   const scaleSelectedObjectsIndividually = useSceneStore((state) => state.scaleSelectedObjectsIndividually)
   const resetSelectedObjectsUniformScale = useSceneStore((state) => state.resetSelectedObjectsUniformScale)
   const focus = useSceneStore((state) => state.focusObject)
-  const deleteObjects = useSceneStore((state) => state.deleteObjects)
   const clearSelection = useSceneStore((state) => state.clearSelection)
   const setPrimarySelection = useSceneStore((state) => state.setPrimarySelection)
   const alignSelected = useSceneStore((state) => state.alignSelected)
@@ -546,11 +546,14 @@ export function ObjectInspector() {
       ? selectedAssets[0].uniformScale
       : null
     const selectedAssetIds = selectedAssets.map((object) => object.id)
-    const removeSelection = () => {
+    const removeSelection = async () => {
       const message = lockedCount > 0
         ? 'Hay objetos bloqueados en la seleccion. ¿Deseas eliminarlos igualmente?'
         : `¿Deseas eliminar los ${selectedAssets.length} objetos seleccionados?`
-      if (window.confirm(message)) deleteObjects(selectedAssets.map((object) => object.id))
+      if (!window.confirm(message)) return
+      const policies = new Map()
+      for (const object of selectedAssets) policies.set(object.id, await requestAssetDeletePolicy(object.id))
+      deleteAssetsWithMaintenancePolicy(selectedAssets.map((object) => object.id), policies)
     }
 
     return (
@@ -649,7 +652,7 @@ export function ObjectInspector() {
       return false
     }
     const normalizedId = draftId.trim().toUpperCase()
-    if (!renameObjectId(asset.id, normalizedId)) {
+    if (!renameAssetAndRelinkMaintenance(asset.id, normalizedId)) {
       setIdError('No se pudo aplicar el nuevo ID.')
       return false
     }

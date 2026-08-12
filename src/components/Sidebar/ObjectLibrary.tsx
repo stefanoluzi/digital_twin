@@ -6,8 +6,8 @@ import type { AssetType, IndustrialAsset } from '../../types/plant'
 import { createIndustrialObject } from '../../utils/objectFactory'
 import { getCurrentInsertionPoint } from '../../services/viewportInsertionService'
 import { getLevelElevation } from '../../config/plantLevels'
-import { useMaintenanceStore } from '../../maintenance/store/maintenanceStore'
-import type { MaintenanceData } from '../../maintenance/domain/maintenanceTypes'
+import { deleteAssetWithMaintenancePolicy } from '../../services/assetMaintenanceCommands'
+import { requestAssetDeletePolicy } from '../../services/maintenanceDeletePolicyDialog'
 
 const primitiveEntries: Array<{ type: AssetType; label: string; icon: string; description?: string }> = [
   { type: 'box', label: 'Box', icon: 'B' },
@@ -86,14 +86,10 @@ const infrastructureEntries: Array<{ type: AssetType; label: string; icon: strin
   { type: 'pipe_rack_simple', label: 'Pipe Rack simple', icon: 'PR' },
 ]
 
-function matches(asset: IndustrialAsset, query: string, maintenance: MaintenanceData) {
+function matches(asset: IndustrialAsset, query: string) {
   const q = query.trim().toLowerCase()
   if (!q) return false
   const area = AREA_BY_CODE[asset.areaCode]
-  const equipment = maintenance.equipment.find((item) => item.assetId === asset.id)
-  const subassemblies = equipment ? maintenance.subassemblies.filter((item) => item.equipmentId === equipment.id) : []
-  const subassemblyIds = new Set(subassemblies.map((item) => item.id))
-  const maintenanceTerms = [...subassemblies.flatMap((item) => [item.id, item.name, item.sapId]), ...maintenance.events.filter((item) => subassemblyIds.has(item.subassemblyId)).flatMap((item) => [item.workOrder, item.notes])]
   return [
     asset.id,
     asset.name,
@@ -103,7 +99,6 @@ function matches(asset: IndustrialAsset, query: string, maintenance: Maintenance
     area?.name,
     asset.system,
     ...(Array.isArray(asset.tags) ? asset.tags : []),
-    ...maintenanceTerms,
   ].some((value) => String(value ?? '').toLowerCase().includes(q))
 }
 
@@ -116,11 +111,9 @@ export function ObjectLibrary() {
   const snap = useSceneStore((state) => state.snap)
   const focus = useSceneStore((state) => state.focusObject)
   const select = useSceneStore((state) => state.selectObject)
-  const remove = useSceneStore((state) => state.deleteObject)
   const activeLevel = useSceneStore((state) => state.activeLevel)
   const plantLevels = useSceneStore((state) => state.plantLevels)
-  const maintenance = useMaintenanceStore()
-  const results = useMemo(() => query.trim() ? objects.filter((asset) => matches(asset, query, maintenance)).slice(0, 12) : [], [objects, query, maintenance.equipment, maintenance.subassemblies, maintenance.events])
+  const results = useMemo(() => query.trim() ? objects.filter((asset) => matches(asset, query)).slice(0, 12) : [], [objects, query])
   const areaCounts = useMemo(() => {
     const counts = new Map<string, number>([[AREA_FILTER_ALL, objects.length]])
     PLANT_AREAS.forEach((area) => counts.set(area.code, 0))
@@ -164,7 +157,7 @@ export function ObjectLibrary() {
       <div className="panel-title"><span>Biblioteca</span><small>{objects.length} activos</small></div>
 
       <div className="search-box">
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar activo, SAP, subconjunto u OT..." />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar activo, ID, tipo, área o sistema..." />
         {query && <button onClick={() => setQuery('')}>x</button>}
       </div>
       {query && (
@@ -183,7 +176,7 @@ export function ObjectLibrary() {
         <div className="context-menu" style={{ left: menu.x, top: menu.y }} onPointerDown={(event) => event.stopPropagation()}>
           <button onClick={() => menuAction(() => select(menu.id))}>Editar</button>
           <button onClick={() => menuAction(() => focus(menu.id))}>Centrar camara</button>
-          <button className="danger" onClick={() => menuAction(() => remove(menu.id))}>Eliminar</button>
+          <button className="danger" onClick={() => menuAction(() => { void requestAssetDeletePolicy(menu.id).then((policy) => deleteAssetWithMaintenancePolicy(menu.id, policy)) })}>Eliminar</button>
         </div>
       )}
 

@@ -2,6 +2,8 @@ export type MaintenanceSource = 'LOCAL' | 'SAP' | 'PLC' | 'API' | 'IMPORTED'
 export type MaintenanceEventType = 'INSPECTION' | 'LUBRICATION' | 'ADJUSTMENT' | 'REPAIR' | 'REPLACEMENT' | 'OVERHAUL' | 'FAILURE' | 'NOTE'
 export type MaintenanceIntervalUnit = 'DAYS' | 'WEEKS' | 'MONTHS' | 'YEARS'
 export type MaintenanceStatus = 'OK' | 'WARNING' | 'CRITICAL' | 'OVERDUE' | 'NO_PLAN' | 'NO_HISTORY' | 'INACTIVE'
+export type OperationalReplacementStatus = 'CURRENT' | 'DUE_SOON' | 'OVERDUE' | 'NO_DATA' | 'INACTIVE'
+export type TrackingMode = 'REPLACEMENT' | 'SERIALIZED'
 
 export interface Equipment {
   id: string
@@ -20,6 +22,7 @@ export interface Subassembly {
   sapId: string
   active: boolean
   criticality: 'A' | 'B' | 'C' | 'D' | ''
+  trackingMode: TrackingMode
   source: MaintenanceSource
   createdAt: string
 }
@@ -53,6 +56,8 @@ export interface MaintenanceData {
   subassemblies: Subassembly[]
   plans: MaintenancePlan[]
   events: MaintenanceEvent[]
+  /** Reserved for the next serialized-units phase. No unit behavior is implemented in schema v3. */
+  units: unknown[]
 }
 
 export interface SubassemblyMaintenanceState {
@@ -61,6 +66,8 @@ export interface SubassemblyMaintenanceState {
   lastEventDate: string | null
   nextDueDate: string | null
   daysRemaining: number | null
+  daysOverdue: number
+  operationalStatus: OperationalReplacementStatus
 }
 
 export interface EquipmentMaintenanceSummary {
@@ -73,7 +80,7 @@ export interface EquipmentMaintenanceSummary {
 }
 
 export const EMPTY_MAINTENANCE_DATA: MaintenanceData = {
-  equipment: [], subassemblies: [], plans: [], events: [],
+  equipment: [], subassemblies: [], plans: [], events: [], units: [],
 }
 
 export const MAINTENANCE_STATUSES: MaintenanceStatus[] = ['OVERDUE', 'CRITICAL', 'WARNING', 'OK', 'NO_PLAN', 'NO_HISTORY', 'INACTIVE']

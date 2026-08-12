@@ -16,10 +16,9 @@ import { Floor } from './Floor'
 import { IndustrialObject } from './IndustrialObject'
 import { ResizeHandles } from './ResizeHandles'
 import { getNumberValidationMessage } from '../Inspector/ValidatedNumberInput'
-import { useMaintenanceStore } from '../../maintenance/store/maintenanceStore'
-import { getAssetMaintenanceMap } from '../../maintenance/domain/maintenanceSelectors'
-import type { EquipmentMaintenanceSummary } from '../../maintenance/domain/maintenanceTypes'
 import type { VisibleLevelFilter } from '../../config/plantLevels'
+import { deleteAssetWithMaintenancePolicy } from '../../services/assetMaintenanceCommands'
+import { requestAssetDeletePolicy } from '../../services/maintenanceDeletePolicyDialog'
 
 const roundTo = (value: number, step: number) => step > 0 ? Math.round(value / step) * step : value
 const changed = (a: number, b: number) => Math.abs(a - b) > 0.0005
@@ -178,12 +177,19 @@ function uvToLayoutLocal(point: ReferenceLayoutPoint, width: number, height: num
 const disabledRaycast = () => null
 
 export type PlantSceneMode = 'EDITOR' | 'MAINTENANCE'
+export interface AssetVisualState {
+  status: string
+  label: string
+  badgeCount: number
+  showBadge?: boolean
+  outlineColor?: string
+  title?: string
+}
 
-export function PlantScene({ mode = 'EDITOR', areaFilter, levelFilter }: { mode?: PlantSceneMode; areaFilter?: AreaFilter; levelFilter?: VisibleLevelFilter }) {
+export function PlantScene({ mode = 'EDITOR', areaFilter, levelFilter, assetVisualStates, dimmedAssetIds, hiddenAssetIds }: { mode?: PlantSceneMode; areaFilter?: AreaFilter; levelFilter?: VisibleLevelFilter; assetVisualStates?: ReadonlyMap<string, AssetVisualState>; dimmedAssetIds?: ReadonlySet<string>; hiddenAssetIds?: ReadonlySet<string> }) {
   const editingEnabled = mode === 'EDITOR'
   const select = useSceneStore((state) => state.selectObject)
   const focus = useSceneStore((state) => state.focusObject)
-  const remove = useSceneStore((state) => state.deleteObject)
   const referenceLayout = useSceneStore((state) => state.referenceLayout)
   const layoutCalibration = useSceneStore((state) => state.layoutCalibration)
   const layoutCrop = useSceneStore((state) => state.layoutCrop)
@@ -349,6 +355,9 @@ export function PlantScene({ mode = 'EDITOR', areaFilter, levelFilter }: { mode?
           mode={mode}
           areaFilterOverride={areaFilter}
           levelFilterOverride={levelFilter}
+          assetVisualStates={assetVisualStates}
+          dimmedAssetIds={dimmedAssetIds}
+          hiddenAssetIds={hiddenAssetIds}
           onAssetContextMenu={openMenu}
           onTransformInteractingChange={setTransformInteracting}
           isTransformInteracting={() => transformInteractingRef.current}
@@ -367,7 +376,7 @@ export function PlantScene({ mode = 'EDITOR', areaFilter, levelFilter }: { mode?
         <div className="context-menu" style={{ left: menu.x, top: menu.y }} onPointerDown={(event) => event.stopPropagation()}>
           <button onClick={() => menuAction(() => select(menu.id))}>Editar</button>
           <button onClick={() => menuAction(() => focus(menu.id))}>Centrar camara</button>
-          <button className="danger" onClick={() => menuAction(() => remove(menu.id))}>Eliminar</button>
+          <button className="danger" onClick={() => menuAction(() => { void requestAssetDeletePolicy(menu.id).then((policy) => deleteAssetWithMaintenancePolicy(menu.id, policy)) })}>Eliminar</button>
         </div>
       )}
       {editingEnabled && layoutCalibration.active && <div className="calibration-banner">{calibrationMessage}</div>}
@@ -416,6 +425,9 @@ function SceneContent({
   mode,
   areaFilterOverride,
   levelFilterOverride,
+  assetVisualStates,
+  dimmedAssetIds,
+  hiddenAssetIds,
   onAssetContextMenu,
   onTransformInteractingChange,
   isTransformInteracting,
@@ -423,6 +435,9 @@ function SceneContent({
   mode: PlantSceneMode
   areaFilterOverride?: AreaFilter
   levelFilterOverride?: VisibleLevelFilter
+  assetVisualStates?: ReadonlyMap<string, AssetVisualState>
+  dimmedAssetIds?: ReadonlySet<string>
+  hiddenAssetIds?: ReadonlySet<string>
   onAssetContextMenu: (id: string, x: number, y: number) => void
   onTransformInteractingChange: (active: boolean) => void
   isTransformInteracting: () => boolean
@@ -456,7 +471,6 @@ function SceneContent({
   const commitHistoryTransaction = useSceneStore((state) => state.commitHistoryTransaction)
   const cameraRestoreRequest = useProjectStore((state) => state.cameraRestoreRequest)
   const setProjectCamera = useProjectStore((state) => state.setCamera)
-  const maintenance = useMaintenanceStore()
   const controlsRef = useRef<any>(null)
   const transformRef = useRef<any>(null)
   const layoutTransformRef = useRef<any>(null)
@@ -493,22 +507,10 @@ function SceneContent({
   const referenceLayoutWorldY = referenceLayoutLevelElevation + (referenceLayout?.position.y ?? 0) + REFERENCE_LAYOUT_Y_OFFSET
   const effectiveAreaFilter = areaFilterOverride ?? view.areaFilter
   const effectiveLevelFilter = levelFilterOverride ?? visibleLevelFilter
-  const maintenanceMap = useMemo(() => getAssetMaintenanceMap(maintenance, objects, maintenance.referenceDate), [maintenance.equipment, maintenance.subassemblies, maintenance.plans, maintenance.events, maintenance.referenceDate, objects])
-  const recentAssetIds = useMemo(() => {
-    if (!maintenance.recentDays) return null
-    const cutoff = new Date(`${maintenance.referenceDate}T00:00:00Z`); cutoff.setUTCDate(cutoff.getUTCDate() - maintenance.recentDays)
-    const recentSubassemblies = new Set(maintenance.events.filter((event) => new Date(`${event.date}T00:00:00Z`) >= cutoff).map((event) => event.subassemblyId))
-    const equipmentIds = new Set(maintenance.subassemblies.filter((item) => recentSubassemblies.has(item.id)).map((item) => item.equipmentId))
-    return new Set(maintenance.equipment.filter((item) => equipmentIds.has(item.id)).map((item) => item.assetId))
-  }, [maintenance.recentDays, maintenance.referenceDate, maintenance.events, maintenance.subassemblies, maintenance.equipment])
   const visibleObjects = useMemo(() => objects.filter((object) => {
     if ((effectiveAreaFilter !== AREA_FILTER_ALL && object.areaCode !== effectiveAreaFilter) || !isLevelVisible(object.levelCode, effectiveLevelFilter)) return false
-    if (editingEnabled) return true
-    const matchesStatus = maintenance.statusFilter === 'ALL' || maintenanceMap.get(object.id)?.status === maintenance.statusFilter
-    const matchesCriticality = maintenance.criticalityFilter === 'ALL' || object.criticality === maintenance.criticalityFilter
-    const matchesRecent = !recentAssetIds || recentAssetIds.has(object.id)
-    return maintenance.filterBehavior !== 'HIDE' || (matchesStatus && matchesCriticality && matchesRecent)
-  }), [objects, effectiveAreaFilter, effectiveLevelFilter, editingEnabled, maintenance.statusFilter, maintenance.criticalityFilter, maintenance.filterBehavior, maintenanceMap, recentAssetIds])
+    return !hiddenAssetIds?.has(object.id)
+  }), [objects, effectiveAreaFilter, effectiveLevelFilter, hiddenAssetIds])
   const referenceLayoutVisible = Boolean(referenceLayout?.visible && isLevelVisible(referenceLayout.levelCode, effectiveLevelFilter))
   const selectedAssets = useMemo(() => selectedIds.map((id) => objects.find((object) => object.id === id)).filter(Boolean) as IndustrialAsset[], [objects, selectedIds])
   const selectedAsset = selectedId ? objects.find((object) => object.id === selectedId) ?? null : null
@@ -1208,10 +1210,8 @@ function SceneContent({
           onPointerDown={(event) => beginFloorDrag(asset, event)}
           onPointerMove={moveFloorDrag}
           onPointerUp={endFloorDrag}
-          maintenanceSummary={maintenanceMap.get(asset.id)}
-          maintenanceMode={!editingEnabled}
-          dimmed={!editingEnabled && maintenance.filterBehavior === 'DIM' && ((maintenance.statusFilter !== 'ALL' && maintenanceMap.get(asset.id)?.status !== maintenance.statusFilter) || (maintenance.criticalityFilter !== 'ALL' && asset.criticality !== maintenance.criticalityFilter) || Boolean(recentAssetIds && !recentAssetIds.has(asset.id)))}
-          showOkBadge={maintenance.showOkBadges}
+          visualState={assetVisualStates?.get(asset.id)}
+          dimmed={Boolean(dimmedAssetIds?.has(asset.id))}
         />
       ))}
       {editingEnabled && multiSelection && <group ref={registerSelectionGroup} name="selection-transform-proxy" />}
@@ -1367,10 +1367,8 @@ function SceneAsset({
   onPointerDown,
   onPointerMove,
   onPointerUp,
-  maintenanceSummary,
-  maintenanceMode,
+  visualState,
   dimmed,
-  showOkBadge,
 }: {
   asset: IndustrialAsset
   selected: boolean
@@ -1382,10 +1380,8 @@ function SceneAsset({
   onPointerDown: (event: any) => void
   onPointerMove: (event: any) => void
   onPointerUp: (event: any) => void
-  maintenanceSummary?: EquipmentMaintenanceSummary
-  maintenanceMode: boolean
+  visualState?: AssetVisualState
   dimmed: boolean
-  showOkBadge: boolean
 }) {
   const objectRef = useRef<THREE.Group | null>(null)
   const setObjectRef = useCallback((node: THREE.Group | null) => {
@@ -1414,9 +1410,8 @@ function SceneAsset({
     onContextMenu(asset.id, event.nativeEvent?.clientX ?? 0, event.nativeEvent?.clientY ?? 0)
   }
 
-  const status = maintenanceSummary?.status
-  const showBadge = maintenanceMode && status && status !== 'INACTIVE' && (status !== 'OK' || showOkBadge)
-  const affectedCount = maintenanceSummary ? maintenanceSummary.counts.OVERDUE + maintenanceSummary.counts.CRITICAL + maintenanceSummary.counts.WARNING : 0
+  const status = visualState?.status
+  const showBadge = Boolean(visualState?.showBadge && status)
   return (<>
     <IndustrialObject
       ref={setObjectRef}
@@ -1430,8 +1425,8 @@ function SceneAsset({
       onPointerUp={onPointerUp}
       onContextMenu={openContextMenu}
     />
-    {maintenanceMode && (status === 'OVERDUE' || status === 'CRITICAL') && <mesh position={[asset.position.x, asset.position.y, asset.position.z]} rotation={[asset.rotation.x, asset.rotation.y, asset.rotation.z]} scale={asset.uniformScale} raycast={disabledRaycast}><boxGeometry args={[asset.size.width * 1.04, asset.size.height * 1.04, asset.size.depth * 1.04]} /><meshBasicMaterial color={status === 'OVERDUE' ? '#ff244f' : '#ff7a2f'} wireframe transparent opacity={0.9} depthTest={false} /></mesh>}
-    {showBadge && <Html center position={[asset.position.x, asset.position.y + asset.size.height * asset.uniformScale * 0.65 + 0.35, asset.position.z]} zIndexRange={[20, 0]}><button className={`maintenance-3d-badge status-${status}`} title={`${maintenanceSummary.total} subconjuntos · atencion ${maintenanceSummary.attentionScore}/100`} onClick={(event) => { event.stopPropagation(); onSelect(event) }}><span>{status}</span><strong>{affectedCount || maintenanceSummary.total}</strong></button></Html>}
+    {visualState?.outlineColor && <mesh position={[asset.position.x, asset.position.y, asset.position.z]} rotation={[asset.rotation.x, asset.rotation.y, asset.rotation.z]} scale={asset.uniformScale} raycast={disabledRaycast}><boxGeometry args={[asset.size.width * 1.04, asset.size.height * 1.04, asset.size.depth * 1.04]} /><meshBasicMaterial color={visualState.outlineColor} wireframe transparent opacity={0.9} depthTest={false} /></mesh>}
+    {showBadge && <Html center position={[asset.position.x, asset.position.y + asset.size.height * asset.uniformScale * 0.65 + 0.35, asset.position.z]} zIndexRange={[20, 0]}><button className={`maintenance-3d-badge status-${status}`} title={visualState?.title ?? visualState?.label} onClick={(event) => { event.stopPropagation(); onSelect(event) }}><span>{visualState?.label}</span><strong>{visualState?.badgeCount ?? 0}</strong></button></Html>}
   </>)
 }
 

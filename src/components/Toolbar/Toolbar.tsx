@@ -2,15 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
 import type { AreaFilter } from '../../config/areas'
 import { fileToDataUrl } from '../../services/dataUrlService'
-import { downloadProjectFile, estimateProjectSize, parseProjectFile, sanitizeProjectFileName, serializeProject } from '../../services/projectFileService'
-import { createProjectFile, projectToMaintenanceData, projectToSceneDocument } from '../../services/projectSerializer'
-import { useMaintenanceStore } from '../../maintenance/store/maintenanceStore'
+import { openProjectFile, saveProjectFile, saveProjectFileAs, createNewProjectSession } from '../../services/projectSessionService'
 import { useProjectStore } from '../../store/projectStore'
 import { useSceneStore } from '../../store/sceneStore'
 import type { ReferenceLayout } from '../../types/plant'
 import type { AlignmentAxis, AlignmentMode } from '../../types/plant'
 import type { CameraPresetId, PlantFrontDirection } from '../../config/cameraPresets'
 import { LEVEL_1 } from '../../config/plantLevels'
+import { deleteAssetsWithMaintenancePolicy } from '../../services/assetMaintenanceCommands'
+import { requestAssetDeletePolicy } from '../../services/maintenanceDeletePolicyDialog'
 import { AreaFilterControl } from './AreaFilterControl'
 import { EditMenu } from './EditMenu'
 import { FileMenu } from './FileMenu'
@@ -166,66 +166,18 @@ export function Toolbar() {
     }
   }
 
-  const confirmDiscard = () => !useProjectStore.getState().isDirty || window.confirm('Hay cambios sin guardar. ¿Deseas descartarlos?')
-
   const newProject = () => {
-    if (!confirmDiscard()) return
-    const projects = useProjectStore.getState()
-    projects.beginHydration()
-    try {
-      useSceneStore.getState().resetProject()
-      useMaintenanceStore.getState().resetMaintenance()
-      projects.createNewProject()
-    } finally {
-      projects.endHydration()
-    }
-    notify('Nuevo proyecto creado')
+    const result = createNewProjectSession(); if (result) notify(result.message)
   }
 
   const saveSession = (saveAs = false) => {
-    const projects = useProjectStore.getState()
-    let projectName = projects.metadata.name
-    if (saveAs || !projects.fileName) {
-      const requested = window.prompt('Nombre del proyecto', projectName)
-      if (requested === null) return
-      projectName = requested.trim() || 'Proyecto LACO3D'
-    }
-    const updatedMetadata = { ...projects.metadata, name: projectName, updatedAt: new Date().toISOString() }
-    const scene = useSceneStore.getState()
-    const project = createProjectFile({
-      objects: scene.objects,
-      referenceLayout: scene.referenceLayout,
-      snap: scene.snap,
-      view: scene.view,
-      plantLevels: scene.plantLevels,
-      activeLevel: scene.activeLevel,
-      visibleLevelFilter: scene.visibleLevelFilter,
-      showLevel0Grid: scene.showLevel0Grid,
-      showLevel1Grid: scene.showLevel1Grid,
-    }, updatedMetadata, projects.camera, useMaintenanceStore.getState().exportMaintenance())
-    const text = serializeProject(project)
-    const size = estimateProjectSize(text)
-    if (size > 50 * 1024 * 1024 && !window.confirm(`La sesion ocupa ${(size / 1024 / 1024).toFixed(1)} MB. ¿Deseas continuar?`)) return
-    const fileName = sanitizeProjectFileName(saveAs || !projects.fileName ? projectName : projects.fileName)
-    downloadProjectFile(text, fileName)
-    projects.markSaved(fileName, project.project)
-    notify(`Sesion guardada (${(size / 1024 / 1024).toFixed(1)} MB)`)
+    const result = saveAs ? saveProjectFileAs() : saveProjectFile(); if (result) notify(result.message)
   }
 
   const openSession = async (file?: File) => {
-    if (!file || !confirmDiscard()) return
+    if (!file) return
     try {
-      const project = parseProjectFile(await file.text())
-      const projects = useProjectStore.getState()
-      projects.beginHydration()
-      try {
-        useSceneStore.getState().loadScene(projectToSceneDocument(project))
-        useMaintenanceStore.getState().loadMaintenance(projectToMaintenanceData(project))
-        projects.replaceProject(project.project, project.scene.camera, file.name)
-      } finally {
-        projects.endHydration()
-      }
-      notify('Sesion LACO3D abierta')
+      notify((await openProjectFile(file)).message)
     } catch (error) {
       notify(error instanceof Error ? error.message : 'El archivo seleccionado no es una sesion valida de LACO3D.')
     }
@@ -246,12 +198,11 @@ export function Toolbar() {
     useSceneStore.getState().pasteClipboard()
   }
 
-  const deleteSelection = () => {
-    if (store.selectedObjectIds.length === 1) {
-      store.deleteObject(store.selectedObjectIds[0])
-      return
-    }
-    store.deleteObjects(store.selectedObjectIds)
+  const deleteSelection = async () => {
+    const ids = [...store.selectedObjectIds]
+    const policies = new Map()
+    for (const assetId of ids) policies.set(assetId, await requestAssetDeletePolicy(assetId))
+    deleteAssetsWithMaintenancePolicy(ids, policies)
   }
 
   return (

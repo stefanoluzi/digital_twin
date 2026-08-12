@@ -1,0 +1,22 @@
+import { useState, type FormEvent } from 'react'
+import type { IndustrialAsset } from '../../types/plant'
+import { getEquipmentForAsset, getSubassembliesForEquipment, getSubassemblyState } from '../domain/maintenanceSelectors'
+import type { Subassembly } from '../domain/maintenanceTypes'
+import { useMaintenanceStore } from '../store/maintenanceStore'
+import { Modal } from './ExpectedLifeForm'
+import { replacementStatusLabels, replacementTimingLabel } from './replacementPresentation'
+
+export function ReplacementList({ asset }: { asset: IndustrialAsset }) {
+  const store = useMaintenanceStore(); const [creating, setCreating] = useState(false)
+  const equipment = getEquipmentForAsset(store, asset.id)
+  const positions = equipment ? getSubassembliesForEquipment(store, equipment.id).filter((item) => item.trackingMode === 'REPLACEMENT') : []
+  const createFirst = () => { store.createEquipmentForAsset(asset); setCreating(true) }
+  if (!equipment) return <div className="maintenance-empty"><strong>Sin posiciones funcionales</strong><p>Seleccionar el asset no crea datos. Inicia el seguimiento mediante una acción explícita.</p><button onClick={createFirst}>Crear primera posición funcional</button>{creating && <FunctionalPositionForm equipmentId={store.createEquipmentForAsset(asset).id} onClose={() => setCreating(false)} />}</div>
+  return <><div className="maintenance-section-title"><strong>Posiciones funcionales</strong><button onClick={() => setCreating(true)}>+ Agregar</button></div>{positions.length === 0 ? <div className="maintenance-empty"><strong>Sin posiciones funcionales de recambio</strong><button onClick={() => setCreating(true)}>Crear posición funcional</button></div> : <div className="maintenance-table"><div className="maintenance-table-head"><span>Posición funcional</span><span>Estado</span><span>Último recambio</span><span>Vencimiento</span><span>Días</span></div>{positions.map((item) => { const state = getSubassemblyState(store, item.id, store.referenceDate); return <button key={item.id} className="maintenance-row" onClick={() => store.openSubassembly(item.id)}><span><strong>{item.name}</strong><small>{item.sapId || item.id}</small></span><span className={`maintenance-chip status-${state?.operationalStatus}`}>{state ? replacementStatusLabels[state.operationalStatus] : 'Sin datos'}</span><span>{state?.lastEventDate ?? '-'}</span><span>{state?.nextDueDate ?? '-'}</span><span>{replacementTimingLabel(state)}</span></button> })}</div>}{creating && <FunctionalPositionForm equipmentId={equipment.id} onClose={() => setCreating(false)} />}</>
+}
+
+export function FunctionalPositionForm({ equipmentId, onClose, existing }: { equipmentId: string; onClose: () => void; existing?: Subassembly }) {
+  const save = useMaintenanceStore((state) => state.saveSubassembly)
+  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const data = new FormData(event.currentTarget); save({ id: existing?.id ?? `SUB_${crypto.randomUUID()}`, equipmentId, name: String(data.get('name') || 'Posición funcional'), description: String(data.get('description') || ''), sapId: String(data.get('sapId') || ''), active: data.get('active') === 'on', criticality: String(data.get('criticality') || '') as Subassembly['criticality'], trackingMode: existing?.trackingMode ?? 'REPLACEMENT', createdAt: existing?.createdAt, source: existing?.source }); onClose() }
+  return <Modal title={existing ? 'Editar posición funcional' : 'Nueva posición funcional'} onClose={onClose}><form className="maintenance-form" onSubmit={submit}><label>Nombre<input name="name" required defaultValue={existing?.name} /></label><label>ID SAP<input name="sapId" defaultValue={existing?.sapId} /></label><label>Seguimiento<select value={existing?.trackingMode ?? 'REPLACEMENT'} disabled><option value="REPLACEMENT">Por recambios</option></select></label><label>Criticidad<select name="criticality" defaultValue={existing?.criticality}><option value="">-</option><option>A</option><option>B</option><option>C</option><option>D</option></select></label><label>Descripción<textarea name="description" defaultValue={existing?.description} /></label><label className="field-check"><input name="active" type="checkbox" defaultChecked={existing?.active ?? true} /> Activa</label><div className="inspector-actions"><button type="button" onClick={onClose}>Cancelar</button><button type="submit">Guardar</button></div></form></Modal>
+}

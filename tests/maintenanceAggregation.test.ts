@@ -5,8 +5,8 @@ import type { MaintenanceData } from '../src/maintenance/domain/maintenanceTypes
 const data: MaintenanceData = {
   equipment: [{ id: 'EQ', assetId: 'A', name: 'Equipo', active: true, source: 'LOCAL', createdAt: '' }],
   subassemblies: [
-    { id: 'S1', equipmentId: 'EQ', name: 'Uno', description: '', sapId: '', active: true, criticality: '', source: 'LOCAL', createdAt: '' },
-    { id: 'S2', equipmentId: 'EQ', name: 'Dos', description: '', sapId: '', active: true, criticality: '', source: 'LOCAL', createdAt: '' },
+    { id: 'S1', equipmentId: 'EQ', name: 'Uno', description: '', sapId: '', active: true, criticality: '', trackingMode: 'REPLACEMENT', source: 'LOCAL', createdAt: '' },
+    { id: 'S2', equipmentId: 'EQ', name: 'Dos', description: '', sapId: '', active: true, criticality: '', trackingMode: 'REPLACEMENT', source: 'LOCAL', createdAt: '' },
   ],
   plans: [
     { id: 'P1', subassemblyId: 'S1', name: '', intervalValue: 10, intervalUnit: 'DAYS', warningDays: 3, criticalDays: 1, active: true, source: 'LOCAL', createdAt: '' },
@@ -16,6 +16,7 @@ const data: MaintenanceData = {
     { id: 'E1', subassemblyId: 'S1', type: 'REPLACEMENT', date: '2026-01-01', notes: '', workOrder: '', source: 'LOCAL', createdAt: '' },
     { id: 'E2', subassemblyId: 'S2', type: 'REPLACEMENT', date: '2026-01-01', notes: '', workOrder: '', source: 'LOCAL', createdAt: '' },
   ],
+  units: [],
 }
 
 describe('equipment aggregation', () => {

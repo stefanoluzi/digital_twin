@@ -319,6 +319,8 @@ export interface HistoryEntry {
   coalesceKey?: string
   before: HistorySnapshot
   after: HistorySnapshot
+  sideEffectUndo?: () => void
+  sideEffectRedo?: () => void
 }
 
 interface ClipboardState {
@@ -382,6 +384,7 @@ interface SceneState {
   commitHistoryTransaction: (label?: string) => void
   cancelHistoryTransaction: () => void
   clearHistory: () => void
+  attachHistorySideEffect: (undo: () => void, redo: () => void) => boolean
   undo: () => boolean
   redo: () => boolean
   copySelection: () => number
@@ -543,6 +546,12 @@ export const useSceneStore = create<SceneState>((set, get) => {
     activeHistoryTransaction = null
     set({ historyPast: [], historyFuture: [] })
   },
+  attachHistorySideEffect: (sideEffectUndo, sideEffectRedo) => {
+    const past = get().historyPast; const entry = past[past.length - 1]
+    if (!entry) return false
+    set({ historyPast: [...past.slice(0, -1), { ...entry, sideEffectUndo, sideEffectRedo }] })
+    return true
+  },
   undo: () => {
     activeHistoryTransaction = null
     const past = get().historyPast
@@ -554,6 +563,7 @@ export const useSceneStore = create<SceneState>((set, get) => {
       historyFuture: [entry, ...state.historyFuture],
       editorFeedback: { message: `Deshecho: ${entry.label}`, nonce: Date.now() },
     }))
+    entry.sideEffectUndo?.()
     return true
   },
   redo: () => {
@@ -566,6 +576,7 @@ export const useSceneStore = create<SceneState>((set, get) => {
       historyFuture: state.historyFuture.slice(1),
       editorFeedback: { message: `Rehecho: ${entry.label}`, nonce: Date.now() },
     }))
+    entry.sideEffectRedo?.()
     return true
   },
   copySelection: () => {
