@@ -1,0 +1,20 @@
+import { useRef, useState } from 'react'
+import { useMaintenanceStore } from '../../maintenance/store/maintenanceStore'
+import { useProjectStore } from '../../store/projectStore'
+import { useSceneStore } from '../../store/sceneStore'
+import { createProjectFile, projectToMaintenanceData, projectToSceneDocument } from '../../services/projectSerializer'
+import { downloadProjectFile, parseProjectFile, sanitizeProjectFileName, serializeProject } from '../../services/projectFileService'
+import { AppNavigation } from '../../shared/AppNavigation'
+
+export function MaintenanceTopBar({ query, onQueryChange }: { query: string; onQueryChange: (value: string) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null); const [message, setMessage] = useState('Listo'); const maintenance = useMaintenanceStore(); const project = useProjectStore()
+  const save = (saveAs = false) => {
+    const scene = useSceneStore.getState(); const projects = useProjectStore.getState(); let name = projects.metadata.name
+    if (saveAs || !projects.fileName) { const requested = window.prompt('Nombre del proyecto', name); if (requested === null) return; name = requested.trim() || 'Proyecto LACO3D' }
+    const metadata = { ...projects.metadata, name, updatedAt: new Date().toISOString() }
+    const document = createProjectFile({ objects: scene.objects, referenceLayout: scene.referenceLayout, snap: scene.snap, view: scene.view, plantLevels: scene.plantLevels, activeLevel: scene.activeLevel, visibleLevelFilter: scene.visibleLevelFilter, showLevel0Grid: scene.showLevel0Grid, showLevel1Grid: scene.showLevel1Grid }, metadata, projects.camera, maintenance.exportMaintenance())
+    const fileName = sanitizeProjectFileName(saveAs || !projects.fileName ? name : projects.fileName); downloadProjectFile(serializeProject(document), fileName); projects.markSaved(fileName, document.project); setMessage('Sesion guardada')
+  }
+  const open = async (file?: File) => { if (!file) return; if (project.isDirty && !window.confirm('Hay cambios sin guardar. ¿Deseas descartarlos?')) return; try { const document = parseProjectFile(await file.text()); const projects = useProjectStore.getState(); projects.beginHydration(); try { useSceneStore.getState().loadScene(projectToSceneDocument(document)); useMaintenanceStore.getState().loadMaintenance(projectToMaintenanceData(document)); projects.replaceProject(document.project, document.scene.camera, file.name) } finally { projects.endHydration() }; setMessage('Sesion abierta') } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo abrir') } }
+  return <><AppNavigation active="MAINTENANCE" /><header className="maintenance-topbar"><div className="maintenance-title"><strong>LACO 1 Maintenance</strong><small>{project.metadata.name}{project.isDirty ? ' *' : ''}</small></div><label>Vista<select value={maintenance.operationalView} onChange={(event) => { const view = event.target.value as typeof maintenance.operationalView; maintenance.setOperationalView(view); maintenance.setRecentDays(view === 'RECENT' ? maintenance.recentDays ?? 30 : null) }}><option value="STATUS">Estado</option><option value="DUE">Vencimientos</option><option value="RECENT">Cambios recientes</option></select></label><div className="maintenance-global-search"><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Buscar equipo, ID, subconjunto, OT SAP..." />{query && <button onClick={() => onQueryChange('')}>×</button>}</div><label>Fecha de referencia<input type="date" value={maintenance.referenceDate} onChange={(event) => maintenance.setReferenceDate(event.target.value)} /></label><div className="maintenance-file-actions"><button onClick={() => fileRef.current?.click()}>Abrir</button><button onClick={() => save(false)}>Guardar</button><button onClick={() => save(true)}>Guardar como</button></div><span className="maintenance-save-status">{message}</span><input ref={fileRef} hidden type="file" accept=".laco3d,.json,application/json" onChange={(event) => { void open(event.target.files?.[0]); event.target.value = '' }} /></header></>
+}

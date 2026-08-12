@@ -8,6 +8,8 @@ import {
   type ProjectReferenceLayout,
 } from '../types/project'
 import { validateProjectFile } from './projectValidator'
+import { normalizeMaintenanceData } from '../maintenance/data/maintenanceNormalizer'
+import type { MaintenanceData } from '../maintenance/domain/maintenanceTypes'
 
 const APP_VERSION = '0.1.0'
 
@@ -43,12 +45,14 @@ export function createProjectFile(
   scene: Pick<PlantSceneDocument, 'objects' | 'referenceLayout' | 'snap' | 'view' | 'plantLevels' | 'activeLevel' | 'visibleLevelFilter' | 'showLevel0Grid' | 'showLevel1Grid'>,
   metadata: ProjectMetadata,
   camera: ProjectCameraState,
+  maintenance: MaintenanceData,
 ): DigitalTwinProject {
   return {
     format: PROJECT_FORMAT,
     schemaVersion: PROJECT_SCHEMA_VERSION,
     appVersion: APP_VERSION,
     project: { ...metadata, updatedAt: new Date().toISOString() },
+    maintenance: normalizeMaintenanceData(maintenance),
     scene: {
       objects: structuredClone(scene.objects),
       referenceLayout: serializeReferenceLayout(scene.referenceLayout),
@@ -67,9 +71,10 @@ export function createProjectFile(
 export function normalizeProjectFile(data: unknown): DigitalTwinProject {
   validateProjectFile(data)
   const now = new Date().toISOString()
-  const raw = data as DigitalTwinProject
+  const raw = data as DigitalTwinProject & { maintenance?: unknown }
   return {
     ...raw,
+    schemaVersion: PROJECT_SCHEMA_VERSION,
     project: {
       id: typeof raw.project.id === 'string' && raw.project.id ? raw.project.id : createProjectId(),
       name: typeof raw.project.name === 'string' && raw.project.name ? raw.project.name : 'Proyecto LACO3D',
@@ -89,6 +94,7 @@ export function normalizeProjectFile(data: unknown): DigitalTwinProject {
       showLevel1Grid: raw.scene.showLevel1Grid,
       camera: normalizeCamera(raw.scene.camera),
     },
+    maintenance: normalizeMaintenanceData(raw.maintenance),
   }
 }
 
@@ -105,6 +111,10 @@ export function projectToSceneDocument(project: DigitalTwinProject): PlantSceneD
     showLevel0Grid: project.scene.showLevel0Grid ?? false,
     showLevel1Grid: project.scene.showLevel1Grid ?? true,
   }
+}
+
+export function projectToMaintenanceData(project: DigitalTwinProject): MaintenanceData {
+  return normalizeMaintenanceData(project.maintenance)
 }
 
 export function createProjectId() {

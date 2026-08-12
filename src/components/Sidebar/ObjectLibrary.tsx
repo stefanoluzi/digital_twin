@@ -6,6 +6,8 @@ import type { AssetType, IndustrialAsset } from '../../types/plant'
 import { createIndustrialObject } from '../../utils/objectFactory'
 import { getCurrentInsertionPoint } from '../../services/viewportInsertionService'
 import { getLevelElevation } from '../../config/plantLevels'
+import { useMaintenanceStore } from '../../maintenance/store/maintenanceStore'
+import type { MaintenanceData } from '../../maintenance/domain/maintenanceTypes'
 
 const primitiveEntries: Array<{ type: AssetType; label: string; icon: string; description?: string }> = [
   { type: 'box', label: 'Box', icon: 'B' },
@@ -84,10 +86,14 @@ const infrastructureEntries: Array<{ type: AssetType; label: string; icon: strin
   { type: 'pipe_rack_simple', label: 'Pipe Rack simple', icon: 'PR' },
 ]
 
-function matches(asset: IndustrialAsset, query: string) {
+function matches(asset: IndustrialAsset, query: string, maintenance: MaintenanceData) {
   const q = query.trim().toLowerCase()
   if (!q) return false
   const area = AREA_BY_CODE[asset.areaCode]
+  const equipment = maintenance.equipment.find((item) => item.assetId === asset.id)
+  const subassemblies = equipment ? maintenance.subassemblies.filter((item) => item.equipmentId === equipment.id) : []
+  const subassemblyIds = new Set(subassemblies.map((item) => item.id))
+  const maintenanceTerms = [...subassemblies.flatMap((item) => [item.id, item.name, item.sapId]), ...maintenance.events.filter((item) => subassemblyIds.has(item.subassemblyId)).flatMap((item) => [item.workOrder, item.notes])]
   return [
     asset.id,
     asset.name,
@@ -97,6 +103,7 @@ function matches(asset: IndustrialAsset, query: string) {
     area?.name,
     asset.system,
     ...(Array.isArray(asset.tags) ? asset.tags : []),
+    ...maintenanceTerms,
   ].some((value) => String(value ?? '').toLowerCase().includes(q))
 }
 
@@ -112,7 +119,8 @@ export function ObjectLibrary() {
   const remove = useSceneStore((state) => state.deleteObject)
   const activeLevel = useSceneStore((state) => state.activeLevel)
   const plantLevels = useSceneStore((state) => state.plantLevels)
-  const results = useMemo(() => query.trim() ? objects.filter((asset) => matches(asset, query)).slice(0, 12) : [], [objects, query])
+  const maintenance = useMaintenanceStore()
+  const results = useMemo(() => query.trim() ? objects.filter((asset) => matches(asset, query, maintenance)).slice(0, 12) : [], [objects, query, maintenance.equipment, maintenance.subassemblies, maintenance.events])
   const areaCounts = useMemo(() => {
     const counts = new Map<string, number>([[AREA_FILTER_ALL, objects.length]])
     PLANT_AREAS.forEach((area) => counts.set(area.code, 0))
@@ -156,7 +164,7 @@ export function ObjectLibrary() {
       <div className="panel-title"><span>Biblioteca</span><small>{objects.length} activos</small></div>
 
       <div className="search-box">
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar ID, nombre, area, sistema, tag..." />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar activo, SAP, subconjunto u OT..." />
         {query && <button onClick={() => setQuery('')}>x</button>}
       </div>
       {query && (

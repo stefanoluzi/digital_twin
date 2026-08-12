@@ -3,7 +3,8 @@ import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
 import type { AreaFilter } from '../../config/areas'
 import { fileToDataUrl } from '../../services/dataUrlService'
 import { downloadProjectFile, estimateProjectSize, parseProjectFile, sanitizeProjectFileName, serializeProject } from '../../services/projectFileService'
-import { createProjectFile, projectToSceneDocument } from '../../services/projectSerializer'
+import { createProjectFile, projectToMaintenanceData, projectToSceneDocument } from '../../services/projectSerializer'
+import { useMaintenanceStore } from '../../maintenance/store/maintenanceStore'
 import { useProjectStore } from '../../store/projectStore'
 import { useSceneStore } from '../../store/sceneStore'
 import type { ReferenceLayout } from '../../types/plant'
@@ -173,6 +174,7 @@ export function Toolbar() {
     projects.beginHydration()
     try {
       useSceneStore.getState().resetProject()
+      useMaintenanceStore.getState().resetMaintenance()
       projects.createNewProject()
     } finally {
       projects.endHydration()
@@ -200,7 +202,7 @@ export function Toolbar() {
       visibleLevelFilter: scene.visibleLevelFilter,
       showLevel0Grid: scene.showLevel0Grid,
       showLevel1Grid: scene.showLevel1Grid,
-    }, updatedMetadata, projects.camera)
+    }, updatedMetadata, projects.camera, useMaintenanceStore.getState().exportMaintenance())
     const text = serializeProject(project)
     const size = estimateProjectSize(text)
     if (size > 50 * 1024 * 1024 && !window.confirm(`La sesion ocupa ${(size / 1024 / 1024).toFixed(1)} MB. ¿Deseas continuar?`)) return
@@ -218,6 +220,7 @@ export function Toolbar() {
       projects.beginHydration()
       try {
         useSceneStore.getState().loadScene(projectToSceneDocument(project))
+        useMaintenanceStore.getState().loadMaintenance(projectToMaintenanceData(project))
         projects.replaceProject(project.project, project.scene.camera, file.name)
       } finally {
         projects.endHydration()

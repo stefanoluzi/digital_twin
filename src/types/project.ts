@@ -1,8 +1,9 @@
 import type { IndustrialAsset, ReferenceLayout, SnapSettings, Vector3Data, ViewSettings } from './plant'
 import type { InsertionLevelCode, PlantLevelDefinition, VisibleLevelFilter } from '../config/plantLevels'
+import type { MaintenanceData } from '../maintenance/domain/maintenanceTypes'
 
 export const PROJECT_FORMAT = 'LACO3D_PROJECT' as const
-export const PROJECT_SCHEMA_VERSION = 1 as const
+export const PROJECT_SCHEMA_VERSION = 2 as const
 
 export interface ProjectMetadata {
   id: string
@@ -43,4 +44,5 @@ export interface DigitalTwinProject {
     showLevel1Grid?: boolean
     camera: ProjectCameraState
   }
+  maintenance: MaintenanceData
 }

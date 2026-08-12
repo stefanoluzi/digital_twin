@@ -8,6 +8,7 @@ import { UNIFORM_SCALE_FACTOR } from '../../utils/uniformScale'
 import { ValidatedNumberInput } from './ValidatedNumberInput'
 import { MIN_HOLLOW_CYLINDER_WALL_THICKNESS } from '../Scene/primitives/HollowCylinder'
 import { LEVEL_0, LEVEL_1, MULTI_LEVEL, type PlantLevelCode } from '../../config/plantLevels'
+import { navigate } from '../../shared/navigation'
 
 type NumberGroup = 'position' | 'rotation'
 type SizeKey = keyof IndustrialAsset['size']
@@ -518,6 +519,7 @@ export function ObjectInspector() {
     cancelIdCommitRef.current = false
   }, [selectedId])
 
+
   const selectedAssets = selectedIds.map((id) => objects.find((object) => object.id === id)).filter(Boolean) as IndustrialAsset[]
   const layoutPanel = referenceLayout ? (
     <ReferenceLayoutPanel
@@ -763,6 +765,7 @@ export function ObjectInspector() {
           <div className="inspector-actions">
             <button onClick={() => { void navigator.clipboard?.writeText(asset.id).catch(() => undefined) }}>Copiar ID</button>
             <button onClick={() => focus(asset.id)}>Centrar camara</button>
+            <button onClick={() => navigate(`/maintenance?equipment=${encodeURIComponent(asset.id)}`)}>Open in Maintenance</button>
           </div>
           <Field label="ID">
             <input

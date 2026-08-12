@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { GizmoHelper, GizmoViewport, Html, OrbitControls, TransformControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { AREA_FILTER_ALL } from '../../config/areas'
+import type { AreaFilter } from '../../config/areas'
 import { LEVEL_0, LEVEL_1, REFERENCE_LAYOUT_Y_OFFSET, getLevelElevation, isLevelVisible } from '../../config/plantLevels'
 import { applyCameraPreset, DEFAULT_CAMERA_POSITION, getCameraPresetDirection, type CameraPresetId } from '../../config/cameraPresets'
 import { useSceneStore } from '../../store/sceneStore'
@@ -15,6 +16,10 @@ import { Floor } from './Floor'
 import { IndustrialObject } from './IndustrialObject'
 import { ResizeHandles } from './ResizeHandles'
 import { getNumberValidationMessage } from '../Inspector/ValidatedNumberInput'
+import { useMaintenanceStore } from '../../maintenance/store/maintenanceStore'
+import { getAssetMaintenanceMap } from '../../maintenance/domain/maintenanceSelectors'
+import type { EquipmentMaintenanceSummary } from '../../maintenance/domain/maintenanceTypes'
+import type { VisibleLevelFilter } from '../../config/plantLevels'
 
 const roundTo = (value: number, step: number) => step > 0 ? Math.round(value / step) * step : value
 const changed = (a: number, b: number) => Math.abs(a - b) > 0.0005
@@ -172,7 +177,10 @@ function uvToLayoutLocal(point: ReferenceLayoutPoint, width: number, height: num
 
 const disabledRaycast = () => null
 
-export function PlantScene() {
+export type PlantSceneMode = 'EDITOR' | 'MAINTENANCE'
+
+export function PlantScene({ mode = 'EDITOR', areaFilter, levelFilter }: { mode?: PlantSceneMode; areaFilter?: AreaFilter; levelFilter?: VisibleLevelFilter }) {
+  const editingEnabled = mode === 'EDITOR'
   const select = useSceneStore((state) => state.selectObject)
   const focus = useSceneStore((state) => state.focusObject)
   const remove = useSceneStore((state) => state.deleteObject)
@@ -248,6 +256,7 @@ export function PlantScene() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!editingEnabled) return
       if (event.key === 'Escape' && useSceneStore.getState().layoutCalibration.active) {
         cancelLayoutCalibration()
       }
@@ -257,7 +266,7 @@ export function PlantScene() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [cancelLayoutCalibration])
+  }, [cancelLayoutCalibration, editingEnabled])
 
   useEffect(() => {
     const close = () => setMenu(null)
@@ -272,6 +281,7 @@ export function PlantScene() {
   }, [])
 
   const openMenu = (id: string, x: number, y: number) => {
+    if (!editingEnabled) return
     select(id)
     setMenu({ id, x, y })
   }
@@ -336,6 +346,9 @@ export function PlantScene() {
         onPointerMissed={(event) => clearSelection(event as unknown as { ctrlKey?: boolean; metaKey?: boolean })}
       >
         <SceneContent
+          mode={mode}
+          areaFilterOverride={areaFilter}
+          levelFilterOverride={levelFilter}
           onAssetContextMenu={openMenu}
           onTransformInteractingChange={setTransformInteracting}
           isTransformInteracting={() => transformInteractingRef.current}
@@ -350,16 +363,16 @@ export function PlantScene() {
         <button className={`view-cube__iso-front${activeCameraPreset === 'ISO_FRONT' ? ' active' : ''}`} title="Isométrica frontal" onClick={() => requestCameraView('isometric')}>ISO FRONT</button>
         <button className={`view-cube__iso-back${activeCameraPreset === 'ISO_BACK' ? ' active' : ''}`} title="Isométrica trasera" onClick={() => requestCameraView('isometric_back')}>ISO BACK</button>
       </div>
-      {menu && (
+      {editingEnabled && menu && (
         <div className="context-menu" style={{ left: menu.x, top: menu.y }} onPointerDown={(event) => event.stopPropagation()}>
           <button onClick={() => menuAction(() => select(menu.id))}>Editar</button>
           <button onClick={() => menuAction(() => focus(menu.id))}>Centrar camara</button>
           <button className="danger" onClick={() => menuAction(() => remove(menu.id))}>Eliminar</button>
         </div>
       )}
-      {layoutCalibration.active && <div className="calibration-banner">{calibrationMessage}</div>}
-      {layoutCrop.active && <div className="calibration-banner">Crop activo: ajusta las cuatro esquinas del marco y aplica el recorte.</div>}
-      {calibrationPendingDistance && (
+      {editingEnabled && layoutCalibration.active && <div className="calibration-banner">{calibrationMessage}</div>}
+      {editingEnabled && layoutCrop.active && <div className="calibration-banner">Crop activo: ajusta las cuatro esquinas del marco y aplica el recorte.</div>}
+      {editingEnabled && calibrationPendingDistance && (
         <div className="calibration-modal" onPointerDown={(event) => event.stopPropagation()}>
           <div className="calibration-dialog">
             <h3>Distancia real</h3>
@@ -394,20 +407,27 @@ export function PlantScene() {
           </div>
         </div>
       )}
-      <div className="scene-hint">Gizmo: mover / rotar / escalar - Handles: redimensionar - Click derecho: editar/eliminar - Camara libre</div>
+      <div className="scene-hint">{editingEnabled ? 'Gizmo: mover / rotar / escalar - Handles: redimensionar - Click derecho: editar/eliminar - Camara libre' : 'Vista de solo lectura - selecciona un equipo para consultar mantenimiento'}</div>
     </div>
   )
 }
 
 function SceneContent({
+  mode,
+  areaFilterOverride,
+  levelFilterOverride,
   onAssetContextMenu,
   onTransformInteractingChange,
   isTransformInteracting,
 }: {
+  mode: PlantSceneMode
+  areaFilterOverride?: AreaFilter
+  levelFilterOverride?: VisibleLevelFilter
   onAssetContextMenu: (id: string, x: number, y: number) => void
   onTransformInteractingChange: (active: boolean) => void
   isTransformInteracting: () => boolean
 }) {
+  const editingEnabled = mode === 'EDITOR'
   const objects = useSceneStore((state) => state.objects)
   const selectedId = useSceneStore((state) => state.selectedObjectId)
   const selectedIds = useSceneStore((state) => state.selectedObjectIds)
@@ -436,6 +456,7 @@ function SceneContent({
   const commitHistoryTransaction = useSceneStore((state) => state.commitHistoryTransaction)
   const cameraRestoreRequest = useProjectStore((state) => state.cameraRestoreRequest)
   const setProjectCamera = useProjectStore((state) => state.setCamera)
+  const maintenance = useMaintenanceStore()
   const controlsRef = useRef<any>(null)
   const transformRef = useRef<any>(null)
   const layoutTransformRef = useRef<any>(null)
@@ -470,10 +491,25 @@ function SceneContent({
     ? getLevelElevation(plantLevels, referenceLayout.levelCode === LEVEL_0 ? LEVEL_0 : LEVEL_1)
     : 0
   const referenceLayoutWorldY = referenceLayoutLevelElevation + (referenceLayout?.position.y ?? 0) + REFERENCE_LAYOUT_Y_OFFSET
-  const visibleObjects = useMemo(() => (
-    objects.filter((object) => (view.areaFilter === AREA_FILTER_ALL || object.areaCode === view.areaFilter) && isLevelVisible(object.levelCode, visibleLevelFilter))
-  ), [objects, view.areaFilter, visibleLevelFilter])
-  const referenceLayoutVisible = Boolean(referenceLayout?.visible && isLevelVisible(referenceLayout.levelCode, visibleLevelFilter))
+  const effectiveAreaFilter = areaFilterOverride ?? view.areaFilter
+  const effectiveLevelFilter = levelFilterOverride ?? visibleLevelFilter
+  const maintenanceMap = useMemo(() => getAssetMaintenanceMap(maintenance, objects, maintenance.referenceDate), [maintenance.equipment, maintenance.subassemblies, maintenance.plans, maintenance.events, maintenance.referenceDate, objects])
+  const recentAssetIds = useMemo(() => {
+    if (!maintenance.recentDays) return null
+    const cutoff = new Date(`${maintenance.referenceDate}T00:00:00Z`); cutoff.setUTCDate(cutoff.getUTCDate() - maintenance.recentDays)
+    const recentSubassemblies = new Set(maintenance.events.filter((event) => new Date(`${event.date}T00:00:00Z`) >= cutoff).map((event) => event.subassemblyId))
+    const equipmentIds = new Set(maintenance.subassemblies.filter((item) => recentSubassemblies.has(item.id)).map((item) => item.equipmentId))
+    return new Set(maintenance.equipment.filter((item) => equipmentIds.has(item.id)).map((item) => item.assetId))
+  }, [maintenance.recentDays, maintenance.referenceDate, maintenance.events, maintenance.subassemblies, maintenance.equipment])
+  const visibleObjects = useMemo(() => objects.filter((object) => {
+    if ((effectiveAreaFilter !== AREA_FILTER_ALL && object.areaCode !== effectiveAreaFilter) || !isLevelVisible(object.levelCode, effectiveLevelFilter)) return false
+    if (editingEnabled) return true
+    const matchesStatus = maintenance.statusFilter === 'ALL' || maintenanceMap.get(object.id)?.status === maintenance.statusFilter
+    const matchesCriticality = maintenance.criticalityFilter === 'ALL' || object.criticality === maintenance.criticalityFilter
+    const matchesRecent = !recentAssetIds || recentAssetIds.has(object.id)
+    return maintenance.filterBehavior !== 'HIDE' || (matchesStatus && matchesCriticality && matchesRecent)
+  }), [objects, effectiveAreaFilter, effectiveLevelFilter, editingEnabled, maintenance.statusFilter, maintenance.criticalityFilter, maintenance.filterBehavior, maintenanceMap, recentAssetIds])
+  const referenceLayoutVisible = Boolean(referenceLayout?.visible && isLevelVisible(referenceLayout.levelCode, effectiveLevelFilter))
   const selectedAssets = useMemo(() => selectedIds.map((id) => objects.find((object) => object.id === id)).filter(Boolean) as IndustrialAsset[], [objects, selectedIds])
   const selectedAsset = selectedId ? objects.find((object) => object.id === selectedId) ?? null : null
   const multiSelection = selectedAssets.length > 1
@@ -1081,6 +1117,7 @@ function SceneContent({
   }
 
   const beginFloorDrag = (asset: IndustrialAsset, event: any) => {
+    if (!editingEnabled) return
     if (layoutCalibration.active || layoutCrop.active) return
     if (event.ctrlKey || event.shiftKey || event.metaKey || multiSelection) return
     if (event.button !== 0 || editMode !== 'move' || asset.locked) return
@@ -1144,8 +1181,8 @@ function SceneContent({
           ref={(node) => { layoutGroupRef.current = node; setLayoutTargetObject(node) }}
           layout={referenceLayout}
           worldY={referenceLayoutWorldY}
-          calibrationActive={layoutCalibration.active}
-          cropActive={layoutCrop.active}
+          calibrationActive={editingEnabled && layoutCalibration.active}
+          cropActive={editingEnabled && layoutCrop.active}
           cropDraft={layoutCrop.draft}
           calibrationPointA={layoutCalibration.pointA ?? referenceLayout.calibration.pointA}
           calibrationPointB={layoutCalibration.pointB ?? referenceLayout.calibration.pointB}
@@ -1157,7 +1194,7 @@ function SceneContent({
           }}
         />
       )}
-      <axesHelper args={[3]} position={[-10, activeElevation + 0.03, 8]} />
+      {editingEnabled && <axesHelper args={[3]} position={[-10, activeElevation + 0.03, 8]} />}
       {visibleObjects.map((asset) => (
         <SceneAsset
           key={asset.id}
@@ -1171,10 +1208,14 @@ function SceneContent({
           onPointerDown={(event) => beginFloorDrag(asset, event)}
           onPointerMove={moveFloorDrag}
           onPointerUp={endFloorDrag}
+          maintenanceSummary={maintenanceMap.get(asset.id)}
+          maintenanceMode={!editingEnabled}
+          dimmed={!editingEnabled && maintenance.filterBehavior === 'DIM' && ((maintenance.statusFilter !== 'ALL' && maintenanceMap.get(asset.id)?.status !== maintenance.statusFilter) || (maintenance.criticalityFilter !== 'ALL' && asset.criticality !== maintenance.criticalityFilter) || Boolean(recentAssetIds && !recentAssetIds.has(asset.id)))}
+          showOkBadge={maintenance.showOkBadges}
         />
       ))}
-      {multiSelection && <group ref={registerSelectionGroup} name="selection-transform-proxy" />}
-      {selectedAsset && transformTarget && transformTargetIsCurrent && selectionCanTransform && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
+      {editingEnabled && multiSelection && <group ref={registerSelectionGroup} name="selection-transform-proxy" />}
+      {editingEnabled && selectedAsset && transformTarget && transformTargetIsCurrent && selectionCanTransform && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
         <TransformControls
           ref={transformRef}
           object={transformTarget}
@@ -1233,12 +1274,12 @@ function SceneContent({
           }}
         />
       )}
-      {selectedAsset && rotationIndicator && (
+      {editingEnabled && selectedAsset && rotationIndicator && (
         <Html position={[selectedAsset.position.x, selectedAsset.position.y + selectedAsset.size.height / 2 + 0.8, selectedAsset.position.z]} center pointerEvents="none">
           <div className={`rotation-indicator${rotationIndicator.snapped ? ' snapped' : ''}`}>{Math.round(rotationIndicator.degrees)}°</div>
         </Html>
       )}
-      {selectedAsset && targetObject && !multiSelection && view.showResizeHandles && editMode === 'scale' && !selectedAsset.locked && !transformIsInteracting() && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
+      {editingEnabled && selectedAsset && targetObject && !multiSelection && view.showResizeHandles && editMode === 'scale' && !selectedAsset.locked && !transformIsInteracting() && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
         <ResizeHandles
           asset={selectedAsset}
           snap={snap}
@@ -1267,7 +1308,7 @@ function SceneContent({
           setOrbitEnabled={setOrbitEnabled}
         />
       )}
-      {referenceLayoutVisible && referenceLayout && view.editLayout && !referenceLayout.locked && layoutTargetObject && !layoutCalibration.active && !layoutCrop.active && (
+      {editingEnabled && referenceLayoutVisible && referenceLayout && view.editLayout && !referenceLayout.locked && layoutTargetObject && !layoutCalibration.active && !layoutCrop.active && (
         <TransformControls
           ref={layoutTransformRef}
           object={layoutTargetObject}
@@ -1326,6 +1367,10 @@ function SceneAsset({
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  maintenanceSummary,
+  maintenanceMode,
+  dimmed,
+  showOkBadge,
 }: {
   asset: IndustrialAsset
   selected: boolean
@@ -1337,10 +1382,31 @@ function SceneAsset({
   onPointerDown: (event: any) => void
   onPointerMove: (event: any) => void
   onPointerUp: (event: any) => void
+  maintenanceSummary?: EquipmentMaintenanceSummary
+  maintenanceMode: boolean
+  dimmed: boolean
+  showOkBadge: boolean
 }) {
+  const objectRef = useRef<THREE.Group | null>(null)
   const setObjectRef = useCallback((node: THREE.Group | null) => {
+    objectRef.current = node
     registerObjectRef(asset.id, node)
   }, [asset.id, registerObjectRef])
+
+  useEffect(() => {
+    objectRef.current?.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      materials.forEach((material) => {
+        const stored = material.userData.maintenanceOriginalOpacity
+        if (stored === undefined) material.userData.maintenanceOriginalOpacity = material.opacity
+        material.transparent = dimmed || material.userData.maintenanceOriginalOpacity < 1
+        material.opacity = dimmed ? Math.min(0.18, material.userData.maintenanceOriginalOpacity) : material.userData.maintenanceOriginalOpacity
+        material.depthWrite = !dimmed
+        material.needsUpdate = true
+      })
+    })
+  }, [dimmed, asset.type])
 
   const openContextMenu = (event: any) => {
     event.stopPropagation()
@@ -1348,7 +1414,10 @@ function SceneAsset({
     onContextMenu(asset.id, event.nativeEvent?.clientX ?? 0, event.nativeEvent?.clientY ?? 0)
   }
 
-  return (
+  const status = maintenanceSummary?.status
+  const showBadge = maintenanceMode && status && status !== 'INACTIVE' && (status !== 'OK' || showOkBadge)
+  const affectedCount = maintenanceSummary ? maintenanceSummary.counts.OVERDUE + maintenanceSummary.counts.CRITICAL + maintenanceSummary.counts.WARNING : 0
+  return (<>
     <IndustrialObject
       ref={setObjectRef}
       asset={asset}
@@ -1361,7 +1430,9 @@ function SceneAsset({
       onPointerUp={onPointerUp}
       onContextMenu={openContextMenu}
     />
-  )
+    {maintenanceMode && (status === 'OVERDUE' || status === 'CRITICAL') && <mesh position={[asset.position.x, asset.position.y, asset.position.z]} rotation={[asset.rotation.x, asset.rotation.y, asset.rotation.z]} scale={asset.uniformScale} raycast={disabledRaycast}><boxGeometry args={[asset.size.width * 1.04, asset.size.height * 1.04, asset.size.depth * 1.04]} /><meshBasicMaterial color={status === 'OVERDUE' ? '#ff244f' : '#ff7a2f'} wireframe transparent opacity={0.9} depthTest={false} /></mesh>}
+    {showBadge && <Html center position={[asset.position.x, asset.position.y + asset.size.height * asset.uniformScale * 0.65 + 0.35, asset.position.z]} zIndexRange={[20, 0]}><button className={`maintenance-3d-badge status-${status}`} title={`${maintenanceSummary.total} subconjuntos · atencion ${maintenanceSummary.attentionScore}/100`} onClick={(event) => { event.stopPropagation(); onSelect(event) }}><span>{status}</span><strong>{affectedCount || maintenanceSummary.total}</strong></button></Html>}
+  </>)
 }
 
 const ReferenceLayoutPlane = ReactForwardRef(function ReferenceLayoutPlane(
