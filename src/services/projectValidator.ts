@@ -5,7 +5,7 @@ export function validateProjectFile(data: unknown): asserts data is DigitalTwinP
   const project = data as Partial<DigitalTwinProject>
   if (project.format !== PROJECT_FORMAT) throw new Error('El archivo seleccionado no es una sesion valida de LACO3D.')
   const version = Number(project.schemaVersion)
-  if (version !== 1 && version !== 2 && version !== PROJECT_SCHEMA_VERSION) throw new Error(`Version de sesion no soportada: ${String(project.schemaVersion)}.`)
+  if (version !== 1 && version !== 2 && version !== 3 && version !== PROJECT_SCHEMA_VERSION) throw new Error(`Version de sesion no soportada: ${String(project.schemaVersion)}.`)
   if (!project.scene || typeof project.scene !== 'object' || !Array.isArray(project.scene.objects)) {
     throw new Error('La sesion LACO3D no contiene una escena valida.')
   }

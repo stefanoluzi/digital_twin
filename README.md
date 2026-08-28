@@ -61,6 +61,12 @@ Preview the production build:
 npm run preview
 ```
 
+## Standalone LCO Couplings
+
+Open `http://127.0.0.1:5173/lco-couplings` to use the LCO coupling inspection module without loading a plant project or the 3D editor. Inspections, replacements, configuration, and photo blobs are saved automatically in the browser's versioned IndexedDB database (`LACO1_MAINTENANCE`).
+
+This storage belongs to the current browser profile and device. It is not synchronized between computers. Use **Exportar respaldo** and **Importar respaldo** to move or safeguard the complete portable dataset, including photos.
+
 ## Available Commands
 
 - `npm run dev`: starts the Vite development server.

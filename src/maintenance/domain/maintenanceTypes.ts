@@ -1,3 +1,5 @@
+import { createEmptyLcoCouplingData, type LcoCouplingModuleData } from './lcoCouplings'
+
 export type MaintenanceSource = 'LOCAL' | 'SAP' | 'PLC' | 'API' | 'IMPORTED'
 export type MaintenanceEventType = 'INSPECTION' | 'LUBRICATION' | 'ADJUSTMENT' | 'REPAIR' | 'REPLACEMENT' | 'OVERHAUL' | 'FAILURE' | 'NOTE'
 export type MaintenanceIntervalUnit = 'DAYS' | 'WEEKS' | 'MONTHS' | 'YEARS'
@@ -58,6 +60,7 @@ export interface MaintenanceData {
   events: MaintenanceEvent[]
   /** Reserved for the next serialized-units phase. No unit behavior is implemented in schema v3. */
   units: unknown[]
+  lcoCouplings: LcoCouplingModuleData
 }
 
 export interface SubassemblyMaintenanceState {
@@ -80,7 +83,7 @@ export interface EquipmentMaintenanceSummary {
 }
 
 export const EMPTY_MAINTENANCE_DATA: MaintenanceData = {
-  equipment: [], subassemblies: [], plans: [], events: [], units: [],
+  equipment: [], subassemblies: [], plans: [], events: [], units: [], lcoCouplings: createEmptyLcoCouplingData(),
 }
 
 export const MAINTENANCE_STATUSES: MaintenanceStatus[] = ['OVERDUE', 'CRITICAL', 'WARNING', 'OK', 'NO_PLAN', 'NO_HISTORY', 'INACTIVE']

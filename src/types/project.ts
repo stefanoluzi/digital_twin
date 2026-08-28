@@ -3,7 +3,7 @@ import type { InsertionLevelCode, PlantLevelDefinition, VisibleLevelFilter } fro
 import type { MaintenanceData } from '../maintenance/domain/maintenanceTypes'
 
 export const PROJECT_FORMAT = 'LACO3D_PROJECT' as const
-export const PROJECT_SCHEMA_VERSION = 3 as const
+export const PROJECT_SCHEMA_VERSION = 4 as const
 
 export interface ProjectMetadata {
   id: string

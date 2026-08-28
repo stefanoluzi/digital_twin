@@ -56,5 +56,6 @@ function restoreRemovedMaintenance(before: MaintenanceData, after: MaintenanceDa
   const mergeRemoved = <T extends { id: string }>(currentItems: T[], beforeItems: T[], afterItems: T[]) => {
     const afterIds = new Set(afterItems.map((item) => item.id)); const currentIds = new Set(currentItems.map((item) => item.id)); return [...currentItems, ...beforeItems.filter((item) => !afterIds.has(item.id) && !currentIds.has(item.id))]
   }
-  store.replaceMaintenanceData({ equipment: mergeRemoved(current.equipment, before.equipment, after.equipment), subassemblies: mergeRemoved(current.subassemblies, before.subassemblies, after.subassemblies), plans: mergeRemoved(current.plans, before.plans, after.plans), events: mergeRemoved(current.events, before.events, after.events), units: current.units })
+  const restoredCageMappings = Object.fromEntries(Object.entries(before.lcoCouplings.cageAssetIds).filter(([cageId]) => !(cageId in after.lcoCouplings.cageAssetIds)))
+  store.replaceMaintenanceData({ equipment: mergeRemoved(current.equipment, before.equipment, after.equipment), subassemblies: mergeRemoved(current.subassemblies, before.subassemblies, after.subassemblies), plans: mergeRemoved(current.plans, before.plans, after.plans), events: mergeRemoved(current.events, before.events, after.events), units: current.units, lcoCouplings: { ...current.lcoCouplings, cageAssetIds: { ...current.lcoCouplings.cageAssetIds, ...restoredCageMappings } } })
 }

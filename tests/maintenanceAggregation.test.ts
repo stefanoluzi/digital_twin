@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getEquipmentSummary } from '../src/maintenance/domain/maintenanceSelectors'
 import type { MaintenanceData } from '../src/maintenance/domain/maintenanceTypes'
+import { createEmptyLcoCouplingData } from '../src/maintenance/domain/lcoCouplings'
 
 const data: MaintenanceData = {
   equipment: [{ id: 'EQ', assetId: 'A', name: 'Equipo', active: true, source: 'LOCAL', createdAt: '' }],
@@ -17,6 +18,7 @@ const data: MaintenanceData = {
     { id: 'E2', subassemblyId: 'S2', type: 'REPLACEMENT', date: '2026-01-01', notes: '', workOrder: '', source: 'LOCAL', createdAt: '' },
   ],
   units: [],
+  lcoCouplings: createEmptyLcoCouplingData(),
 }
 
 describe('equipment aggregation', () => {

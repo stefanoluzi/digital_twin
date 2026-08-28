@@ -1,5 +1,6 @@
 import { parseDateOnly, todayDateOnly } from '../domain/maintenanceDateService'
 import { EMPTY_MAINTENANCE_DATA, type MaintenanceData, type MaintenanceEventType, type MaintenanceIntervalUnit, type MaintenanceSource, type TrackingMode } from '../domain/maintenanceTypes'
+import { normalizeLcoCouplingData } from './lcoCouplingNormalizer'
 
 const sources = new Set<MaintenanceSource>(['LOCAL', 'SAP', 'PLC', 'API', 'IMPORTED'])
 const eventTypes = new Set<MaintenanceEventType>(['INSPECTION', 'LUBRICATION', 'ADJUSTMENT', 'REPAIR', 'REPLACEMENT', 'OVERHAUL', 'FAILURE', 'NOTE'])
@@ -20,5 +21,6 @@ export function normalizeMaintenanceData(value: unknown): MaintenanceData {
     plans: array(raw.plans).map((item) => ({ id: text(item.id), subassemblyId: text(item.subassemblyId), name: text(item.name, 'Plan preventivo'), intervalValue: Math.max(1, Math.trunc(Number(item.intervalValue) || 1)), intervalUnit: intervalUnits.has(item.intervalUnit) ? item.intervalUnit : 'MONTHS', warningDays: Math.max(0, Math.trunc(Number(item.warningDays) || 30)), criticalDays: Math.max(0, Math.trunc(Number(item.criticalDays) || 7)), active: bool(item.active), source: source(item.source), createdAt: createdAt(item.createdAt) })).filter((item) => item.id && item.subassemblyId),
     events: array(raw.events).map((item) => ({ id: text(item.id), subassemblyId: text(item.subassemblyId), type: eventTypes.has(item.type) ? item.type : 'NOTE', date: parseDateOnly(text(item.date)) ? text(item.date) : todayDateOnly(), notes: text(item.notes), workOrder: text(item.workOrder), source: source(item.source), createdAt: createdAt(item.createdAt) })).filter((item) => item.id && item.subassemblyId),
     units: array(raw.units).map((item) => structuredClone(item)),
+    lcoCouplings: normalizeLcoCouplingData(raw.lcoCouplings),
   }
 }

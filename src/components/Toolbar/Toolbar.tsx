@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
-import type { AreaFilter } from '../../config/areas'
 import { fileToDataUrl } from '../../services/dataUrlService'
 import { openProjectFile, saveProjectFile, saveProjectFileAs, createNewProjectSession } from '../../services/projectSessionService'
 import { useProjectStore } from '../../store/projectStore'
@@ -11,7 +10,7 @@ import type { CameraPresetId, PlantFrontDirection } from '../../config/cameraPre
 import { LEVEL_1 } from '../../config/plantLevels'
 import { deleteAssetsWithMaintenancePolicy } from '../../services/assetMaintenanceCommands'
 import { requestAssetDeletePolicy } from '../../services/maintenanceDeletePolicyDialog'
-import { AreaFilterControl } from './AreaFilterControl'
+import { AreaNavigationMenu } from './AreaNavigationMenu'
 import { EditMenu } from './EditMenu'
 import { FileMenu } from './FileMenu'
 import { LayoutMenu } from './LayoutMenu'
@@ -20,6 +19,7 @@ import { SnapMenu } from './SnapMenu'
 import { TransformModeControl } from './TransformModeControl'
 import { ViewMenu } from './ViewMenu'
 import { VisualizationMenu } from './VisualizationMenu'
+import { useVisualizationStore } from '../../visualization/visualizationStore'
 
 GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
@@ -98,6 +98,9 @@ export function Toolbar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const store = useSceneStore()
   const projectState = useProjectStore()
+  const presentationLevel = useVisualizationStore((state) => state.presentationLevel)
+  const visualPreset = useVisualizationStore((state) => state.visualPreset)
+  const requestOverview = useVisualizationStore((state) => state.requestOverview)
   const notify = (text: string) => { setMessage(text); window.setTimeout(() => setMessage('Listo'), 2400) }
   const cameraModeForPreset: Partial<Record<CameraPresetId, Parameters<typeof store.requestCameraView>[0]>> = {
     TOP: 'top',
@@ -251,11 +254,12 @@ export function Toolbar() {
         <LevelsMenu open={openMenu === 'levels'} store={store} onToggle={toggleMenu} />
 
         <div className="toolbar-fit" role="group" aria-label="Encuadre de cámara">
+          <button className={presentationLevel === 'OVERVIEW' ? 'active' : undefined} disabled={visualPreset !== 'DIGITAL_TWIN'} title="Vista general de presentación" onClick={requestOverview}>Overview</button>
           <button title="Encuadrar toda la planta" onClick={() => store.requestCameraView('fit_all')}>Fit All</button>
           <button title="Encuadrar selección" disabled={store.selectedObjectIds.length === 0} onClick={() => store.requestCameraView('fit_selection')}>Fit Selection</button>
         </div>
 
-        <AreaFilterControl value={store.view.areaFilter as AreaFilter} onChange={(areaFilter) => store.updateView({ areaFilter })} onFocus={store.focusArea} />
+        <AreaNavigationMenu open={openMenu === 'areas'} onToggle={toggleMenu} />
         <LayoutMenu
           open={openMenu === 'layout'}
           layout={store.referenceLayout}

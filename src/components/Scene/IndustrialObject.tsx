@@ -1,9 +1,10 @@
-import { forwardRef } from 'react'
+import { forwardRef, useCallback, useLayoutEffect, useRef } from 'react'
 import { Edges, Html } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
-import type * as THREE from 'three'
+import * as THREE from 'three'
 import { Color } from 'three'
 import { AREA_BY_CODE } from '../../config/areas'
+import { getIndustrialAssetWorldTransform } from '../../services/sceneWorldTransformService'
 import type { IndustrialAsset, ViewSettings } from '../../types/plant'
 import { Bancal } from '../../industrialAssets/Bancal'
 import { Cabinet } from '../../industrialAssets/Cabinet'
@@ -46,12 +47,17 @@ import { VerticalPump } from '../../industrialAssets/VerticalPump'
 import { LanceCarrierCart } from '../../industrialAssets/transport/LanceCarrierCart'
 import { RectangularPool } from '../../industrialAssets/infrastructure/RectangularPool'
 import { HollowCylinder } from './primitives/HollowCylinder'
+import { applyIndustrialPresentation } from '../../visualization/industrialMaterials'
+import { getVisualTheme, type VisualPreset } from '../../visualization/visualTheme'
 
 interface Props {
   asset: IndustrialAsset
   selected: boolean
   primary: boolean
   view: ViewSettings
+  visualPreset: VisualPreset
+  showLabel: boolean
+  onHoverChange?: (hovered: boolean) => void
   onSelect: (event: ThreeEvent<MouseEvent>) => void
   onPointerDown?: (event: ThreeEvent<PointerEvent>) => void
   onPointerMove?: (event: ThreeEvent<PointerEvent>) => void
@@ -222,26 +228,46 @@ export const IndustrialObject = forwardRef<THREE.Group, Props>(function Industri
   selected,
   primary,
   view,
+  visualPreset,
+  showLabel,
+  onHoverChange,
   onSelect,
   onPointerDown,
   onPointerMove,
   onPointerUp,
   onContextMenu,
 }, ref) {
+  const objectRef = useRef<THREE.Group | null>(null)
+  const setObjectRef = useCallback((node: THREE.Group | null) => {
+    objectRef.current = node
+    if (typeof ref === 'function') ref(node)
+    else if (ref) ref.current = node
+  }, [ref])
   const click = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(event) }
   const label = (view.labelMode === 'name' ? asset.name : view.labelMode === 'area' ? asset.areaCode : asset.id) || asset.id || asset.name || 'Sin ID'
+  const worldTransform = getIndustrialAssetWorldTransform(asset)
+  const selectionColor = visualPreset === 'DIGITAL_TWIN'
+    ? primary ? '#d97706' : '#1677ff'
+    : primary ? '#ffd166' : '#67b7ff'
+
+  useLayoutEffect(() => {
+    if (!objectRef.current) return
+    applyIndustrialPresentation(objectRef.current, asset.type, visualPreset, getVisualTheme(visualPreset, view.theme))
+  })
 
   return (
     <group
-      ref={ref}
-      position={[asset.position.x, asset.position.y, asset.position.z]}
-      rotation={[asset.rotation.x, asset.rotation.y, asset.rotation.z]}
-      scale={[asset.uniformScale, asset.uniformScale, asset.uniformScale]}
+      ref={setObjectRef}
+      position={[worldTransform.position.x, worldTransform.position.y, worldTransform.position.z]}
+      rotation={[worldTransform.rotation.x, worldTransform.rotation.y, worldTransform.rotation.z]}
+      scale={[worldTransform.scale.x, worldTransform.scale.y, worldTransform.scale.z]}
       onClick={click}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onPointerOver={(event) => { event.stopPropagation(); onHoverChange?.(true) }}
+      onPointerOut={() => onHoverChange?.(false)}
       onContextMenu={onContextMenu}
       userData={{ assetId: asset.id }}
     >
@@ -249,9 +275,9 @@ export const IndustrialObject = forwardRef<THREE.Group, Props>(function Industri
       {selected && <mesh scale={1.035} raycast={() => null} userData={{ excludeFromAlignmentBounds: true }}>
         <boxGeometry args={[asset.size.width, asset.size.height, asset.size.depth]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        <Edges color={primary ? '#ffd166' : '#67b7ff'} lineWidth={primary ? 2.2 : 1.1} />
+        <Edges color={selectionColor} lineWidth={primary ? 2.2 : 1.1} />
       </mesh>}
-      {view.showLabels && (
+      {showLabel && (
         <Html position={[0, asset.size.height / 2 + 0.28, 0]} center style={{ pointerEvents: 'none' }}>
           <span className={`asset-label ${selected ? 'selected' : ''}${primary ? ' primary' : ''}`}>{label}</span>
         </Html>

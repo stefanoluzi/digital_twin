@@ -35,11 +35,12 @@ function plantAxes(frontDirection: PlantFrontDirection) {
 export function getCameraPresetDirection(
   preset: CameraPresetId,
   frontDirection: PlantFrontDirection = PLANT_FRONT_DIRECTION,
+  isometricElevation = ISOMETRIC_ELEVATION,
 ) {
   const { front, right } = plantAxes(frontDirection)
   const back = front.clone().negate()
   const left = right.clone().negate()
-  const elevated = (horizontal: THREE.Vector3) => horizontal.addScaledVector(WORLD_UP, ISOMETRIC_ELEVATION).normalize()
+  const elevated = (horizontal: THREE.Vector3) => horizontal.addScaledVector(WORLD_UP, isometricElevation).normalize()
 
   switch (preset) {
     case 'TOP': return WORLD_UP.clone()
@@ -68,11 +69,12 @@ export function applyCameraPreset(
   controls: CameraControlsLike,
   preset: CameraPresetId,
   frontDirection: PlantFrontDirection = PLANT_FRONT_DIRECTION,
+  isometricElevation = ISOMETRIC_ELEVATION,
 ) {
   const target = controls.target.clone()
   const distance = camera.position.distanceTo(target)
   const safeDistance = Number.isFinite(distance) && distance > 0.0001 ? distance : 1
-  const direction = getCameraPresetDirection(preset, frontDirection)
+  const direction = getCameraPresetDirection(preset, frontDirection, isometricElevation)
   const orthographic = camera as THREE.OrthographicCamera
   const perspective = camera as THREE.PerspectiveCamera
   const zoom = orthographic.isOrthographicCamera ? orthographic.zoom : undefined

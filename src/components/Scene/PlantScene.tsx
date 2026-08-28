@@ -2,9 +2,9 @@ import { forwardRef as ReactForwardRef, useCallback, useEffect, useMemo, useRef,
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { GizmoHelper, GizmoViewport, Html, OrbitControls, TransformControls } from '@react-three/drei'
 import * as THREE from 'three'
-import { AREA_FILTER_ALL } from '../../config/areas'
+import { AREA_BY_CODE, AREA_FILTER_ALL, PLANT_AREAS } from '../../config/areas'
 import type { AreaFilter } from '../../config/areas'
-import { LEVEL_0, LEVEL_1, REFERENCE_LAYOUT_Y_OFFSET, getLevelElevation, isLevelVisible } from '../../config/plantLevels'
+import { LEVEL_0, LEVEL_1, getLevelElevation, isLevelVisible } from '../../config/plantLevels'
 import { applyCameraPreset, DEFAULT_CAMERA_POSITION, getCameraPresetDirection, type CameraPresetId } from '../../config/cameraPresets'
 import { useSceneStore } from '../../store/sceneStore'
 import { useProjectStore } from '../../store/projectStore'
@@ -19,6 +19,12 @@ import { getNumberValidationMessage } from '../Inspector/ValidatedNumberInput'
 import type { VisibleLevelFilter } from '../../config/plantLevels'
 import { deleteAssetWithMaintenancePolicy } from '../../services/assetMaintenanceCommands'
 import { requestAssetDeletePolicy } from '../../services/maintenanceDeletePolicyDialog'
+import { getReferenceLayoutStoredPositionFromWorld, getReferenceLayoutWorldTransform, type SceneWorldTransform } from '../../services/sceneWorldTransformService'
+import type { ProjectCameraState } from '../../types/project'
+import { VisualEnvironment } from '../../visualization/VisualEnvironment'
+import { getVisualTheme, type VisualPreset } from '../../visualization/visualTheme'
+import { useVisualizationStore } from '../../visualization/visualizationStore'
+import { getAreaBoundingBox, getLabelLOD, getScenePresentationLevel, PRESENTATION_LOD_CONFIG, shouldShowLabel } from '../../visualization/presentationLOD'
 
 const roundTo = (value: number, step: number) => step > 0 ? Math.round(value / step) * step : value
 const changed = (a: number, b: number) => Math.abs(a - b) > 0.0005
@@ -67,21 +73,6 @@ function getOrbitMouseButtons(cropActive: boolean, calibrationActive: boolean) {
 
 function preventIfCancelable(event?: Event) {
   if (event?.cancelable) event.preventDefault()
-}
-
-const sceneColors = {
-  dark: {
-    background: '#1b2228',
-    floor: '#202932',
-    gridCenter: '#6d7b86',
-    grid: '#3c4852',
-  },
-  light: {
-    background: '#eef2f5',
-    floor: '#e2e8ee',
-    gridCenter: '#7b8794',
-    grid: '#c1cad3',
-  },
 }
 
 function snapAsset(asset: IndustrialAsset, snap = useSceneStore.getState().snap): IndustrialAsset {
@@ -198,6 +189,11 @@ export function PlantScene({ mode = 'EDITOR', areaFilter, levelFilter, assetVisu
   const setLayoutCalibrationDraft = useSceneStore((state) => state.setLayoutCalibrationDraft)
   const requestCameraView = useSceneStore((state) => state.requestCameraView)
   const activeCameraPreset = useSceneStore((state) => state.view.activeCameraPreset)
+  const editorTheme = useSceneStore((state) => state.view.theme)
+  const visualPreset = useVisualizationStore((state) => state.visualPreset)
+  const focusedAreaCode = useVisualizationStore((state) => state.focusedAreaCode)
+  const presentationLevel = useVisualizationStore((state) => state.presentationLevel)
+  const visualTheme = useMemo(() => getVisualTheme(visualPreset, editorTheme), [editorTheme, visualPreset])
   const transformInteractingRef = useRef(false)
   const transformReleaseTimerRef = useRef<number | null>(null)
   const clearSelectionTimerRef = useRef<number | null>(null)
@@ -343,16 +339,18 @@ export function PlantScene({ mode = 'EDITOR', areaFilter, levelFilter, assetVisu
   }
 
   return (
-    <div className={`scene${layoutCalibration.active || layoutCrop.active ? ' calibrating' : ''}`} onContextMenu={(event) => event.preventDefault()}>
+    <div className={`scene scene--${visualPreset.toLowerCase().replace('_', '-')}${layoutCalibration.active || layoutCrop.active ? ' calibrating' : ''}`} onContextMenu={(event) => event.preventDefault()}>
       <Canvas
         orthographic
         camera={{ position: [...DEFAULT_CAMERA_POSITION], zoom: 48, near: CAMERA_NEAR, far: CAMERA_FAR }}
         dpr={[1, 1.75]}
+        shadows={visualTheme.shadows.enabled ? 'soft' : false}
         onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
         onPointerMissed={(event) => clearSelection(event as unknown as { ctrlKey?: boolean; metaKey?: boolean })}
       >
         <SceneContent
           mode={mode}
+          visualPreset={visualPreset}
           areaFilterOverride={areaFilter}
           levelFilterOverride={levelFilter}
           assetVisualStates={assetVisualStates}
@@ -372,6 +370,9 @@ export function PlantScene({ mode = 'EDITOR', areaFilter, levelFilter, assetVisu
         <button className={`view-cube__iso-front${activeCameraPreset === 'ISO_FRONT' ? ' active' : ''}`} title="Isométrica frontal" onClick={() => requestCameraView('isometric')}>ISO FRONT</button>
         <button className={`view-cube__iso-back${activeCameraPreset === 'ISO_BACK' ? ' active' : ''}`} title="Isométrica trasera" onClick={() => requestCameraView('isometric_back')}>ISO BACK</button>
       </div>
+      {visualPreset === 'DIGITAL_TWIN' && focusedAreaCode && (
+        <div className="focused-area-indicator"><strong>{focusedAreaCode}</strong><span>{AREA_BY_CODE[focusedAreaCode].name}</span><small>{presentationLevel === 'DETAIL' ? 'Detalle' : 'Vista de área'}</small></div>
+      )}
       {editingEnabled && menu && (
         <div className="context-menu" style={{ left: menu.x, top: menu.y }} onPointerDown={(event) => event.stopPropagation()}>
           <button onClick={() => menuAction(() => select(menu.id))}>Editar</button>
@@ -423,6 +424,7 @@ export function PlantScene({ mode = 'EDITOR', areaFilter, levelFilter, assetVisu
 
 function SceneContent({
   mode,
+  visualPreset,
   areaFilterOverride,
   levelFilterOverride,
   assetVisualStates,
@@ -433,6 +435,7 @@ function SceneContent({
   isTransformInteracting,
 }: {
   mode: PlantSceneMode
+  visualPreset: VisualPreset
   areaFilterOverride?: AreaFilter
   levelFilterOverride?: VisibleLevelFilter
   assetVisualStates?: ReadonlyMap<string, AssetVisualState>
@@ -455,6 +458,14 @@ function SceneContent({
   const visibleLevelFilter = useSceneStore((state) => state.visibleLevelFilter)
   const showLevel0Grid = useSceneStore((state) => state.showLevel0Grid)
   const showLevel1Grid = useSceneStore((state) => state.showLevel1Grid)
+  const showDigitalTwinGrid = useVisualizationStore((state) => state.showDigitalTwinGrid)
+  const focusedAreaCode = useVisualizationStore((state) => state.focusedAreaCode)
+  const focusMode = useVisualizationStore((state) => state.focusMode)
+  const showAreaLabels = useVisualizationStore((state) => state.showAreaLabels)
+  const presentationLevel = useVisualizationStore((state) => state.presentationLevel)
+  const overviewRequestNonce = useVisualizationStore((state) => state.overviewRequestNonce)
+  const visualizationFocusRequest = useVisualizationStore((state) => state.focusAreaRequest)
+  const setPresentationLevel = useVisualizationStore((state) => state.setPresentationLevel)
   const focusRequest = useSceneStore((state) => state.focusRequest)
   const focusAreaRequest = useSceneStore((state) => state.focusAreaRequest)
   const cameraViewRequest = useSceneStore((state) => state.cameraViewRequest)
@@ -486,6 +497,9 @@ function SceneContent({
   const layoutScaleBaseRef = useRef<{ uniformScale: number; stretchWidth: number; stretchHeight: number } | null>(null)
   const lastCameraViewNonceRef = useRef<number | null>(null)
   const lastCameraRestoreNonceRef = useRef<number | null>(null)
+  const lastOverviewNonceRef = useRef(0)
+  const lastVisualizationFocusNonceRef = useRef<number | null>(null)
+  const initialCameraRestoredRef = useRef(false)
   const floorDragRef = useRef<{
     id: string
     plane: THREE.Plane
@@ -496,21 +510,24 @@ function SceneContent({
   const [layoutTargetObject, setLayoutTargetObject] = useState<THREE.Group | null>(null)
   const [altPressed, setAltPressed] = useState(false)
   const [rotationIndicator, setRotationIndicator] = useState<{ degrees: number; snapped: boolean } | null>(null)
+  const [hoveredAssetId, setHoveredAssetId] = useState<string | null>(null)
   const { camera, gl, size: viewportSize } = useThree()
-  const colors = sceneColors[view.theme]
+  const visualTheme = useMemo(() => getVisualTheme(visualPreset, view.theme), [view.theme, visualPreset])
   const activeElevation = getLevelElevation(plantLevels, activeLevel)
   const level0Elevation = getLevelElevation(plantLevels, LEVEL_0)
   const level1Elevation = getLevelElevation(plantLevels, LEVEL_1)
-  const referenceLayoutLevelElevation = referenceLayout
-    ? getLevelElevation(plantLevels, referenceLayout.levelCode === LEVEL_0 ? LEVEL_0 : LEVEL_1)
-    : 0
-  const referenceLayoutWorldY = referenceLayoutLevelElevation + (referenceLayout?.position.y ?? 0) + REFERENCE_LAYOUT_Y_OFFSET
+  const referenceLayoutWorldTransform = useMemo(
+    () => referenceLayout ? getReferenceLayoutWorldTransform(referenceLayout, plantLevels) : null,
+    [plantLevels, referenceLayout],
+  )
+  const referenceLayoutWorldY = referenceLayoutWorldTransform?.position.y ?? 0
   const effectiveAreaFilter = areaFilterOverride ?? view.areaFilter
   const effectiveLevelFilter = levelFilterOverride ?? visibleLevelFilter
   const visibleObjects = useMemo(() => objects.filter((object) => {
     if ((effectiveAreaFilter !== AREA_FILTER_ALL && object.areaCode !== effectiveAreaFilter) || !isLevelVisible(object.levelCode, effectiveLevelFilter)) return false
+    if (visualPreset === 'DIGITAL_TWIN' && focusedAreaCode && focusMode === 'HIDE' && object.areaCode !== focusedAreaCode) return false
     return !hiddenAssetIds?.has(object.id)
-  }), [objects, effectiveAreaFilter, effectiveLevelFilter, hiddenAssetIds])
+  }), [objects, effectiveAreaFilter, effectiveLevelFilter, hiddenAssetIds, visualPreset, focusedAreaCode, focusMode])
   const referenceLayoutVisible = Boolean(referenceLayout?.visible && isLevelVisible(referenceLayout.levelCode, effectiveLevelFilter))
   const selectedAssets = useMemo(() => selectedIds.map((id) => objects.find((object) => object.id === id)).filter(Boolean) as IndustrialAsset[], [objects, selectedIds])
   const selectedAsset = selectedId ? objects.find((object) => object.id === selectedId) ?? null : null
@@ -521,6 +538,25 @@ function SceneContent({
     ? Boolean(selectionGroupTarget?.parent)
     : Boolean(targetObject?.parent && targetObject.name === selectedId)
   const selectionCanTransform = multiSelection ? !groupHasLockedObjects : Boolean(selectedAsset && !selectedAsset.locked)
+  const labelLOD = getLabelLOD(visualPreset === 'EDITOR' ? 'DETAIL' : presentationLevel)
+  const presentationCheckRef = useRef(0)
+  useFrame((state) => {
+    if (state.clock.elapsedTime - presentationCheckRef.current < 0.2) return
+    presentationCheckRef.current = state.clock.elapsedTime
+    const ortho = camera as THREE.OrthographicCamera
+    let nextLevel = visualPreset === 'EDITOR'
+      ? 'DETAIL' as const
+      : getScenePresentationLevel({
+        orthographicZoom: ortho.isOrthographicCamera ? ortho.zoom : undefined,
+        cameraDistance: camera.position.distanceTo(controlsRef.current?.target ?? new THREE.Vector3()),
+      })
+    if (focusedAreaCode && nextLevel === 'OVERVIEW') nextLevel = 'AREA'
+    setPresentationLevel(nextLevel)
+  })
+  const areaLabelPresentations = useMemo(() => PLANT_AREAS
+    .filter((area) => area.code !== 'UNASSIGNED')
+    .map((area) => ({ area, bounds: getAreaBoundingBox(visibleObjects, area.code) }))
+    .filter((entry) => entry.bounds !== null), [visibleObjects])
   const orbitMouseButtons = useMemo(
     () => getOrbitMouseButtons(layoutCrop.active, layoutCalibration.active),
     [layoutCalibration.active, layoutCrop.active],
@@ -667,7 +703,6 @@ function SceneContent({
     const sceneState = useSceneStore.getState()
     const layout = sceneState.referenceLayout
     if (!group || !layout) return
-    const levelElevation = getLevelElevation(sceneState.plantLevels, layout.levelCode === LEVEL_0 ? LEVEL_0 : LEVEL_1)
     const groupScaleX = Math.min(1000, Math.max(0.01, group.scale.x))
     const groupScaleY = Math.min(1000, Math.max(0.01, group.scale.z))
     const base = layoutScaleBaseRef.current ?? {
@@ -688,7 +723,11 @@ function SceneContent({
     }
     group.scale.set(1, 1, 1)
     updateLayout({
-      position: { x: group.position.x, y: group.position.y - levelElevation - REFERENCE_LAYOUT_Y_OFFSET, z: group.position.z },
+      position: getReferenceLayoutStoredPositionFromWorld(
+        { x: group.position.x, y: group.position.y, z: group.position.z },
+        layout,
+        sceneState.plantLevels,
+      ),
       rotation: { x: group.rotation.x + Math.PI / 2, y: group.rotation.y, z: group.rotation.z },
       uniformScale,
       stretchWidth,
@@ -733,16 +772,8 @@ function SceneContent({
     }, dirty)
   }, [camera, setProjectCamera])
 
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => captureProjectCamera(false))
-    return () => window.cancelAnimationFrame(frame)
-  }, [captureProjectCamera])
-
-  useEffect(() => {
-    if (!cameraRestoreRequest || !controlsRef.current) return
-    if (lastCameraRestoreNonceRef.current === cameraRestoreRequest.nonce) return
-    lastCameraRestoreNonceRef.current = cameraRestoreRequest.nonce
-    const saved = cameraRestoreRequest.camera
+  const restoreProjectCamera = useCallback((saved: ProjectCameraState) => {
+    if (!controlsRef.current) return
     camera.position.set(saved.position.x, saved.position.y, saved.position.z)
     if ((camera as THREE.OrthographicCamera).isOrthographicCamera && saved.zoom) {
       ;(camera as THREE.OrthographicCamera).zoom = saved.zoom
@@ -754,9 +785,24 @@ function SceneContent({
     controlsRef.current.target.set(saved.target.x, saved.target.y, saved.target.z)
     controlsRef.current.update()
     captureProjectCamera(false)
-  }, [camera, cameraRestoreRequest, captureProjectCamera])
+  }, [camera, captureProjectCamera])
 
-  const fitBox = useCallback((box: THREE.Box3, direction = camera.position.clone().sub(controlsRef.current?.target ?? new THREE.Vector3()).normalize(), up = new THREE.Vector3(0, 1, 0)) => {
+  useEffect(() => {
+    if (initialCameraRestoredRef.current || !controlsRef.current) return
+    const project = useProjectStore.getState()
+    initialCameraRestoredRef.current = true
+    lastCameraRestoreNonceRef.current = project.cameraRestoreRequest?.nonce ?? null
+    restoreProjectCamera(project.camera)
+  }, [restoreProjectCamera])
+
+  useEffect(() => {
+    if (!cameraRestoreRequest || !controlsRef.current) return
+    if (lastCameraRestoreNonceRef.current === cameraRestoreRequest.nonce) return
+    lastCameraRestoreNonceRef.current = cameraRestoreRequest.nonce
+    restoreProjectCamera(cameraRestoreRequest.camera)
+  }, [cameraRestoreRequest, restoreProjectCamera])
+
+  const fitBox = useCallback((box: THREE.Box3, direction = camera.position.clone().sub(controlsRef.current?.target ?? new THREE.Vector3()).normalize(), up = new THREE.Vector3(0, 1, 0), margin = 1.18, markDirty = true) => {
     if (box.isEmpty()) return
     if (DEBUG_CAMERA_RIGHT_CLICK) console.log('fit camera request')
     const orthoCamera = camera as THREE.OrthographicCamera
@@ -795,13 +841,13 @@ function SceneContent({
     const height = Math.max(1, max.y - min.y)
     const zoomX = viewportSize.width / width
     const zoomY = viewportSize.height / height
-    orthoCamera.zoom = Math.min(ORTHO_MAX_ZOOM, Math.max(ORTHO_MIN_ZOOM, Math.min(zoomX, zoomY) / 1.18))
+    orthoCamera.zoom = Math.min(ORTHO_MAX_ZOOM, Math.max(ORTHO_MIN_ZOOM, Math.min(zoomX, zoomY) / margin))
     orthoCamera.updateProjectionMatrix()
     if (controlsRef.current) {
       controlsRef.current.target.copy(center)
       controlsRef.current.update()
     }
-    captureProjectCamera(true)
+    captureProjectCamera(markDirty)
   }, [camera, captureProjectCamera, view.plantFrontDirection, viewportSize.height, viewportSize.width])
 
   const boundsForMode = useCallback((mode: string) => {
@@ -834,7 +880,13 @@ function SceneContent({
       fov: perspective.isPerspectiveCamera ? perspective.fov : undefined,
     })
 
-    applyCameraPreset(camera, controls, preset, view.plantFrontDirection)
+    applyCameraPreset(
+      camera,
+      controls,
+      preset,
+      view.plantFrontDirection,
+      visualPreset === 'DIGITAL_TWIN' ? PRESENTATION_LOD_CONFIG.digitalTwinIsometricElevation : undefined,
+    )
     captureProjectCamera(true)
 
     if (DEBUG_VIEW_CHANGE) console.log('view change after', {
@@ -844,7 +896,7 @@ function SceneContent({
       zoom: ortho.isOrthographicCamera ? ortho.zoom : undefined,
       fov: perspective.isPerspectiveCamera ? perspective.fov : undefined,
     })
-  }, [camera, captureProjectCamera, view.plantFrontDirection])
+  }, [camera, captureProjectCamera, view.plantFrontDirection, visualPreset])
 
   const releaseTransforming = () => {
     notifyTransformInteracting(false)
@@ -909,6 +961,38 @@ function SceneContent({
     }
     captureProjectCamera(true)
   }, [camera, captureProjectCamera, focusAreaRequest, visibleObjects])
+
+  useEffect(() => {
+    if (!overviewRequestNonce || lastOverviewNonceRef.current === overviewRequestNonce) return
+    lastOverviewNonceRef.current = overviewRequestNonce
+    const targets = objects.filter((asset) => isLevelVisible(asset.levelCode, effectiveLevelFilter) && !hiddenAssetIds?.has(asset.id))
+    const bounds = getAreaBoundingBox(targets)
+    if (!bounds) return
+    const box = new THREE.Box3(
+      new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
+      new THREE.Vector3(bounds.max.x, bounds.max.y, bounds.max.z),
+    )
+    const direction = getCameraPresetDirection(
+      'ISO_FRONT',
+      view.plantFrontDirection,
+      visualPreset === 'DIGITAL_TWIN' ? PRESENTATION_LOD_CONFIG.digitalTwinIsometricElevation : undefined,
+    )
+    fitBox(box, direction, new THREE.Vector3(0, 1, 0), PRESENTATION_LOD_CONFIG.overviewFitMargin, false)
+  }, [effectiveLevelFilter, fitBox, hiddenAssetIds, objects, overviewRequestNonce, view.plantFrontDirection, visualPreset])
+
+  useEffect(() => {
+    if (!visualizationFocusRequest || lastVisualizationFocusNonceRef.current === visualizationFocusRequest.nonce) return
+    lastVisualizationFocusNonceRef.current = visualizationFocusRequest.nonce
+    const targets = objects.filter((asset) => asset.areaCode === visualizationFocusRequest.areaCode && isLevelVisible(asset.levelCode, effectiveLevelFilter) && !hiddenAssetIds?.has(asset.id))
+    const bounds = getAreaBoundingBox(targets, visualizationFocusRequest.areaCode)
+    if (!bounds) return
+    const box = new THREE.Box3(
+      new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
+      new THREE.Vector3(bounds.max.x, bounds.max.y, bounds.max.z),
+    )
+    const currentDirection = camera.position.clone().sub(controlsRef.current?.target ?? new THREE.Vector3()).normalize()
+    fitBox(box, currentDirection, camera.up, PRESENTATION_LOD_CONFIG.areaFitMargin, false)
+  }, [camera, effectiveLevelFilter, fitBox, hiddenAssetIds, objects, visualizationFocusRequest])
 
   useEffect(() => {
     if (!cameraViewRequest) return
@@ -1169,20 +1253,18 @@ function SceneContent({
 
   return (
     <>
-      <color attach="background" args={[colors.background]} />
-      <ambientLight intensity={2.1} />
-      <directionalLight position={[12, 18, 10]} intensity={1.25} />
-      <hemisphereLight args={['#d8edf8', '#303942', 1.1]} />
-      <Floor color={colors.floor} elevation={activeElevation} onClearSelection={(event) => {
+      <VisualEnvironment theme={visualTheme} />
+      <Floor color={visualTheme.ground} elevation={activeElevation} visualPreset={visualPreset} onClearSelection={(event) => {
         if (!event.ctrlKey && !event.metaKey) guardedSelect(null)
       }} />
-      {showLevel0Grid && <gridHelper args={[GRID_SIZE, GRID_DIVISIONS, colors.gridCenter, colors.grid]} position={[0, level0Elevation + 0.022, 0]} />}
-      {showLevel1Grid && <gridHelper args={[GRID_SIZE, GRID_DIVISIONS, colors.gridCenter, colors.grid]} position={[0, level1Elevation + 0.022, 0]} />}
+      {(visualPreset === 'EDITOR' || showDigitalTwinGrid) && showLevel0Grid && <gridHelper args={[GRID_SIZE, GRID_DIVISIONS, visualTheme.gridCenter, visualTheme.grid]} position={[0, level0Elevation + 0.022, 0]} />}
+      {(visualPreset === 'EDITOR' || showDigitalTwinGrid) && showLevel1Grid && <gridHelper args={[GRID_SIZE, GRID_DIVISIONS, visualTheme.gridCenter, visualTheme.grid]} position={[0, level1Elevation + 0.022, 0]} />}
       {referenceLayoutVisible && referenceLayout && (
         <ReferenceLayoutPlane
           ref={(node) => { layoutGroupRef.current = node; setLayoutTargetObject(node) }}
           layout={referenceLayout}
-          worldY={referenceLayoutWorldY}
+          visualPreset={visualPreset}
+          worldTransform={referenceLayoutWorldTransform!}
           calibrationActive={editingEnabled && layoutCalibration.active}
           cropActive={editingEnabled && layoutCrop.active}
           cropDraft={layoutCrop.draft}
@@ -1196,9 +1278,16 @@ function SceneContent({
           }}
         />
       )}
+      {visualPreset === 'DIGITAL_TWIN' && showAreaLabels && presentationLevel === 'OVERVIEW' && !focusedAreaCode && areaLabelPresentations.map(({ area, bounds }) => (
+        <Html key={area.code} center position={[bounds!.center.x, bounds!.max.y + 1.2, bounds!.center.z]} zIndexRange={[8, 0]} pointerEvents="none">
+          <div className="area-overview-label" title={area.name}><strong>{area.code}</strong></div>
+        </Html>
+      ))}
       {editingEnabled && <axesHelper args={[3]} position={[-10, activeElevation + 0.03, 8]} />}
-      {visibleObjects.map((asset) => (
-        <SceneAsset
+      {visibleObjects.map((asset) => {
+        const outsideFocusedArea = visualPreset === 'DIGITAL_TWIN' && Boolean(focusedAreaCode) && asset.areaCode !== focusedAreaCode
+        const externallyDimmed = Boolean(dimmedAssetIds?.has(asset.id))
+        return <SceneAsset
           key={asset.id}
           asset={asset}
           selected={selectedIds.includes(asset.id)}
@@ -1210,10 +1299,25 @@ function SceneContent({
           onPointerDown={(event) => beginFloorDrag(asset, event)}
           onPointerMove={moveFloorDrag}
           onPointerUp={endFloorDrag}
+          onHoverChange={(hovered) => setHoveredAssetId(hovered ? asset.id : (current) => current === asset.id ? null : current)}
+          showLabel={visualPreset === 'EDITOR'
+            ? view.showLabels
+            : shouldShowLabel({
+              asset,
+              labelLOD,
+              labelsEnabled: view.showLabels,
+              selected: selectedIds.includes(asset.id),
+              hovered: hoveredAssetId === asset.id,
+              maintenanceStatus: assetVisualStates?.get(asset.id)?.status,
+              focusedAreaCode,
+            })}
           visualState={assetVisualStates?.get(asset.id)}
-          dimmed={Boolean(dimmedAssetIds?.has(asset.id))}
+          dimmed={externallyDimmed || (outsideFocusedArea && focusMode === 'DIM')}
+          dimOpacity={externallyDimmed ? 0.18 : PRESENTATION_LOD_CONFIG.focusDimOpacity}
+          compactBadge={visualPreset === 'DIGITAL_TWIN' && presentationLevel === 'OVERVIEW'}
+          visualPreset={visualPreset}
         />
-      ))}
+      })}
       {editingEnabled && multiSelection && <group ref={registerSelectionGroup} name="selection-transform-proxy" />}
       {editingEnabled && selectedAsset && transformTarget && transformTargetIsCurrent && selectionCanTransform && !view.editLayout && !layoutCalibration.active && !layoutCrop.active && (
         <TransformControls
@@ -1369,6 +1473,11 @@ function SceneAsset({
   onPointerUp,
   visualState,
   dimmed,
+  dimOpacity,
+  showLabel,
+  onHoverChange,
+  compactBadge,
+  visualPreset,
 }: {
   asset: IndustrialAsset
   selected: boolean
@@ -1382,6 +1491,11 @@ function SceneAsset({
   onPointerUp: (event: any) => void
   visualState?: AssetVisualState
   dimmed: boolean
+  dimOpacity: number
+  showLabel: boolean
+  onHoverChange: (hovered: boolean) => void
+  compactBadge: boolean
+  visualPreset: VisualPreset
 }) {
   const objectRef = useRef<THREE.Group | null>(null)
   const setObjectRef = useCallback((node: THREE.Group | null) => {
@@ -1397,12 +1511,12 @@ function SceneAsset({
         const stored = material.userData.maintenanceOriginalOpacity
         if (stored === undefined) material.userData.maintenanceOriginalOpacity = material.opacity
         material.transparent = dimmed || material.userData.maintenanceOriginalOpacity < 1
-        material.opacity = dimmed ? Math.min(0.18, material.userData.maintenanceOriginalOpacity) : material.userData.maintenanceOriginalOpacity
+        material.opacity = dimmed ? Math.min(dimOpacity, material.userData.maintenanceOriginalOpacity) : material.userData.maintenanceOriginalOpacity
         material.depthWrite = !dimmed
         material.needsUpdate = true
       })
     })
-  }, [dimmed, asset.type])
+  }, [dimmed, dimOpacity, asset.type])
 
   const openContextMenu = (event: any) => {
     event.stopPropagation()
@@ -1419,6 +1533,9 @@ function SceneAsset({
       selected={selected}
       primary={primary}
       view={view}
+      visualPreset={visualPreset}
+      showLabel={showLabel}
+      onHoverChange={onHoverChange}
       onSelect={onSelect}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -1426,14 +1543,15 @@ function SceneAsset({
       onContextMenu={openContextMenu}
     />
     {visualState?.outlineColor && <mesh position={[asset.position.x, asset.position.y, asset.position.z]} rotation={[asset.rotation.x, asset.rotation.y, asset.rotation.z]} scale={asset.uniformScale} raycast={disabledRaycast}><boxGeometry args={[asset.size.width * 1.04, asset.size.height * 1.04, asset.size.depth * 1.04]} /><meshBasicMaterial color={visualState.outlineColor} wireframe transparent opacity={0.9} depthTest={false} /></mesh>}
-    {showBadge && <Html center position={[asset.position.x, asset.position.y + asset.size.height * asset.uniformScale * 0.65 + 0.35, asset.position.z]} zIndexRange={[20, 0]}><button className={`maintenance-3d-badge status-${status}`} title={visualState?.title ?? visualState?.label} onClick={(event) => { event.stopPropagation(); onSelect(event) }}><span>{visualState?.label}</span><strong>{visualState?.badgeCount ?? 0}</strong></button></Html>}
+    {showBadge && <Html center position={[asset.position.x, asset.position.y + asset.size.height * asset.uniformScale * 0.65 + 0.35, asset.position.z]} zIndexRange={[20, 0]}><button className={`maintenance-3d-badge status-${status}${compactBadge ? ' compact' : ''}`} title={visualState?.title ?? visualState?.label} aria-label={`${visualState?.label ?? status}: ${visualState?.badgeCount ?? 0}`} onClick={(event) => { event.stopPropagation(); onSelect(event) }}><span aria-hidden={compactBadge}>{compactBadge ? '●' : visualState?.label}</span><strong>{visualState?.badgeCount ?? 0}</strong></button></Html>}
   </>)
 }
 
 const ReferenceLayoutPlane = ReactForwardRef(function ReferenceLayoutPlane(
   {
     layout,
-    worldY,
+    visualPreset,
+    worldTransform,
     calibrationActive,
     cropActive,
     cropDraft,
@@ -1444,7 +1562,8 @@ const ReferenceLayoutPlane = ReactForwardRef(function ReferenceLayoutPlane(
     onCropDraggingChange,
   }: {
     layout: ReferenceLayout
-    worldY: number
+    visualPreset: VisualPreset
+    worldTransform: SceneWorldTransform
     calibrationActive: boolean
     cropActive: boolean
     cropDraft?: ReferenceLayout['crop']
@@ -1521,8 +1640,9 @@ const ReferenceLayoutPlane = ReactForwardRef(function ReferenceLayoutPlane(
         if (typeof ref === 'function') ref(node)
         else if (ref) ref.current = node
       }}
-      position={[layout.position.x, worldY, layout.position.z]}
-      rotation={[-Math.PI / 2 + layout.rotation.x, layout.rotation.y, layout.rotation.z]}
+      position={[worldTransform.position.x, worldTransform.position.y, worldTransform.position.z]}
+      rotation={[worldTransform.rotation.x, worldTransform.rotation.y, worldTransform.rotation.z]}
+      scale={[worldTransform.scale.x, worldTransform.scale.y, worldTransform.scale.z]}
       userData={{ referenceLayout: true }}
     >
       <mesh
@@ -1581,7 +1701,7 @@ const ReferenceLayoutPlane = ReactForwardRef(function ReferenceLayoutPlane(
         }}
       >
         <primitive object={geometry} attach="geometry" />
-        <meshBasicMaterial map={texture} transparent opacity={layout.opacity} depthWrite={false} depthTest toneMapped={false} />
+        <meshBasicMaterial map={texture} transparent opacity={layout.opacity * (visualPreset === 'DIGITAL_TWIN' ? PRESENTATION_LOD_CONFIG.digitalTwinLayoutOpacityFactor : 1)} depthWrite={false} depthTest toneMapped={false} />
       </mesh>
       {cropActive && (
         <CropEditor

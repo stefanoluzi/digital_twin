@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import initialPlant from '../data/plant.json'
 import { AREA_FILTER_ALL, normalizeAreaCode, type AreaFilter } from '../config/areas'
 import { PLANT_FRONT_DIRECTION, type CameraPresetId, type PlantFrontDirection } from '../config/cameraPresets'
 import {
@@ -302,8 +301,6 @@ function serializeLayout(layout: ReferenceLayout | null, includeTexture: boolean
   }
 }
 
-const cloneInitial = () => normalizeObjects(structuredClone(initialPlant) as unknown[])
-
 interface HistorySnapshot {
   objects: IndustrialAsset[]
   plantLevels: PlantLevelDefinition[]
@@ -510,7 +507,7 @@ export const useSceneStore = create<SceneState>((set, get) => {
   })
 
   return ({
-  objects: cloneInitial(),
+  objects: [],
   selectedObjectId: null,
   selectedObjectIds: [],
   primarySelectedObjectId: null,

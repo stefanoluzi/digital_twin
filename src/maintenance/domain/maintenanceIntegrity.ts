@@ -70,7 +70,7 @@ export function summarizeAssetMaintenance(data: MaintenanceData, assetId: string
 export function renameMaintenanceAsset(data: MaintenanceData, oldId: string, newId: string): MaintenanceData {
   if (oldId === newId) return structuredClone(data)
   if (data.equipment.some((item) => item.assetId === newId && item.assetId !== oldId)) throw new Error(`Ya existe Equipment vinculado al asset ${newId}.`)
-  return { ...structuredClone(data), equipment: data.equipment.map((item) => item.assetId === oldId ? { ...item, assetId: newId } : structuredClone(item)) }
+  return { ...structuredClone(data), equipment: data.equipment.map((item) => item.assetId === oldId ? { ...item, assetId: newId } : structuredClone(item)), lcoCouplings: { ...structuredClone(data.lcoCouplings), cageAssetIds: Object.fromEntries(Object.entries(data.lcoCouplings.cageAssetIds).map(([cageId, assetId]) => [cageId, assetId === oldId ? newId : assetId])) } }
 }
 
 export function applyAssetDeletePolicy(data: MaintenanceData, assetId: string, policy: AssetDeletePolicy): MaintenanceData {
@@ -83,6 +83,7 @@ export function applyAssetDeletePolicy(data: MaintenanceData, assetId: string, p
     plans: data.plans.filter((item) => !subassemblyIds.has(item.subassemblyId)),
     events: data.events.filter((item) => !subassemblyIds.has(item.subassemblyId)),
     units: structuredClone(data.units),
+    lcoCouplings: { ...structuredClone(data.lcoCouplings), cageAssetIds: Object.fromEntries(Object.entries(data.lcoCouplings.cageAssetIds).filter(([, mappedAssetId]) => mappedAssetId !== assetId)) },
   }
 }
 
