@@ -47,6 +47,7 @@ import type { LcoHistoryRow } from '../../maintenance/domain/lcoHistorySelectors
 import { LcoInspectionTracking } from './LcoInspectionTracking'
 import { dismissLegacyLcoCandidate, importLegacyLcoCandidate, initializeLcoPersistence, replacePersistentLcoData } from '../../maintenance/services/lcoPersistenceService'
 import { getLcoBackupStats, lcoBackupFileName, parseLcoBackup, serializeLcoBackup } from '../../maintenance/services/lcoBackupService'
+import { exportLcoExcelBackup } from '../../maintenance/services/lcoExcelBackupService'
 
 type SelectedTarget = { type: 'COUPLING'; id: string } | { type: 'SHAFT'; id: string } | null
 type LcoView = 'STATE' | 'TRACKING' | 'HISTORY'
@@ -61,7 +62,7 @@ type ModalState =
 const topology = createDefaultLcoCouplingTopology()
 const displayDate = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })
 
-export function LcoCouplingsScreen({ standalone = false }: { standalone?: boolean }) {
+export function LcoCouplingsScreen({ standalone = false, standaloneThemeControl }: { standalone?: boolean; standaloneThemeControl?: ReactNode }) {
   const maintenance = useMaintenanceStore()
   const importRef = useRef<HTMLInputElement>(null)
   const [filter, setFilter] = useState<LcoFilter>('ALL')
@@ -72,6 +73,7 @@ export function LcoCouplingsScreen({ standalone = false }: { standalone?: boolea
   const [highlightedCouplingId, setHighlightedCouplingId] = useState<string | null>(null)
   const [pendingImport, setPendingImport] = useState<LcoCouplingModuleData | null>(null)
   const [importError, setImportError] = useState('')
+  const [exportingExcel, setExportingExcel] = useState(false)
   const states = useMemo(() => new Map(topology.couplings.map((coupling) => [coupling.id, getLcoCouplingState(maintenance.lcoCouplings, coupling.id, maintenance.referenceDate)])), [maintenance.lcoCouplings, maintenance.referenceDate])
   const shaftStates = useMemo(() => new Map(topology.shafts.map((shaft) => [shaft.id, getLcoShaftState(maintenance.lcoCouplings, shaft.cageNumber, shaft.position, maintenance.referenceDate)])), [maintenance.lcoCouplings, maintenance.referenceDate])
   const summary = useMemo(() => getLcoCouplingSummary(maintenance.lcoCouplings, maintenance.referenceDate), [maintenance.lcoCouplings, maintenance.referenceDate])
@@ -87,6 +89,17 @@ export function LcoCouplingsScreen({ standalone = false }: { standalone?: boolea
     const blob = new Blob([serializeLcoBackup(maintenance.lcoCouplings)], { type: 'application/json' })
     const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = lcoBackupFileName(); anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 0)
   }
+  const exportExcel = async () => {
+    try {
+      setImportError('')
+      setExportingExcel(true)
+      await exportLcoExcelBackup(maintenance.lcoCouplings, maintenance.referenceDate)
+    } catch (error) {
+      setImportError(error instanceof Error ? `No se pudo generar el Excel: ${error.message}` : 'No se pudo generar el Excel.')
+    } finally {
+      setExportingExcel(false)
+    }
+  }
   const readImport = async (file?: File) => {
     if (!file) return
     try { setImportError(''); setPendingImport(parseLcoBackup(await file.text())) }
@@ -96,7 +109,7 @@ export function LcoCouplingsScreen({ standalone = false }: { standalone?: boolea
   if (maintenance.lcoStorageStatus === 'IDLE' || maintenance.lcoStorageStatus === 'LOADING') return <main className="lco-couplings-screen lco-storage-loading"><strong>Inicializando almacenamiento local…</strong><span>Preparando los 32 acoplamientos.</span></main>
 
   return <main className="lco-couplings-screen">
-    {standalone ? <header className="lco-standalone-header"><div><small>LACO 1</small><h1>Acoplamientos LCO</h1><span className="lco-local-storage-note" title="Los datos permanecen en este navegador. Utilice Exportar respaldo para realizar copias o trasladarlos.">● Datos almacenados localmente en este equipo</span></div><div className="lco-standalone-actions"><StorageStatus status={maintenance.lcoStorageStatus} error={maintenance.lcoStorageError} /><button onClick={exportBackup}>Exportar respaldo</button><button onClick={() => importRef.current?.click()}>Importar respaldo</button><button onClick={() => setModal({ type: 'SETTINGS' })}>Configurar</button><button className="primary" onClick={() => setModal({ type: 'INSPECTION', couplingIds: [] })}>+ Registrar inspección</button><input ref={importRef} hidden type="file" accept=".lcocouplings,.json,application/json" onChange={(event) => { void readImport(event.target.files?.[0]); event.target.value = '' }} /></div></header> : <header className="lco-screen-header">
+    {standalone ? <header className="lco-standalone-header"><div><small>LACO 1</small><h1>Acoplamientos LCO</h1><span className="lco-local-storage-note" title="Los datos permanecen en este navegador. Guarde periódicamente el respaldo restaurable y el informe Excel.">● Datos almacenados localmente en este equipo</span></div><div className="lco-standalone-actions">{standaloneThemeControl}<StorageStatus status={maintenance.lcoStorageStatus} error={maintenance.lcoStorageError} /><button title="Copia completa para recuperar la aplicación, incluidas las fotos" onClick={exportBackup}>Guardar respaldo</button><button title="Informe legible con estado actual e historial" disabled={exportingExcel} onClick={() => void exportExcel()}>{exportingExcel ? 'Generando Excel…' : 'Exportar Excel'}</button><button onClick={() => importRef.current?.click()}>Importar respaldo</button><button onClick={() => setModal({ type: 'SETTINGS' })}>Configurar</button><button className="primary" onClick={() => setModal({ type: 'INSPECTION', couplingIds: [] })}>+ Registrar inspección</button><input ref={importRef} hidden type="file" accept=".lcocouplings,.json,application/json" onChange={(event) => { void readImport(event.target.files?.[0]); event.target.value = '' }} /></div></header> : <header className="lco-screen-header">
       <div><small>MÓDULO ESPECIALIZADO · LAMINADOR CONTINUO</small><h1>Estado Acoplamientos LCO</h1><p>REDUCTOR → ACOPLAMIENTO → ALUNGA → ACOPLAMIENTO → JAULA</p></div>
       <div className="lco-header-actions"><label>Fecha de referencia<input type="date" value={maintenance.referenceDate} onChange={(event) => maintenance.setReferenceDate(event.target.value)} /></label><button onClick={() => setModal({ type: 'SETTINGS' })}>Configurar</button><button className="primary" onClick={() => setModal({ type: 'INSPECTION', couplingIds: [] })}>+ Registrar inspección</button></div>
     </header>}
@@ -186,7 +199,7 @@ function LcoStateOverview({ summary }: { summary: ReturnType<typeof getLcoCoupli
 }
 
 function TrainSynoptic({ states, shaftStates, filter, highlightedCouplingId, onSelect, onInspect }: { states: Map<string, LcoCouplingState>; shaftStates: Map<string, LcoShaftState>; filter: LcoFilter; highlightedCouplingId: string | null; onSelect: (value: SelectedTarget) => void; onInspect: (ids: string[]) => void }) {
-  return <div className="lco-train-synoptic"><TrainLane side="north" cages={LCO_NORTH_CAGES} states={states} shaftStates={shaftStates} filter={filter} highlightedCouplingId={highlightedCouplingId} onSelect={onSelect} onInspect={onInspect} /><div className="lco-train-direction" aria-label="Dirección de laminación: avance del tubo hacia la derecha"><i /><span>DIRECCIÓN DE LAMINACIÓN · AVANCE DEL TUBO <b>→</b></span><i /></div><TrainLane side="south" cages={LCO_SOUTH_CAGES} states={states} shaftStates={shaftStates} filter={filter} highlightedCouplingId={highlightedCouplingId} onSelect={onSelect} onInspect={onInspect} /></div>
+  return <div className="lco-train-synoptic"><TrainLane side="north" cages={LCO_NORTH_CAGES} states={states} shaftStates={shaftStates} filter={filter} highlightedCouplingId={highlightedCouplingId} onSelect={onSelect} onInspect={onInspect} /><div className="lco-train-direction" aria-label="Dirección de laminación hacia la derecha"><i /><span>DIRECCIÓN DE LAMINACIÓN <b>→</b></span><i /></div><TrainLane side="south" cages={LCO_SOUTH_CAGES} states={states} shaftStates={shaftStates} filter={filter} highlightedCouplingId={highlightedCouplingId} onSelect={onSelect} onInspect={onInspect} /></div>
 }
 
 function TrainLane({ side, cages, states, shaftStates, filter, highlightedCouplingId, onSelect, onInspect }: { side: 'south' | 'north'; cages: LcoCageNumber[]; states: Map<string, LcoCouplingState>; shaftStates: Map<string, LcoShaftState>; filter: LcoFilter; highlightedCouplingId: string | null; onSelect: (value: SelectedTarget) => void; onInspect: (ids: string[]) => void }) {
@@ -397,7 +410,7 @@ function LcoDetailDrawer({ title, code, onClose, children }: { title: string; co
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [onClose])
-  return <div className="lco-detail-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><aside className="lco-detail-drawer"><header><div><small>{code}</small><h2>{title}</h2></div><button aria-label="Cerrar detalle" onClick={onClose}>×</button></header><div className="lco-detail-body">{children}</div></aside></div>
+  return <div className="lco-detail-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><aside className="lco-detail-drawer" role="dialog" aria-modal="true" aria-label={`${code} · ${title}`}><header><div><small>{code}</small><h2>{title}</h2></div><button aria-label="Cerrar detalle" onClick={onClose}>×</button></header><div className="lco-detail-body">{children}</div></aside></div>
 }
 
 function freshnessLabel(state: LcoCouplingState) { return ({ FRESH: 'Dato reciente', STALE: 'Dato desactualizado', VERY_STALE: 'Dato muy desactualizado', NO_INSPECTION: 'Sin inspección registrada' } as const)[state.freshness] }

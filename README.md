@@ -65,13 +65,26 @@ npm run preview
 
 Open `http://127.0.0.1:5173/lco-couplings` to use the LCO coupling inspection module without loading a plant project or the 3D editor. Inspections, replacements, configuration, and photo blobs are saved automatically in the browser's versioned IndexedDB database (`LACO1_MAINTENANCE`).
 
-This storage belongs to the current browser profile and device. It is not synchronized between computers. Use **Exportar respaldo** and **Importar respaldo** to move or safeguard the complete portable dataset, including photos.
+This storage belongs to the current browser profile and device. It is not synchronized between computers. Use **Guardar respaldo** and **Importar respaldo** to move or recover the complete portable dataset, including photos. Use **Exportar Excel** to produce a human-readable report with a summary, the current state of all 32 couplings, the full inspection/replacement history, and photo metadata.
+
+The repository also includes a dedicated LCO-only build. It does not bundle the 3D editor or the rest of the Maintenance platform:
+
+```bash
+npm run dev:lco
+npm run build:lco
+npm run preview:lco
+```
+
+`npm run build:lco` creates `dist-lco/`, a portable Windows folder containing the static application, a local server, `Iniciar Acoplamientos LCO.bat`, and a Spanish quick-start guide. Copy or zip the entire folder. The destination PC only needs Node.js LTS; it does not need this repository or `npm install`.
 
 ## Available Commands
 
 - `npm run dev`: starts the Vite development server.
+- `npm run dev:lco`: starts only the standalone LCO application on port 5174.
 - `npm run build`: runs TypeScript project build and creates the Vite production bundle.
+- `npm run build:lco`: creates the portable LCO-only bundle in `dist-lco/`.
 - `npm run preview`: serves the production build locally.
+- `npm run preview:lco`: previews the standalone LCO production build on port 4174.
 
 ## Project Structure
 

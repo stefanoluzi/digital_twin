@@ -3,6 +3,10 @@ node_modules/
 
 # Build output
 dist/
+dist-lco/
+/Acoplamientos_LCO_Portable_*.zip
+/backups/
+/outputs/
 build/
 coverage/
 
