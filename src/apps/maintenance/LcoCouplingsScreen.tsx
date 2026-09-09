@@ -130,7 +130,7 @@ export function LcoCouplingsScreen({ standalone = false, standaloneThemeControl 
 
     <section className="lco-operations-layout">
       <section className="lco-train-panel">
-        <header className="lco-train-toolbar"><div><small>VISTA DE PLANTA · TREN DE LAMINACIÓN</small><strong>Sinóptico longitudinal</strong></div><WearLegend /></header>
+        <header className="lco-train-toolbar"><div><small>VISTA DE PLANTA</small><strong>Laminador continuo</strong></div><WearLegend /></header>
         <TrainSynoptic states={states} shaftStates={shaftStates} filter={filter} highlightedCouplingId={highlightedCouplingId} onSelect={setSelected} onInspect={(ids) => setModal({ type: 'INSPECTION', couplingIds: ids })} />
       </section>
       <LcoActivityPanel data={maintenance.lcoCouplings} onOpenTarget={openHistoryTarget} onOpenPhotos={setGallery} />
