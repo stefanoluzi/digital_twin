@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { PlantScene, type AssetVisualState } from '../../components/Scene/PlantScene'
 import { getMaintenanceAssetVisualStateMap } from '../../maintenance/domain/maintenanceSelectors'
 import { useMaintenanceStore } from '../../maintenance/store/maintenanceStore'
@@ -6,6 +6,7 @@ import { useSceneStore } from '../../store/sceneStore'
 import { useProjectStore } from '../../store/projectStore'
 import { openProjectFile } from '../../services/projectSessionService'
 import { navigate } from '../../shared/navigation'
+import { AppNavigation } from '../../shared/AppNavigation'
 import { MaintenanceContextPanel } from './MaintenanceContextPanel'
 import { MaintenanceSidebar } from './MaintenanceSidebar'
 import { MaintenanceTopBar } from './MaintenanceTopBar'
@@ -13,14 +14,25 @@ import { ReplacementsScreen } from './ReplacementsScreen'
 import { AREA_FILTER_ALL, type PlantAreaCode } from '../../config/areas'
 import { useVisualizationStore } from '../../visualization/visualizationStore'
 import { LcoCouplingsScreen } from './LcoCouplingsScreen'
-import { getActiveMaintenanceModule } from './maintenanceModules'
+import { getActiveMaintenanceModule, MAINTENANCE_MODULES } from './maintenanceModules'
+
+const PlannerApp = lazy(() => import('../../planner/PlannerApp'))
 
 const visualLabels = { CURRENT: 'Vigente', DUE_SOON: 'Próximo', OVERDUE: 'Vencido', NO_DATA: 'Sin datos', INACTIVE: 'Inactivo' } as const
 
 export function MaintenanceApp() {
   const activeModule = getActiveMaintenanceModule(window.location.pathname)
   if (activeModule.id === 'LCO_COUPLINGS') return <MaintenanceLcoShell />
+  if (activeModule.id === 'PLANNER') return <MaintenancePlannerShell />
   return <MaintenancePlatformWorkspace />
+}
+
+function MaintenancePlannerShell() {
+  return <div className="planner-platform-shell">
+    <AppNavigation active="MAINTENANCE" />
+    <header className="planner-module-strip"><strong>LACO 1 Maintenance</strong><nav aria-label="Módulos de Maintenance">{MAINTENANCE_MODULES.map((module) => <button key={module.id} className={module.id === 'PLANNER' ? 'active' : ''} onClick={() => navigate(module.path)}>{module.label}</button>)}</nav></header>
+    <Suspense fallback={<main className="app-route-loading">Cargando Planner…</main>}><PlannerApp embedded /></Suspense>
+  </div>
 }
 
 function MaintenanceLcoShell() {

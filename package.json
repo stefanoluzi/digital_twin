@@ -6,18 +6,29 @@
   "scripts": {
     "dev": "vite",
     "dev:lco": "vite --config vite.lco.config.ts",
+    "dev:planner": "vite --config vite.planner.config.ts",
     "test": "vitest run",
     "build": "tsc -b && vite build",
     "build:lco": "tsc -b && vite build --config vite.lco.config.ts",
+    "build:planner": "tsc -b && vite build --config vite.planner.config.ts",
     "preview": "vite preview",
-    "preview:lco": "vite preview --config vite.lco.config.ts"
+    "preview:lco": "vite preview --config vite.lco.config.ts",
+    "preview:planner": "vite preview --config vite.planner.config.ts"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "date-fns": "^4.4.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.43.0",
     "pdfjs-dist": "^6.1.200",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "recharts": "^3.10.1",
+    "tailwindcss": "^4.3.3",
     "three": "^0.172.0",
     "write-excel-file": "^4.1.1",
     "zustand": "^5.0.3"

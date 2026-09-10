@@ -4,9 +4,12 @@ node_modules/
 # Build output
 dist/
 dist-lco/
+dist-planner/
 /Acoplamientos_LCO_Portable_*.zip
+/Planner_Mantenimiento_Portable_*.zip
 /backups/
 /outputs/
+/.integration-source/
 build/
 coverage/
 

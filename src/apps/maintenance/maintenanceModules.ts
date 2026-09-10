@@ -1,4 +1,4 @@
-export type MaintenanceModuleId = 'TWIN' | 'REPLACEMENTS' | 'LCO_COUPLINGS'
+export type MaintenanceModuleId = 'TWIN' | 'REPLACEMENTS' | 'PLANNER' | 'LCO_COUPLINGS'
 
 export interface MaintenanceModuleDefinition {
   id: MaintenanceModuleId
@@ -10,6 +10,7 @@ export interface MaintenanceModuleDefinition {
 export const MAINTENANCE_MODULES: MaintenanceModuleDefinition[] = [
   { id: 'TWIN', label: 'Twin', path: '/maintenance/twin', specialized: false },
   { id: 'REPLACEMENTS', label: 'Recambios', path: '/maintenance/replacements', specialized: false },
+  { id: 'PLANNER', label: 'Planner', path: '/maintenance/planner', specialized: true },
   { id: 'LCO_COUPLINGS', label: 'Acoplamientos LCO', path: '/maintenance/lco-couplings', specialized: true },
 ]
 

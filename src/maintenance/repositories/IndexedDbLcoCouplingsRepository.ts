@@ -1,12 +1,15 @@
 import { normalizeLcoCouplingData } from '../data/lcoCouplingNormalizer'
 import { createEmptyLcoCouplingData, type CouplingInspectionEvent, type CouplingReplacementEvent, type ExtensionShaftReplacementEvent, type LcoCouplingEvent, type LcoCouplingModuleData, type LcoPhotoAttachment } from '../domain/lcoCouplings'
 import type { LcoCouplingsRepository } from './LcoCouplingsRepository'
-
-const DB_NAME = 'LACO1_MAINTENANCE'
-const DB_VERSION = 1
-const EVENTS = 'lcoEvents'
-const ATTACHMENTS = 'lcoAttachments'
-const CONFIG = 'lcoConfig'
+import {
+  indexedDbRequest as request,
+  indexedDbTransactionDone as transactionDone,
+  LCO_ATTACHMENTS_STORE as ATTACHMENTS,
+  LCO_CONFIG_STORE as CONFIG,
+  LCO_EVENTS_STORE as EVENTS,
+  MAINTENANCE_DB_NAME,
+  openMaintenanceDatabase,
+} from './maintenanceIndexedDb'
 
 interface StoredAttachment {
   id: string
@@ -20,7 +23,7 @@ interface StoredAttachment {
 }
 
 export class IndexedDbLcoCouplingsRepository implements LcoCouplingsRepository {
-  constructor(private readonly dbName = DB_NAME) {}
+  constructor(private readonly dbName = MAINTENANCE_DB_NAME) {}
 
   async load(): Promise<LcoCouplingModuleData> {
     const db = await this.open()
@@ -96,20 +99,7 @@ export class IndexedDbLcoCouplingsRepository implements LcoCouplingsRepository {
   }
 
   private open() {
-    return new Promise<IDBDatabase>((resolve, reject) => {
-      const openRequest = indexedDB.open(this.dbName, DB_VERSION)
-      openRequest.onupgradeneeded = () => {
-        const db = openRequest.result
-        if (!db.objectStoreNames.contains(EVENTS)) db.createObjectStore(EVENTS, { keyPath: 'id' })
-        if (!db.objectStoreNames.contains(ATTACHMENTS)) {
-          const store = db.createObjectStore(ATTACHMENTS, { keyPath: 'id' })
-          store.createIndex('eventId', 'eventId', { unique: false })
-        }
-        if (!db.objectStoreNames.contains(CONFIG)) db.createObjectStore(CONFIG)
-      }
-      openRequest.onsuccess = () => resolve(openRequest.result)
-      openRequest.onerror = () => reject(openRequest.error ?? new Error('No se pudo abrir IndexedDB.'))
-    })
+    return openMaintenanceDatabase(this.dbName)
   }
 }
 
@@ -156,6 +146,3 @@ function deleteAttachmentsForEvent(store: IDBObjectStore, eventId: string) {
     cursor.onerror = () => reject(cursor.error)
   })
 }
-
-function request<T>(value: IDBRequest<T>) { return new Promise<T>((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error) }) }
-function transactionDone(transaction: IDBTransaction) { return new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); transaction.onabort = () => reject(transaction.error ?? new Error('Transacción IndexedDB cancelada.')) }) }
