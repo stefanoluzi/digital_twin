@@ -31,6 +31,21 @@ export function CoverageByAreaChart({ rows, onSelect }: { rows: CoverageRow[]; o
   </section>
 }
 
+function areaTone(row: CoverageRow) {
+  return !row.total ? 'no-data' : row.percent >= COVERAGE_TARGET_PERCENT ? 'high' : row.percent >= 50 ? 'medium' : 'low'
+}
+
+export function CoverageByAreaCards({ rows, onSelect, showLayout, onToggleLayout }: { rows: CoverageRow[]; onSelect: (id: string) => void; showLayout: boolean; onToggleLayout: () => void }) {
+  return <section className="spares-panel area-coverage-cards">
+    <header><div><small>COBERTURA DE REPUESTOS POR ÁREA</small><h2>Cobertura por área</h2></div><div className="area-card-actions"><span className="area-card-legend"><i className="tone-high" />Alta ≥ {COVERAGE_TARGET_PERCENT}% <i className="tone-medium" />Media 50–{COVERAGE_TARGET_PERCENT - 1}% <i className="tone-low" />Baja &lt; 50%</span><button type="button" className={showLayout ? 'active' : ''} aria-pressed={showLayout} onClick={onToggleLayout}>{showLayout ? 'Ocultar layout' : 'Ver layout de planta'}</button></div></header>
+    <div className="area-card-grid">
+      {rows.map((row) => <button type="button" key={row.id} className={`area-coverage-card tone-${areaTone(row)}`} onClick={() => onSelect(row.id)} aria-label={`${row.id}: ${row.total ? `${row.percent}% de cobertura, ${row.covered} de ${row.total} cubiertos` : 'sin datos'}. Ver repuestos`}>
+        <strong>{row.id}</strong><b>{row.total ? `${row.percent}%` : 'Sin datos'}</b><span className="area-card-progress"><i style={{ width: `${row.percent}%` }} /></span><span>Críticos cubiertos <em>{row.covered} / {row.total}</em></span><span>Sin cobertura <em>{row.uncovered}</em></span>
+      </button>)}
+    </div>
+  </section>
+}
+
 export function CoverageCauseDonut({ data, selected, onSelect }: { data: CriticalSparesData; selected: CoverageCause | 'ALL'; onSelect: (cause: CoverageCause) => void }) {
   const rows = coverageCauses(data)
   const total = rows.reduce((sum, row) => sum + row.count, 0)
@@ -49,11 +64,11 @@ export function CoverageCauseDonut({ data, selected, onSelect }: { data: Critica
 
 export function CoverageByGmbChart({ data, selected, onSelect, onList }: { data: CriticalSparesData; selected: string; onSelect: (id: string) => void; onList: (id: string) => void }) {
   const rows = coverageByGmb(data)
-  return <section className="spares-panel gmb-chart"><header><div><small>03 · RESPONSABILIDAD ACTUAL</small><h2>Cobertura por Responsable</h2></div><span>Click en un responsable para filtrar el Dashboard</span></header>
+  return <section className="spares-panel gmb-chart"><header><div><small>RESPONSABLES GMB</small><h2>Cobertura por responsable</h2></div><span>Seleccioná un responsable para ver sus repuestos</span></header>
     <div className="gmb-bars">{rows.map((row) => <div key={row.id} className={`gmb-row ${!row.areas.length || row.inactive ? 'low-priority' : ''} ${selected === row.id ? 'selected' : selected !== 'ALL' ? 'muted-selection' : ''}`}>
-      <button className="gmb-main" aria-pressed={selected === row.id} onClick={() => onSelect(row.id)} title={`${row.name}\nÁreas: ${row.areas.join(', ') || 'Sin áreas asignadas'}\n${coverageText(row)}\nClick para filtrar el Dashboard. Segundo click para quitar.`}>
+      <button className="gmb-main" aria-pressed={selected === row.id} onClick={() => onSelect(row.id)} title={`${row.name}\nÁreas: ${row.areas.join(', ') || 'Sin áreas asignadas'}\n${coverageText(row)}\nVer repuestos del responsable.`}>
         <span className="gmb-person"><strong>{row.name}</strong><small>Áreas: {row.areas.join(' · ') || 'Sin áreas asignadas'}</small></span>{row.areas.length > 0 ? <CoverageBar row={row} /> : <span className="no-areas-bar" />}<b>{row.total ? `${row.percent}%` : '—'}</b><span>{row.total ? `${row.covered} / ${row.total}` : 'Sin datos'}</span><strong className={`gmb-risk ${row.uncovered ? '' : 'no-risk'}`}>{row.uncovered} sin cobertura</strong>
       </button><button className="gmb-list" onClick={() => onList(row.id)} aria-label={`Ver repuestos de ${row.name}`}>Ver repuestos ↗</button>
-    </div>)}{!rows.length && <p className="chart-empty">Sin responsables configurados.</p>}</div><p className="chart-footnote">Comparativa entre responsables · respeta el resto de filtros activos.</p>
+    </div>)}{!rows.length && <p className="chart-empty">Sin responsables configurados.</p>}</div><p className="chart-footnote">Comparativa por GMB según las áreas asignadas a cada responsable.</p>
   </section>
 }

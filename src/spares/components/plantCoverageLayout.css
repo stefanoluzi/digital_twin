@@ -10,16 +10,27 @@
 .spares-app .plant-area-overlay { position:absolute; z-index:1; display:grid; place-items:center; padding:0; border:2px solid var(--zone); border-radius:2px; background:color-mix(in srgb,var(--zone) 19%,transparent); color:#fff; transition:background .15s,box-shadow .15s; cursor:pointer; }
 .spares-app .plant-area-overlay:hover,.spares-app .plant-area-overlay:focus-visible,.spares-app .plant-area-overlay.selected { z-index:3; background:color-mix(in srgb,var(--zone) 30%,transparent); box-shadow:0 0 0 2px #fff,0 0 14px var(--zone); outline:0; }
 .spares-app .plant-area-irregular { position:absolute; inset:0; z-index:2; width:100%; height:100%; overflow:visible; pointer-events:none; }
-.spares-app .plant-area-irregular path { fill:color-mix(in srgb,var(--zone) 19%,transparent); stroke:var(--zone); stroke-width:5; vector-effect:non-scaling-stroke; pointer-events:visiblePainted; cursor:pointer; transition:fill .15s; }
+.spares-app .plant-area-irregular path { fill:color-mix(in srgb,var(--zone) 19%,transparent); stroke:var(--zone); stroke-width:2; vector-effect:non-scaling-stroke; pointer-events:visiblePainted; cursor:pointer; transition:fill .15s; }
 .spares-app .plant-area-irregular:hover path,.spares-app .plant-area-irregular:focus-visible path,.spares-app .plant-area-irregular.selected path { fill:color-mix(in srgb,var(--zone) 30%,transparent); }
 .spares-app .plant-area-irregular:focus-visible { outline:3px solid var(--sp-accent); outline-offset:-3px; }
-.spares-app .plant-irregular-label { pointer-events:none; }.spares-app .plant-irregular-label rect { fill:var(--zone); }.spares-app .plant-irregular-label text { fill:#fff; font:800 27px 'IBM Plex Mono',monospace; }
-.spares-app .plant-area-label { max-width:100%; padding:3px 7px; border-radius:3px; background:var(--zone); color:#fff; font:800 clamp(8px,.8vw,13px)/1.1 'IBM Plex Mono',monospace; letter-spacing:.06em; box-shadow:0 1px 7px #0008; }
+.spares-app .plant-area-label { max-width:100%; display:inline-flex; align-items:center; gap:5px; padding:3px 7px; border-radius:3px; background:var(--zone); color:#fff; font:800 clamp(8px,.8vw,13px)/1.1 'IBM Plex Mono',monospace; letter-spacing:.04em; box-shadow:0 1px 7px #0008; }
+.spares-app .plant-area-label b { padding-left:5px; border-left:1px solid #ffffff80; font:inherit; }
+.spares-app .plant-irregular-label-html { position:absolute; z-index:4; transform:translate(-50%,-50%); pointer-events:none; }
 .spares-app .plant-map-stage.labels-hidden .plant-area-label { display:none; }
-.spares-app .plant-map-stage.labels-hidden .plant-irregular-label { display:none; }
+.spares-app .plant-map-stage.labels-hidden .plant-irregular-label-html { display:none; }
 .spares-app .plant-area-tooltip { position:absolute; z-index:5; bottom:calc(100% + 8px); left:50%; width:max-content; max-width:230px; display:none; flex-direction:column; gap:3px; padding:9px 11px; border:1px solid var(--sp-line); border-left:3px solid var(--zone); border-radius:3px; background:var(--sp-panel); color:var(--sp-text); box-shadow:0 8px 24px var(--sp-shadow); text-align:left; line-height:1.3; font-size:11px; transform:translateX(-50%); pointer-events:none; }
-.spares-app .plant-area-overlay:hover .plant-area-tooltip,.spares-app .plant-area-overlay:focus-visible .plant-area-tooltip { display:flex; }
+.spares-app .plant-area-overlay:hover .plant-area-tooltip,.spares-app .plant-area-overlay:focus-visible .plant-area-tooltip,.spares-app .plant-area-irregular:hover + .plant-irregular-label-html + .plant-irregular-tooltip,.spares-app .plant-area-irregular:focus-visible + .plant-irregular-label-html + .plant-irregular-tooltip { display:flex; }
+.spares-app .plant-irregular-tooltip { z-index:6; bottom:auto; transform:translate(-50%,calc(-100% - 11px)); }
 .spares-app .plant-map-footer { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:8px 13px; border-top:1px solid var(--sp-line); color:var(--sp-soft); font:700 10px 'IBM Plex Mono',monospace; }
+.spares-app .plant-map-tools button.active { border-color:var(--sp-accent); background:var(--sp-selection); color:var(--sp-accent); }
+.spares-app .plant-area-editor { padding:10px 13px 12px; border-top:1px solid var(--sp-line); background:var(--sp-panel-2); }
+.spares-app .plant-area-editor > header { display:flex; align-items:center; gap:10px; padding:0 0 9px; border:0; }
+.spares-app .plant-area-editor > header > div { display:grid; margin-right:auto; }.spares-app .plant-area-editor > header small { color:var(--sp-accent); font:700 9px 'IBM Plex Mono',monospace; letter-spacing:.07em; }.spares-app .plant-area-editor > header strong { font-size:14px; }
+.spares-app .plant-area-editor select,.spares-app .plant-area-editor button { min-height:31px; padding:5px 9px; border:1px solid var(--sp-line); border-radius:3px; background:var(--sp-panel); color:var(--sp-text); }
+.spares-app .plant-area-editor > div { display:grid; grid-template-columns:repeat(4,minmax(130px,1fr)); gap:12px; }
+.spares-app .plant-area-editor label { display:grid; gap:5px; }.spares-app .plant-area-editor label > span { display:flex; justify-content:space-between; gap:8px; color:var(--sp-soft); font-size:11px; }.spares-app .plant-area-editor label b { color:var(--sp-text); font-variant-numeric:tabular-nums; }
+.spares-app .plant-area-editor input[type='range'] { width:100%; accent-color:var(--sp-accent); }
+.spares-app .plant-area-editor > p { margin:9px 0 0; color:var(--sp-soft); font-size:10px; }
 .spares-app .plant-coverage-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:10px; }
 .spares-app .tone-high { --zone:var(--sp-green); }.spares-app .tone-medium { --zone:var(--sp-yellow); }.spares-app .tone-low { --zone:var(--sp-red); }.spares-app .tone-no-data { --zone:var(--sp-soft); }
 .spares-app .plant-coverage-legend span { color:var(--zone); }
@@ -33,6 +44,7 @@
 .spares-app .plant-card-detail { display:flex; justify-content:space-between; gap:4px; color:var(--sp-soft); font-size:9px; }.spares-app .plant-card-detail b { color:var(--sp-text); font-variant-numeric:tabular-nums; white-space:nowrap; }
 @media (max-width:800px) { .spares-app .plant-coverage-summary { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media (max-width:700px) { .spares-app .plant-layout-panel > header,.spares-app .plant-summary-panel > header { align-items:flex-start; flex-direction:column; }.spares-app .plant-map-footer { font-size:9px; } }
+@media (max-width:800px) { .spares-app .plant-area-editor > div { grid-template-columns:repeat(2,minmax(130px,1fr)); }.spares-app .plant-area-editor > header { align-items:flex-start; flex-wrap:wrap; } }
 @media (max-width:500px) { .spares-app .plant-coverage-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
 .spares-app .plant-map-tools :is(label,button,select) { font-size:calc(10px + var(--sp-type-boost,2px)); }
@@ -41,4 +53,3 @@
 .spares-app .plant-card-detail,.spares-app .plant-coverage-total small { font-size:calc(9px + var(--sp-type-boost,2px)); }
 .spares-app .plant-coverage-card.tone-no-data .plant-card-percent { font-size:calc(11px + var(--sp-type-boost,2px)); color:var(--sp-soft); }
 .spares-app .plant-area-label { font-size:calc(11px + var(--sp-type-boost,2px)); }
-.spares-app .plant-irregular-label text { font-size:calc(27px + var(--sp-type-boost,2px) + var(--sp-type-boost,2px)); }

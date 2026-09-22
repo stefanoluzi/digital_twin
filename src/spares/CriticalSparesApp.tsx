@@ -7,7 +7,8 @@ import { exportCriticalSparesBackup, initializeCriticalSparesPersistence, parseC
 import { useCriticalSparesStore } from './store/criticalSparesStore'
 import type { CriticalSparesConfig, CriticalSparesData, PhysicalSpareUnit, SpareType, SpareUnitStatus, SparesView } from './types'
 import './criticalSpares.css'
-import { CoverageByAreaChart } from './components/CoverageCharts'
+import { CoverageByAreaCards, CoverageByGmbChart } from './components/CoverageCharts'
+import { PlantCoverageLayout } from './components/PlantCoverageLayout'
 import { coverageByArea } from './domain/dashboardSelectors'
 import { areaResponsibleName, responsibleAreas, responsibleDisplayName } from './domain/areaResponsibility'
 import { ActiveFilterChips } from './components/ActiveFilterChips'
@@ -77,7 +78,11 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
       </section>}
 
       {(view === 'SPARES' || view === 'TRACKING') && <ActiveFilterChips filters={filters} data={snapshot} onRemove={clearFilter} onClear={resetFilters} />}
-      {view === 'DASHBOARD' && <Dashboard data={snapshot} onArea={(id) => { resetFilters(); setFilter('area', id); setView('SPARES') }} />}
+      {view === 'DASHBOARD' && <Dashboard
+        data={snapshot}
+        onArea={(id) => { resetFilters(); setFilter('area', id); setView('SPARES') }}
+        onResponsible={(id) => { resetFilters(); setFilter('responsible', id); setView('SPARES') }}
+      />}
       {view === 'SPARES' && <SparesList data={snapshot} items={filtered} equipment={equipment} setEquipment={(value) => setFilter('equipment', value)} onOpen={setSelectedSpareId} onEdit={(item) => setEditingSpare(item)} />}
       {view === 'TRACKING' && <TrackingView data={dashboardData} unitState={unitState} onOpen={setSelectedSpareId} />}
       {view === 'CONFIG' && <Configuration data={snapshot} isAdmin={currentUser?.role === 'ADMIN'} onChange={data.updateConfig} onExport={() => exportCriticalSparesBackup(snapshot)} onImport={() => importRef.current?.click()} onDemo={() => { if (confirm('¿Restablecer todos los datos a la demostración?')) void replaceCriticalSparesData(createDemoSparesData()) }} />}
@@ -92,7 +97,8 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
 
 function NavButton({ active, icon, children, onClick }: { active: boolean; icon: React.ReactNode; children: React.ReactNode; onClick: () => void }) { return <button className={active ? 'active' : ''} onClick={onClick}>{icon}{children}</button> }
 
-function Dashboard({ data, onArea }: { data: CriticalSparesData; onArea: (id: string) => void }) {
+function Dashboard({ data, onArea, onResponsible }: { data: CriticalSparesData; onArea: (id: string) => void; onResponsible: (id: string) => void }) {
+  const [showLayout, setShowLayout] = useState(false)
   const summary = coverageSummary(data)
   const areas = coverageByArea(data)
   const areasWithData = areas.filter((area) => area.total > 0).length
@@ -105,8 +111,10 @@ function Dashboard({ data, onArea }: { data: CriticalSparesData; onArea: (id: st
       <article className={`coverage-kpi uncovered ${summary.uncovered ? 'risk' : ''}`}><span>SIN COBERTURA</span><strong>{summary.uncovered}</strong><small>repuestos descubiertos</small></article>
       <article className="coverage-kpi"><span>RELEVAMIENTO</span><strong>{areasWithData}<em> / {areas.length}</em></strong><small>áreas con datos · {pending} pendientes</small></article>
     </section>
-    <CoverageByAreaChart rows={areas} onSelect={onArea} />
     <section className="uncovered-status" aria-label="Situación de repuestos sin cobertura"><h2>Situación de los descubiertos</h2><p>Repuestos sin cobertura con unidades en estos estados</p><div><span><strong>{statuses.repair}</strong>En reparación</span><span><strong>{statuses.purchase}</strong>En compra</span></div></section>
+    <CoverageByAreaCards rows={coverageByArea(data, 'operational')} onSelect={onArea} showLayout={showLayout} onToggleLayout={() => setShowLayout((value) => !value)} />
+    {showLayout && <PlantCoverageLayout data={data} plantData={data} totalData={data} selectedArea="ALL" onOpenArea={onArea} showSummary={false} />}
+    <CoverageByGmbChart data={data} selected="ALL" onSelect={onResponsible} onList={onResponsible} />
   </div>
 }
 
