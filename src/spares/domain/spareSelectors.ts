@@ -16,6 +16,10 @@ export function unitsForSpare(data: CriticalSparesData, spareId: string) {
   return data.units.filter((unit) => unit.spareTypeId === spareId)
 }
 
+export function hasOverduePurchase(data: CriticalSparesData, spareId: string, now = new Date()) {
+  return unitsForSpare(data, spareId).some((unit) => unit.status === 'ON_ORDER' && Boolean(unit.eta) && new Date(`${unit.eta}T23:59:59`) < now)
+}
+
 export function spareCoverage(data: CriticalSparesData, spareId: string, now = new Date()) {
   const units = unitsForSpare(data, spareId)
   const available = units.filter((unit) => AVAILABLE_STATUSES.includes(unit.status))
@@ -79,6 +83,15 @@ export function coverageSummary(data: CriticalSparesData, now = new Date()) {
   }
 }
 
+/** Repuestos descubiertos que tienen al menos una unidad en cada estado real. */
+export function uncoveredStatusCounts(data: CriticalSparesData, now = new Date()) {
+  const uncovered = data.spareTypes.map((spare) => spareCoverage(data, spare.id, now)).filter((coverage) => !coverage.covered)
+  return {
+    repair: uncovered.filter((coverage) => coverage.repair > 0).length,
+    purchase: uncovered.filter((coverage) => coverage.purchase > 0).length,
+  }
+}
+
 export function getRecoveryAction(units: PhysicalSpareUnit[], now = new Date()) {
   const repair = units.filter((unit) => unit.status === 'IN_REPAIR').sort((a, b) => daysSince(b.statusSince, now) - daysSince(a.statusSince, now))[0]
   if (repair) return { kind: 'repair', text: `En reparación hace ${daysSince(repair.statusSince, now)} días${repair.sapNotice ? ` · Aviso ${repair.sapNotice}` : ''}` }
@@ -94,7 +107,7 @@ export function getSpareAlerts(data: CriticalSparesData, spare: SpareType, now =
   if (!coverage.covered) alerts.push({ level: 'critical', text: 'Repuesto sin cobertura' })
   if (!coverage.covered && !units.some((unit) => unit.status === 'IN_REPAIR' || unit.status === 'ON_ORDER')) alerts.push({ level: 'critical', text: 'Sin acción de recuperación' })
   if (units.some((unit) => unit.status === 'IN_REPAIR' && daysSince(unit.statusSince, now) > 60)) alerts.push({ level: 'warning', text: 'Reparación abierta hace más de 60 días' })
-  if (units.some((unit) => unit.status === 'ON_ORDER' && unit.eta && new Date(`${unit.eta}T23:59:59`) < now)) alerts.push({ level: 'critical', text: 'Compra con ETA vencida' })
+  if (hasOverduePurchase(data, spare.id, now)) alerts.push({ level: 'critical', text: 'Compra con ETA vencida' })
   return alerts
 }
 

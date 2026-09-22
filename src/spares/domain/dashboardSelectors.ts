@@ -3,6 +3,8 @@ import type { CriticalSparesData, SpareType } from '../types'
 import { areaResponsibleName, responsibleAreas, spareResponsibleId, responsibleDisplayName } from './areaResponsibility'
 import { groupedCoverage, spareCoverage, unitsForSpare } from './spareSelectors'
 
+export const COVERAGE_TARGET_PERCENT = 80
+
 export type CoverageCause = 'REPAIR' | 'PURCHASE' | 'NO_ACTION'
 export const COVERAGE_CAUSES: { id: CoverageCause; name: string; color: string }[] = [
   { id: 'REPAIR', name: 'En reparación', color: 'var(--sp-yellow)' },
@@ -11,8 +13,8 @@ export const COVERAGE_CAUSES: { id: CoverageCause; name: string; color: string }
 ]
 
 /** Una sola causa por tipo: reparación tiene prioridad sobre compra. */
-export function principalCoverageCause(data: CriticalSparesData, spareId: string): CoverageCause | null {
-  const coverage = spareCoverage(data, spareId)
+export function principalCoverageCause(data: CriticalSparesData, spareId: string, now = new Date()): CoverageCause | null {
+  const coverage = spareCoverage(data, spareId, now)
   if (coverage.covered) return null
   return coverage.repair ? 'REPAIR' : coverage.purchase ? 'PURCHASE' : 'NO_ACTION'
 }

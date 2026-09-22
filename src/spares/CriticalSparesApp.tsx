@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Boxes, ClipboardList, Download, LayoutDashboard, PackageOpen, Plus, Search, Settings, Upload, Wrench, X } from 'lucide-react'
+import { AlertTriangle, Boxes, ClipboardList, Download, LayoutDashboard, PackageOpen, Plus, Search, Settings, Upload, X } from 'lucide-react'
 import { PLANT_AREAS, OPERATIONAL_PLANT_AREAS, type PlantAreaCode } from '../config/areas'
 import { createDemoSparesData } from './data/demoSpares'
-import { coverageSummary, daysSince, formatDate, recoveryDetails, selectSpares, trackingSituations, getSpareAlerts, spareCoverage, STATUS_LABELS, unitsForSpare } from './domain/spareSelectors'
+import { coverageSummary, daysSince, formatDate, recoveryDetails, trackingSituations, getSpareAlerts, spareCoverage, STATUS_LABELS, uncoveredStatusCounts, unitsForSpare } from './domain/spareSelectors'
 import { exportCriticalSparesBackup, initializeCriticalSparesPersistence, parseCriticalSparesBackup, replaceCriticalSparesData } from './services/criticalSparesPersistenceService'
 import { useCriticalSparesStore } from './store/criticalSparesStore'
 import type { CriticalSparesConfig, CriticalSparesData, PhysicalSpareUnit, SpareType, SpareUnitStatus, SparesView } from './types'
 import './criticalSpares.css'
-import { CoverageByAreaChart, CoverageCauseDonut, CoverageByGmbChart } from './components/CoverageCharts'
-import { type DashboardFilters, type CoverageCause } from './domain/dashboardSelectors'
+import { CoverageByAreaChart } from './components/CoverageCharts'
+import { coverageByArea } from './domain/dashboardSelectors'
 import { areaResponsibleName, responsibleAreas, responsibleDisplayName } from './domain/areaResponsibility'
 import { ActiveFilterChips } from './components/ActiveFilterChips'
 import { useDashboardFilters } from './components/useDashboardFilters'
-import { dashboardSelections, DEFAULT_DASHBOARD_FILTERS } from './domain/dashboardFilters'
+import { dashboardSelections } from './domain/dashboardFilters'
 import { readSparesTheme, saveSparesTheme } from './services/themePreference'
-import { PlantCoverageLayout } from './components/PlantCoverageLayout'
+import { readSparesTextSize, saveSparesTextSize, type SparesTextSize } from './services/textSizePreference'
 
 const CORE_AREAS = OPERATIONAL_PLANT_AREAS
 const statuses = Object.entries(STATUS_LABELS) as [SpareUnitStatus, string][]
@@ -30,7 +30,8 @@ async function fileAsDataUrl(file?: File) {
 export default function CriticalSparesApp({ embedded = false }: { embedded?: boolean }) {
   const data = useCriticalSparesStore()
   const [theme, setTheme] = useState(readSparesTheme)
-  const { filters, view, setFilter, toggleFilter, clearFilter, resetFilters, setView } = useDashboardFilters()
+  const [textSize, setTextSize] = useState(readSparesTextSize)
+  const { filters, view, setFilter, clearFilter, resetFilters, setView } = useDashboardFilters()
   const { query, area, category, responsible, coverage, equipment, unitState, cause } = filters
   const [selectedSpareId, setSelectedSpareId] = useState<string | null>(null)
   const [editingSpare, setEditingSpare] = useState<SpareType | 'NEW' | null>(null)
@@ -44,12 +45,11 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
   const selections = useMemo(() => dashboardSelections(snapshot, filters), [data.spareTypes, data.units, data.history, data.config, filters])
   const dashboardData = selections.result
   const filtered = dashboardData.spareTypes
-  const showResponsibleSpares = (id: string) => { setFilter('responsible', id); setView('SPARES') }
   const importBackup = async (file?: File) => { if (!file) return; try { await replaceCriticalSparesData(await parseCriticalSparesBackup(file)) } catch (error) { alert(error instanceof Error ? error.message : 'No se pudo importar el respaldo.') } }
 
-  return <div className={`spares-app theme-${theme} ${embedded ? 'embedded' : ''}`}>
+  return <div className={`spares-app theme-${theme} text-${textSize} ${view === 'DASHBOARD' ? 'dashboard-view' : ''} ${embedded ? 'embedded' : ''}`}>
     <header className="spares-header">
-      <div className="spares-brand"><span>RC</span><div><small>MÓDULO OPERACIONAL · LC1C</small><h1>Repuestos Críticos</h1></div></div>
+      <div className="spares-brand"><span>RC</span><h1>Repuestos Críticos - LC1C</h1></div>
       <nav aria-label="Navegación Repuestos Críticos">
         <NavButton active={view === 'DASHBOARD'} onClick={() => setView('DASHBOARD')} icon={<LayoutDashboard />}>Dashboard</NavButton>
         <NavButton active={view === 'SPARES'} onClick={() => setView('SPARES')} icon={<Boxes />}>Repuestos</NavButton>
@@ -58,13 +58,14 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
       </nav>
       <div className="spares-session">
         <button className="ghost spares-theme-toggle" onClick={() => { const next = theme === 'light' ? 'dark' : 'light'; setTheme(next); saveSparesTheme(next) }} aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}>{theme === 'light' ? '☾ Modo oscuro' : '☀ Modo claro'}</button>
+        <label className="spares-text-size">Tamaño de letra<select aria-label="Tamaño de letra" value={textSize} onChange={(event) => { const next = event.target.value as SparesTextSize; setTextSize(next); saveSparesTextSize(next) }}><option value="compact">Normal</option><option value="comfortable">Grande</option><option value="large">Muy grande</option></select></label>
         <span className={`storage ${data.storageStatus.toLowerCase()}`}>{data.storageStatus === 'SAVING' ? 'Guardando…' : data.storageStatus === 'ERROR' ? 'Error local' : '● Guardado local'}</span>
         <label>Usuario<select value={data.config.currentUserId} onChange={(event) => data.updateConfig({ ...data.config, currentUserId: event.target.value })}>{data.config.users.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.role}</option>)}</select></label>
       </div>
     </header>
 
     <main className="spares-main">
-      {view !== 'CONFIG' && <section className="spares-toolbar">
+      {(view === 'SPARES' || view === 'TRACKING') && <section className="spares-toolbar">
         <label className="spares-search"><Search /><input value={query} onChange={(event) => setFilter('query', event.target.value)} placeholder="Buscar SAP, repuesto, plano, equipo o GMB…" /></label>
         <select aria-label="Área" value={area} onChange={(event) => setFilter('area', event.target.value)}><option value="ALL">Todas las áreas</option>{CORE_AREAS.map((item) => <option key={item.code} value={item.code}>{item.code}</option>)}</select>
         <select aria-label="Categoría" value={category} onChange={(event) => setFilter('category', event.target.value)}><option value="ALL">Todas las categorías</option>{data.config.categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
@@ -75,8 +76,8 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
         <button className="primary" onClick={() => setEditingSpare('NEW')}><Plus /> Nuevo repuesto</button>
       </section>}
 
-      {view !== 'CONFIG' && <ActiveFilterChips filters={filters} data={snapshot} onRemove={clearFilter} onClear={resetFilters} />}
-      {view === 'DASHBOARD' && <Dashboard data={dashboardData} selections={selections} filters={filters} onOpen={setSelectedSpareId} onArea={(id) => toggleFilter('area', id)} onResponsible={(id) => toggleFilter('responsible', id)} onCause={(id) => toggleFilter('cause', id)} onList={showResponsibleSpares} onLayoutArea={(id) => { setFilter('area', id); setView('SPARES') }} />}
+      {(view === 'SPARES' || view === 'TRACKING') && <ActiveFilterChips filters={filters} data={snapshot} onRemove={clearFilter} onClear={resetFilters} />}
+      {view === 'DASHBOARD' && <Dashboard data={snapshot} onArea={(id) => { resetFilters(); setFilter('area', id); setView('SPARES') }} />}
       {view === 'SPARES' && <SparesList data={snapshot} items={filtered} equipment={equipment} setEquipment={(value) => setFilter('equipment', value)} onOpen={setSelectedSpareId} onEdit={(item) => setEditingSpare(item)} />}
       {view === 'TRACKING' && <TrackingView data={dashboardData} unitState={unitState} onOpen={setSelectedSpareId} />}
       {view === 'CONFIG' && <Configuration data={snapshot} isAdmin={currentUser?.role === 'ADMIN'} onChange={data.updateConfig} onExport={() => exportCriticalSparesBackup(snapshot)} onImport={() => importRef.current?.click()} onDemo={() => { if (confirm('¿Restablecer todos los datos a la demostración?')) void replaceCriticalSparesData(createDemoSparesData()) }} />}
@@ -91,28 +92,23 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
 
 function NavButton({ active, icon, children, onClick }: { active: boolean; icon: React.ReactNode; children: React.ReactNode; onClick: () => void }) { return <button className={active ? 'active' : ''} onClick={onClick}>{icon}{children}</button> }
 
-function Dashboard({ data, selections, filters, onOpen, onArea, onResponsible, onCause, onList, onLayoutArea }: { data: CriticalSparesData; selections: ReturnType<typeof dashboardSelections>; filters: DashboardFilters; onOpen: (id: string) => void; onArea: (id: string) => void; onResponsible: (id: string) => void; onCause: (cause: CoverageCause) => void; onList: (id: string) => void; onLayoutArea: (id: string) => void }) {
-  const [presentation, setPresentation] = useState<'charts' | 'layout'>('charts')
-  const hasFilters = (Object.keys(filters) as (keyof DashboardFilters)[]).some((key) => filters[key] !== DEFAULT_DASHBOARD_FILTERS[key])
+function Dashboard({ data, onArea }: { data: CriticalSparesData; onArea: (id: string) => void }) {
   const summary = coverageSummary(data)
-  const uncovered = data.spareTypes.filter((spare) => !spareCoverage(data, spare.id).covered).sort((a, b) => spareCoverage(data, b.id).uncoveredSince - spareCoverage(data, a.id).uncoveredSince)
-  return <><div className="coverage-presentation-tabs" role="tablist" aria-label="Vista de cobertura"><button role="tab" aria-selected={presentation === 'charts'} className={presentation === 'charts' ? 'active' : ''} onClick={() => setPresentation('charts')}>Resumen / Gráficos</button><button role="tab" aria-selected={presentation === 'layout'} className={presentation === 'layout' ? 'active' : ''} onClick={() => setPresentation('layout')}>Cobertura por Layout</button></div>{presentation === 'layout' ? <PlantCoverageLayout data={selections.area} totalData={data} selectedArea={filters.area} onOpenArea={onLayoutArea} /> : <div className="spares-dashboard">
-    <section className="coverage-hero"><div className="coverage-ring" style={{ '--coverage': `${summary.percent * 3.6}deg` } as React.CSSProperties}><div><strong>{summary.total ? `${summary.percent}%` : '—'}</strong><span>{hasFilters ? 'selección actual' : 'cobertura global'}</span></div></div><div><small>{hasFilters ? 'COBERTURA · SELECCIÓN ACTUAL' : 'COBERTURA GLOBAL'}</small><h2>{summary.covered} de {summary.total} tipos críticos cubiertos</h2><p>Al menos una unidad en almacén o pie de máquina.</p></div></section>
-    <section className="metric-grid"><Metric label="Tipos cubiertos" value={summary.covered} tone="good" icon={<PackageOpen />} /><Metric label="Tipos sin cobertura" value={summary.uncovered} tone="danger" icon={<AlertTriangle />} /><Metric label="Unidades en reparación" value={summary.repair} tone="warning" icon={<Wrench />} /><Metric label="Unidades en compra" value={summary.purchase} tone="info" icon={<ClipboardList />} /></section>
-    <div className="dashboard-visuals"><CoverageByAreaChart data={selections.area} selected={filters.area} responsible={filters.responsible} onSelect={onArea} /><CoverageCauseDonut data={selections.cause} selected={filters.cause} onSelect={onCause} /></div>
-    <CoverageByGmbChart data={selections.responsible} selected={filters.responsible} onSelect={onResponsible} onList={onList} />
-    <section className="spares-panel priority"><header><div><small>PRIORIDAD OPERACIONAL</small><h2>Repuestos sin cobertura</h2></div><span>{uncovered.length} tipos · selección actual</span></header><div className="table-scroll"><table><thead><tr><th>Repuesto / SAP</th><th>Área</th><th>Equipos</th><th>Responsable</th><th>Situación actual</th><th>Tiempo descubierto</th><th>Acción actual</th><th>Alertas</th></tr></thead><tbody>{uncovered.map((spare) => {
-      const units = unitsForSpare(data, spare.id); const coverage = spareCoverage(data, spare.id)
-      return <tr key={spare.id} tabIndex={0} onClick={() => onOpen(spare.id)} onKeyDown={(event) => { if (event.key === 'Enter') onOpen(spare.id) }}>
-        <td><strong>{spare.name}</strong><small>{spare.sapNumber || 'Sin SAP'}</small></td><td><AreaTag code={spare.area} /></td><td>{equipmentNames(data, spare)}</td><td>{areaResponsibleName(data, spare.area)}</td>
-        <td>{[coverage.repair && `${coverage.repair} ${coverage.repair === 1 ? 'unidad' : 'unidades'} en reparación`, coverage.purchase && `${coverage.purchase} ${coverage.purchase === 1 ? 'unidad' : 'unidades'} en compra`].filter(Boolean).join(' · ') || 'Sin unidades disponibles'}</td>
-        <td><strong>Sin cobertura hace {coverage.uncoveredSince} días</strong>{coverage.uncoveredAt === spare.createdAt && <small>Desde el alta · sin cobertura previa documentada</small>}</td><td>{recoveryDetails(units)}</td><td>{getSpareAlerts(data, spare).map((alert) => <span key={alert.text} className={`alert-chip ${alert.level}`}>{alert.text}</span>)}</td>
-      </tr>
-    })}{!uncovered.length && <tr><td colSpan={8} className="empty-table">{summary.total ? 'Todos los tipos seleccionados están cubiertos.' : 'No hay repuestos para estos filtros.'}</td></tr>}</tbody></table></div></section>
-  </div>}</>
+  const areas = coverageByArea(data)
+  const areasWithData = areas.filter((area) => area.total > 0).length
+  const pending = areas.length - areasWithData
+  const statuses = uncoveredStatusCounts(data)
+  return <div className="coverage-one-page">
+    <section className="coverage-kpis" aria-label="Cobertura global de planta">
+      <article className="coverage-kpi total"><span>COBERTURA TOTAL</span><strong>{summary.total ? `${summary.percent}%` : '—'}</strong><small>{summary.covered} de {summary.total} repuestos cubiertos</small></article>
+      <article className="coverage-kpi"><span>REPUESTOS CRÍTICOS</span><strong>{summary.total}</strong><small>repuestos relevados</small></article>
+      <article className={`coverage-kpi uncovered ${summary.uncovered ? 'risk' : ''}`}><span>SIN COBERTURA</span><strong>{summary.uncovered}</strong><small>repuestos descubiertos</small></article>
+      <article className="coverage-kpi"><span>RELEVAMIENTO</span><strong>{areasWithData}<em> / {areas.length}</em></strong><small>áreas con datos · {pending} pendientes</small></article>
+    </section>
+    <CoverageByAreaChart rows={areas} onSelect={onArea} />
+    <section className="uncovered-status" aria-label="Situación de repuestos sin cobertura"><h2>Situación de los descubiertos</h2><p>Repuestos sin cobertura con unidades en estos estados</p><div><span><strong>{statuses.repair}</strong>En reparación</span><span><strong>{statuses.purchase}</strong>En compra</span></div></section>
+  </div>
 }
-
-function Metric({ label, value, tone, icon }: { label: string; value: number; tone: string; icon: React.ReactNode }) { return <article className={`metric ${tone}`}><span>{icon}</span><div><strong>{value}</strong><small>{label}</small></div></article> }
 
 function SparesList({ data, items, equipment, setEquipment, onOpen, onEdit }: { data: CriticalSparesData; items: SpareType[]; equipment: string; setEquipment: (value: string) => void; onOpen: (id: string) => void; onEdit: (item: SpareType) => void }) {
   return <section className="spares-panel list-panel"><header><div><small>MAESTRO DE REPUESTOS</small><h2>{items.length} tipos de repuesto</h2></div><select value={equipment} onChange={(event) => setEquipment(event.target.value)}><option value="ALL">Todos los equipos</option>{data.config.equipment.map((item) => <option key={item.id} value={item.id}>{item.area} · {item.name}</option>)}</select></header><div className="table-scroll"><table><thead><tr><th>Repuesto / SAP</th><th>Área</th><th>Categoría</th><th>Equipos compatibles</th><th>GMB</th><th>Unidades</th><th>Disponibles</th><th>Reparación</th><th>Compra</th><th>Cobertura</th><th></th></tr></thead><tbody>{items.map((spare) => { const coverage = spareCoverage(data, spare.id); return <tr key={spare.id} tabIndex={0} onClick={() => onOpen(spare.id)} onKeyDown={(event) => { if (event.key === 'Enter') onOpen(spare.id) }}><td><button className="link" onClick={() => onOpen(spare.id)}><strong>{spare.name}</strong><small>{spare.sapNumber || 'Sin SAP'}</small></button></td><td><AreaTag code={spare.area} /></td><td>{categoryName(data, spare.categoryId)}</td><td>{equipmentNames(data, spare)}</td><td>{areaResponsibleName(data, spare.area)}</td><td>{coverage.total}</td><td>{coverage.available}</td><td>{coverage.repair}</td><td>{coverage.purchase}</td><td><CoverageBadge covered={coverage.covered} count={coverage.available} /></td><td><button className="ghost" onClick={(event) => { event.stopPropagation(); onEdit(spare) }}>Editar</button></td></tr> })}</tbody></table></div></section>

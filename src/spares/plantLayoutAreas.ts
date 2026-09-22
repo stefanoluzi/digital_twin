@@ -15,11 +15,12 @@ export type PlantLayoutArea = {
   labelY?: number
 }
 
-export const HG_PERIMETER_PATH = 'M 422 138 H 635 V 280 H 489 C 489 349 439 405 371 405 C 303 405 253 349 253 280 C 253 211 303 155 371 155 C 389 155 407 159 422 169 V 138 Z'
+/** El arco sigue el círculo exterior del horno del plano: centro ~367,271; radio 120 px. */
+export const HG_PERIMETER_PATH = 'M 421 139 H 628 V 267 H 487 A 120 120 0 1 1 421 164 V 139 Z'
 
 export const PLANT_LAYOUT_AREAS: PlantLayoutArea[] = [
   { id: 'COBA',   x: 0.3,  y: 10.9, width: 12.1, height: 27.8 },
-  { id: 'HG',     x: 13.8, y: 24.2, width: 20.8, height: 46.8, path: HG_PERIMETER_PATH, labelX: 371, labelY: 280 },
+  { id: 'HG',     x: 13.4, y: 24.4, width: 20.8, height: 44.2, path: HG_PERIMETER_PATH, labelX: 367, labelY: 271 },
   { id: 'LP',     x: 26.9, y: 51.8, width: 14.4, height: 11.4 },
   { id: 'REMA',   x: 25.1, y: 64.9, width: 7.6,  height: 12.5 },
   { id: 'LCO',    x: 32.7, y: 64.9, width: 8.6,  height: 12.5 },

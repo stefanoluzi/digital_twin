@@ -1,10 +1,32 @@
 import { describe, expect, it } from 'vitest'
 import { createDemoSparesData } from '../src/spares/data/demoSpares'
 import { coverageByArea, coverageByGmb, coverageCauses, filterDashboardSpares, principalCoverageCause, type DashboardFilters } from '../src/spares/domain/dashboardSelectors'
-import { coverageSummary, selectSpares } from '../src/spares/domain/spareSelectors'
+import { coverageSummary, selectSpares, uncoveredStatusCounts } from '../src/spares/domain/spareSelectors'
 
 const all: DashboardFilters = { query: '', area: 'ALL', category: 'ALL', responsible: 'ALL', equipment: 'ALL', coverage: 'ALL', unitState: 'ALL', cause: 'ALL' }
 describe('Dashboard ejecutivo de repuestos', () => {
+  it('calcula los cuatro datos globales y estados reales de repuestos descubiertos', () => {
+    const data = createDemoSparesData()
+    data.spareTypes = data.spareTypes.slice(0, 3).map((spare, index) => ({ ...spare, area: index === 2 ? 'LCO' : 'HG' }))
+    data.units = [
+      { id: 'available', spareTypeId: data.spareTypes[0].id, status: 'WAREHOUSE', statusSince: '2026-08-01', comment: '', location: '' },
+      { id: 'covered-repair', spareTypeId: data.spareTypes[0].id, status: 'IN_REPAIR', statusSince: '2026-08-01', comment: '', location: '' },
+      { id: 'late-order', spareTypeId: data.spareTypes[1].id, status: 'ON_ORDER', statusSince: '2026-08-01', eta: '2026-09-10', comment: '', location: '' },
+      { id: 'uncovered-repair', spareTypeId: data.spareTypes[2].id, status: 'IN_REPAIR', statusSince: '2026-08-01', comment: '', location: '' },
+    ]
+    data.history = []
+    const now = new Date('2026-09-21T12:00:00')
+    expect(coverageSummary(data, now)).toMatchObject({ total: 3, covered: 1, uncovered: 2, percent: 33 })
+    expect(uncoveredStatusCounts(data, now)).toEqual({ repair: 1, purchase: 1 })
+    expect(coverageByArea(data).filter((area) => area.total > 0)).toHaveLength(2)
+    expect(coverageByArea(data).filter((area) => area.total === 0)).toHaveLength(9)
+    expect(coverageByArea(data).find((area) => area.id === 'HG')).toMatchObject({ total: 2, percent: 50 })
+    expect(coverageByArea(data).find((area) => area.id === 'COBA')).toMatchObject({ total: 0, percent: 0 })
+    const selected = selectSpares(data, data.spareTypes.filter((spare) => spare.area === 'HG'))
+    expect(coverageSummary(selected)).toMatchObject({ total: 2, covered: 1, percent: 50 })
+    expect(coverageSummary(data, now).percent).toBe(33)
+  })
+
   it('cuenta tipos y prioriza reparación sobre compra, sin incluir tipos cubiertos', () => {
     const data = createDemoSparesData()
     const spare = data.spareTypes[0]

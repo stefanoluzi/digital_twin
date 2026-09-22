@@ -30,7 +30,7 @@ describe('Cobertura por Layout', () => {
 
   it('usa el contorno irregular del HG sin superponer LP, REMA ni los demás rectángulos', () => {
     const area = (id: string) => PLANT_LAYOUT_AREAS.find((item) => item.id === id)!
-    expect(area('HG').path).toMatch(/^M 422 138 H 635 V 280/)
+    expect(area('HG').path).toMatch(/^M 421 139 H 628 V 267 H 487 A 120 120/)
     expect(area('LP').x * 18.38).toBeGreaterThan(489 + 2.5)
     expect(area('LP').y * 5.7).toBeGreaterThan(280 + 2.5)
     expect(area('REMA').x * 18.38).toBeGreaterThan(455)
