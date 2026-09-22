@@ -8,6 +8,7 @@ import {
   serializePlannerBackup,
 } from '../src/planner/services/plannerBackupService'
 import {
+  CRITICAL_SPARES_STATE_STORE,
   MAINTENANCE_DB_NAME,
   MAINTENANCE_DB_VERSION,
   PLANNER_STATE_STORE,
@@ -16,8 +17,9 @@ import {
 describe('integración del Planner de mantenimiento', () => {
   it('comparte la base versionada de Maintenance sin mezclar los registros LCO', () => {
     expect(MAINTENANCE_DB_NAME).toBe('LACO1_MAINTENANCE')
-    expect(MAINTENANCE_DB_VERSION).toBe(2)
+    expect(MAINTENANCE_DB_VERSION).toBe(3)
     expect(PLANNER_STATE_STORE).toBe('plannerState')
+    expect(CRITICAL_SPARES_STATE_STORE).toBe('criticalSparesState')
   })
 
   it('respeta proyectos intencionalmente vacíos y normaliza tareas legacy', () => {

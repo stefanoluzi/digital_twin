@@ -1,10 +1,11 @@
 export const MAINTENANCE_DB_NAME = 'LACO1_MAINTENANCE'
-export const MAINTENANCE_DB_VERSION = 2
+export const MAINTENANCE_DB_VERSION = 3
 
 export const LCO_EVENTS_STORE = 'lcoEvents'
 export const LCO_ATTACHMENTS_STORE = 'lcoAttachments'
 export const LCO_CONFIG_STORE = 'lcoConfig'
 export const PLANNER_STATE_STORE = 'plannerState'
+export const CRITICAL_SPARES_STATE_STORE = 'criticalSparesState'
 
 export function openMaintenanceDatabase(dbName = MAINTENANCE_DB_NAME) {
   return new Promise<IDBDatabase>((resolve, reject) => {
@@ -18,6 +19,7 @@ export function openMaintenanceDatabase(dbName = MAINTENANCE_DB_NAME) {
       }
       if (!db.objectStoreNames.contains(LCO_CONFIG_STORE)) db.createObjectStore(LCO_CONFIG_STORE)
       if (!db.objectStoreNames.contains(PLANNER_STATE_STORE)) db.createObjectStore(PLANNER_STATE_STORE)
+      if (!db.objectStoreNames.contains(CRITICAL_SPARES_STATE_STORE)) db.createObjectStore(CRITICAL_SPARES_STATE_STORE)
     }
     openRequest.onsuccess = () => {
       const db = openRequest.result

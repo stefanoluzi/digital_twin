@@ -1,0 +1,122 @@
+/* Dashboard ejecutivo: compacto, sin alterar los estilos del resto del módulo. */
+.spares-app .spares-dashboard { grid-template-columns:minmax(360px,1.25fr) minmax(580px,2fr); gap:12px; }
+.spares-app .coverage-hero { min-height:112px; padding:12px 18px; gap:16px; background:var(--sp-panel); }
+.spares-app .coverage-hero h2 { font-size:17px; }
+.spares-app .coverage-ring { width:88px; height:88px; box-shadow:none; }
+.spares-app .coverage-ring::before { width:66px; height:66px; }
+.spares-app .coverage-ring strong { font-size:24px; }
+.spares-app .coverage-ring span { font-size:7px; }
+.spares-app .metric { padding:12px; gap:10px; }
+.spares-app .metric strong { font-size:32px; line-height:1.2; font-variant-numeric:tabular-nums; }
+.spares-app .metric small { font-size:12px; line-height:1.3; }
+.spares-app .metric > span { width:30px; height:30px; flex-shrink:0; border-radius:3px; }
+.spares-app .dashboard-visuals { grid-column:1/-1; display:grid; grid-template-columns:minmax(480px,1.65fr) minmax(360px,1fr); gap:12px; }
+.spares-app .dashboard-visuals header,.spares-app .gmb-chart header { min-height:48px; padding:8px 13px; }
+.spares-app .dashboard-visuals header h2,.spares-app .gmb-chart header h2 { font-size:16px; }
+.spares-app .area-chart select { padding:5px 7px; border:1px solid var(--sp-line); background:var(--sp-panel); color:var(--sp-text); font-size:11px; }
+.spares-app .executive-bars { padding:6px 12px 0; }
+.spares-app .executive-row { display:flex; align-items:center; min-height:24px; gap:12px; }
+.spares-app .bar-main { display:flex; align-items:center; flex:1; min-width:0; gap:12px; padding:3px 0; border:0; background:transparent; color:var(--sp-text); text-align:left; }
+.spares-app .bar-label { width:60px; flex-shrink:0; font:700 11px 'IBM Plex Mono',monospace; }
+.spares-app .executive-bar { position:relative; display:block; flex:1; min-width:40px; height:16px; pointer-events:none; }
+.spares-app .executive-bar > i { position:absolute; top:2px; left:0; height:12px; width:2px; }
+.spares-app .bar-percent { width:42px; text-align:right; font-variant-numeric:tabular-nums; }
+.spares-app .bar-ratio { width:65px; text-align:right; color:var(--sp-soft); font-variant-numeric:tabular-nums; font-size:11px; }
+.spares-app .bar-uncovered { width:102px; flex-shrink:0; padding:2px 0; border:0; background:transparent; color:var(--sp-red); font-size:11px; text-align:right; }
+.spares-app .bar-uncovered:disabled { opacity:1; color:var(--sp-soft); }
+.spares-app .executive-row:hover { background:var(--sp-panel-2); }
+.spares-app .executive-row.no-data .bar-main { color:var(--sp-soft); }
+.spares-app .chart-footnote { margin:6px 13px 9px; color:var(--sp-soft); font-size:10px; line-height:1.4; }
+.spares-app .cause-layout { display:grid; grid-template-columns:minmax(170px,1fr) minmax(200px,1.15fr); align-items:center; gap:4px; padding:28px 14px 18px; }
+.spares-app .cause-ring { position:relative; height:180px; min-width:0; }
+.spares-app .cause-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); display:grid; gap:2px; text-align:center; pointer-events:none; }
+.spares-app .cause-center strong { font-size:30px; font-variant-numeric:tabular-nums; }
+.spares-app .cause-center span { color:var(--sp-soft); font-size:10px; white-space:nowrap; }
+.spares-app .cause-legend { display:grid; gap:8px; }
+.spares-app .cause-legend button { display:grid; grid-template-columns:8px 1fr 24px 36px; align-items:center; gap:8px; padding:10px 0; border:0; border-bottom:1px solid var(--sp-line); background:transparent; color:var(--sp-text); text-align:left; }
+.spares-app .cause-legend button > i { width:7px; height:24px; border-radius:1px; }
+.spares-app .cause-legend button strong { font-size:19px; text-align:right; }
+.spares-app .cause-legend button b { color:var(--sp-soft); text-align:right; font-size:11px; }
+.spares-app .chart-tooltip { padding:10px; border:1px solid var(--sp-line); background:var(--sp-panel); color:var(--sp-text); font-size:12px; display:grid; gap:5px; }
+.spares-app .chart-tooltip span { color:var(--sp-soft); }
+.spares-app .chart-empty { min-height:230px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; padding:20px; text-align:center; color:var(--sp-soft); }
+.spares-app .chart-empty strong { color:var(--sp-green); font-size:16px; }
+.spares-app .gmb-bars { padding:4px 12px; max-height:230px; overflow:auto; }
+.spares-app .gmb-row { display:flex; align-items:center; gap:16px; border-bottom:1px solid var(--sp-line); }
+.spares-app .gmb-row:last-child { border:0; }
+.spares-app .gmb-row.selected { background:var(--sp-selection); }
+.spares-app .gmb-main { display:flex; align-items:center; min-width:0; flex:1; gap:18px; padding:8px 4px; border:0; background:transparent; color:var(--sp-text); text-align:left; }
+.spares-app .gmb-person { width:220px; flex-shrink:0; display:grid; gap:3px; }
+.spares-app .gmb-person small { color:var(--sp-soft); font-size:10px; }
+.spares-app .gmb-main > b { width:40px; text-align:right; }
+.spares-app .gmb-main > span:not(.executive-bar):not(.gmb-person) { width:115px; color:var(--sp-soft); }
+.spares-app .gmb-risk { width:112px; color:var(--sp-red); font-size:11px; }
+.spares-app .gmb-list { border:0; padding:8px 0; background:transparent; color:var(--sp-blue); font-size:11px; }
+.spares-app .bar-main:focus-visible,.spares-app .bar-uncovered:focus-visible,.spares-app .gmb-main:focus-visible,.spares-app .gmb-list:focus-visible,.spares-app .cause-legend button:focus-visible { outline:2px solid var(--sp-accent); outline-offset:1px; }
+.spares-app .priority th { font-size:9px; }
+@media(max-width:1400px) {
+  .spares-app .spares-dashboard { grid-template-columns:minmax(330px,1fr) minmax(560px,1.8fr); }
+  .spares-app .cause-layout { grid-template-columns:160px 1fr; padding:28px 10px 18px; }
+  .spares-app .dashboard-visuals { grid-template-columns:minmax(480px,1.4fr) minmax(350px,1fr); }
+  .spares-app .metric { gap:6px; padding:10px; }
+  .spares-app .metric > span { display:none; }
+  .spares-app .gmb-person { width:190px; }
+}
+@media(max-width:1000px) {
+  .spares-app .spares-dashboard { grid-template-columns:1fr; }
+  .spares-app .dashboard-visuals { grid-template-columns:1fr; }
+  .spares-app .metric-grid { grid-column:1; }
+  .spares-app .cause-layout { padding-block:6px; }
+  .spares-app .gmb-main { flex-wrap:wrap; gap:8px; }
+  .spares-app .gmb-person { width:100%; }
+}
+@media(max-width:600px) {
+  .spares-app .bar-main { gap:6px; }
+  .spares-app .bar-label { width:48px; }
+  .spares-app .bar-uncovered { width:80px; font-size:10px; }
+  .spares-app .bar-ratio { width:50px; }
+  .spares-app .executive-row { gap:5px; }
+}
+
+/* Selecciones cruzadas: siempre mantienen el contexto y los valores reales. */
+.spares-app .active-filter-chips { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:-4px 0 12px; min-height:28px; color:var(--sp-soft); }
+.spares-app .active-filter-chips > span { font-size:10px; text-transform:uppercase; letter-spacing:.06em; margin-right:4px; }
+.spares-app .active-filter-chips button { display:inline-flex; align-items:center; gap:8px; padding:5px 8px; border:1px solid var(--sp-accent); background:var(--sp-selection); color:var(--sp-text); border-radius:3px; font-size:11px; }
+.spares-app .active-filter-chips button b { color:var(--sp-accent); font-size:15px; line-height:1; }
+.spares-app .active-filter-chips .clear-filters { background:transparent; border-color:var(--sp-line); color:var(--sp-soft); }
+.spares-app .executive-bar::before { content:''; position:absolute; top:2px; bottom:2px; inset-inline:0; background:var(--sp-panel-2); }
+.spares-app .executive-bar.risk-track::before { background:var(--sp-risk-track); outline:1px solid var(--sp-risk-border); outline-offset:-1px; }
+.spares-app .executive-bar.empty-track::before { background:color-mix(in srgb,var(--sp-soft) 12%,var(--sp-panel)); }
+.spares-app .executive-bar .recharts-responsive-container { position:relative; }
+.spares-app .executive-row,.spares-app .gmb-row,.spares-app .cause-legend button { transition:opacity 120ms ease,background-color 120ms ease,box-shadow 120ms ease; }
+.spares-app .executive-row.selected,.spares-app .gmb-row.selected,.spares-app .cause-legend button.selected { background:var(--sp-selection); box-shadow:inset 3px 0 var(--sp-accent); }
+.spares-app .executive-row.selected .bar-label { padding-left:5px; }
+.spares-app .muted-selection { opacity:.58; }
+.spares-app .muted-selection:hover,.spares-app .muted-selection:focus-within { opacity:1; }
+.spares-app .gmb-row:hover,.spares-app .cause-legend button:hover,.spares-app .active-filter-chips button:hover { background:var(--sp-panel-2); }
+.spares-app .cause-legend button { padding-inline:8px; }
+.spares-app .cause-muted { opacity:.25; transition:opacity 120ms ease; }
+.spares-app .cause-selected { opacity:1; }
+.spares-app .bar-uncovered.no-risk,.spares-app .gmb-risk.no-risk { color:var(--sp-soft); }
+.spares-app .cause-muted:hover { opacity:.65; }
+.spares-app .cause-center span { font-size:9px; line-height:1.3; letter-spacing:.02em; }
+.spares-app .gmb-main { gap:12px; padding:6px; }
+.spares-app .gmb-person { width:200px; }
+.spares-app .gmb-main > span:not(.executive-bar):not(.gmb-person):not(.no-areas-bar) { width:72px; }
+.spares-app .gmb-main > .no-areas-bar { flex:1; min-width:40px; }
+.spares-app .gmb-bars { max-height:205px; }
+.spares-app .active-filter-chips button:focus-visible { outline:2px solid var(--sp-accent); outline-offset:2px; }
+@media(prefers-reduced-motion:reduce) {
+  .spares-app .executive-row,.spares-app .gmb-row,.spares-app .cause-legend button,.spares-app .cause-muted { transition:none; }
+}
+
+
+.spares-app .gmb-row.low-priority:not(.selected) { opacity:.65; }
+.spares-app .gmb-row.low-priority:not(.selected) .gmb-person strong { font-weight:500; color:var(--sp-soft); }
+.spares-app .gmb-row.low-priority:hover,.spares-app .gmb-row.low-priority:focus-within { opacity:1; }
+.spares-app .active-filter-chips { border-left:3px solid var(--sp-accent); padding:5px 8px; background:var(--sp-selection); }
+.spares-app .active-filter-chips > span { font-weight:700; color:var(--sp-accent); }
+.spares-app .active-filter-chips button { background:var(--sp-panel); font-weight:600; }
+.spares-app .active-filter-chips .clear-filters { background:var(--sp-primary); border-color:var(--sp-primary); color:var(--sp-on-primary); }
+.spares-app .cause-legend button:hover,.spares-app .gmb-row:hover { background:var(--sp-hover); }
+.spares-app .cause-legend button:disabled { opacity:1; color:var(--sp-soft); background:transparent; }

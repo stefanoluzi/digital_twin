@@ -17,6 +17,7 @@ import { LcoCouplingsScreen } from './LcoCouplingsScreen'
 import { getActiveMaintenanceModule, MAINTENANCE_MODULES } from './maintenanceModules'
 
 const PlannerApp = lazy(() => import('../../planner/PlannerApp'))
+const CriticalSparesApp = lazy(() => import('../../spares/CriticalSparesApp'))
 
 const visualLabels = { CURRENT: 'Vigente', DUE_SOON: 'Próximo', OVERDUE: 'Vencido', NO_DATA: 'Sin datos', INACTIVE: 'Inactivo' } as const
 
@@ -24,7 +25,16 @@ export function MaintenanceApp() {
   const activeModule = getActiveMaintenanceModule(window.location.pathname)
   if (activeModule.id === 'LCO_COUPLINGS') return <MaintenanceLcoShell />
   if (activeModule.id === 'PLANNER') return <MaintenancePlannerShell />
+  if (activeModule.id === 'CRITICAL_SPARES') return <MaintenanceCriticalSparesShell />
   return <MaintenancePlatformWorkspace />
+}
+
+function MaintenanceCriticalSparesShell() {
+  return <div className="planner-platform-shell">
+    <AppNavigation active="MAINTENANCE" />
+    <header className="planner-module-strip"><strong>LACO 1 Maintenance</strong><nav aria-label="Módulos de Maintenance">{MAINTENANCE_MODULES.map((module) => <button key={module.id} className={module.id === 'CRITICAL_SPARES' ? 'active' : ''} onClick={() => navigate(module.path)}>{module.label}</button>)}</nav></header>
+    <Suspense fallback={<main className="app-route-loading">Cargando Repuestos Críticos…</main>}><CriticalSparesApp embedded /></Suspense>
+  </div>
 }
 
 function MaintenancePlannerShell() {

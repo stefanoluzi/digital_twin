@@ -1,0 +1,70 @@
+/* Paleta industrial del módulo. Inspiración corporativa, no colores oficiales.
+   Editar aquí las familias cromáticas; los componentes consumen estos tokens. */
+.spares-app {
+  color-scheme:dark;
+  --sp-brand:#71b2ce;
+  --sp-success:#65ac87;
+  --sp-risk:#e46148;
+  --sp-warning:#c9a64f;
+  --sp-info:#70acd0;
+  --sp-bg:#111a21;
+  --sp-panel:#19252e;
+  --sp-panel-2:#26343e;
+  --sp-header:#142029;
+  --sp-field:#121d25;
+  --sp-line:#41515d;
+  --sp-soft:#a2b0ba;
+  --sp-text:#e5ebef;
+  --sp-body:#c3cdd4;
+  --sp-scroll:#607583;
+  --sp-primary:#006581;
+  --sp-on-primary:#ffffff;
+  --sp-overlay:#081219cc;
+  --sp-shadow:#00000055;
+  --sp-risk-surface:#281e19;
+  --sp-risk-track:#482b22;
+  --sp-success-surface:#1c322a;
+  --sp-warning-surface:#332d20;
+  --sp-info-surface:#1d303f;
+  --sp-selection:#233c4a;
+  --sp-hover:#2a3c48;
+
+  /* Compatibilidad con gráficos y componentes existentes. */
+  --sp-accent:var(--sp-brand);
+  --sp-green:var(--sp-success);
+  --sp-red:var(--sp-risk);
+  --sp-yellow:var(--sp-warning);
+  --sp-blue:var(--sp-info);
+  --sp-risk-border:color-mix(in srgb,var(--sp-risk) 55%,var(--sp-line));
+  --sp-success-border:color-mix(in srgb,var(--sp-success) 55%,var(--sp-line));
+  --sp-warning-border:color-mix(in srgb,var(--sp-warning) 55%,var(--sp-line));
+  --sp-info-border:color-mix(in srgb,var(--sp-info) 55%,var(--sp-line));
+}
+.spares-app.theme-light {
+  color-scheme:light;
+  --sp-brand:#006581;
+  --sp-success:#246b46;
+  --sp-risk:#af2c1f;
+  --sp-warning:#806014;
+  --sp-info:#21688e;
+  --sp-bg:#f1f3f4;
+  --sp-panel:#ffffff;
+  --sp-panel-2:#e7ecef;
+  --sp-header:#edf1f3;
+  --sp-field:#ffffff;
+  --sp-line:#c7d0d6;
+  --sp-soft:#52636f;
+  --sp-text:#203440;
+  --sp-body:#354b59;
+  --sp-scroll:#8b9da8;
+  --sp-overlay:#172d3c80;
+  --sp-shadow:#172d3c24;
+  /* Fondos cálidos de riesgo, evitando mezclas rosadas/magenta. */
+  --sp-risk-surface:#f4eee7;
+  --sp-risk-track:#e9d8cb;
+  --sp-success-surface:#eaf0e9;
+  --sp-warning-surface:#f2eedf;
+  --sp-info-surface:#e8eff3;
+  --sp-selection:#dcebf1;
+  --sp-hover:#e9f0f4;
+}

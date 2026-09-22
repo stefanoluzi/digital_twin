@@ -1,0 +1,36 @@
+.spares-app .plant-coverage-view { display:grid; gap:12px; }
+.spares-app .plant-layout-panel,.spares-app .plant-summary-panel { border-radius:6px; overflow:hidden; }
+.spares-app .plant-map-tools { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.spares-app .plant-map-tools label,.spares-app .plant-map-tools button { min-height:30px; display:flex; align-items:center; gap:5px; padding:5px 8px; border:1px solid var(--sp-line); border-radius:3px; background:var(--sp-panel); color:var(--sp-text); font-size:10px; }
+.spares-app .plant-map-tools select { border:0; background:transparent; color:var(--sp-text); font-size:10px; }
+.spares-app .plant-map-tools button:hover { border-color:var(--sp-accent); }
+.spares-app .plant-map-scroll { overflow-x:auto; padding:11px; background:var(--sp-panel); }
+.spares-app .plant-map-stage { position:relative; line-height:0; border:1px solid var(--sp-line); border-radius:4px; background:#fff; }
+.spares-app .plant-map-stage > img { display:block; width:100%; height:auto; }
+.spares-app .plant-area-overlay { position:absolute; z-index:1; display:grid; place-items:center; padding:0; border:2px solid var(--zone); border-radius:2px; background:color-mix(in srgb,var(--zone) 19%,transparent); color:#fff; transition:background .15s,box-shadow .15s; cursor:pointer; }
+.spares-app .plant-area-overlay:hover,.spares-app .plant-area-overlay:focus-visible,.spares-app .plant-area-overlay.selected { z-index:3; background:color-mix(in srgb,var(--zone) 30%,transparent); box-shadow:0 0 0 2px #fff,0 0 14px var(--zone); outline:0; }
+.spares-app .plant-area-irregular { position:absolute; inset:0; z-index:2; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.spares-app .plant-area-irregular path { fill:color-mix(in srgb,var(--zone) 19%,transparent); stroke:var(--zone); stroke-width:5; vector-effect:non-scaling-stroke; pointer-events:visiblePainted; cursor:pointer; transition:fill .15s; }
+.spares-app .plant-area-irregular:hover path,.spares-app .plant-area-irregular:focus-visible path,.spares-app .plant-area-irregular.selected path { fill:color-mix(in srgb,var(--zone) 30%,transparent); }
+.spares-app .plant-area-irregular:focus-visible { outline:3px solid var(--sp-accent); outline-offset:-3px; }
+.spares-app .plant-irregular-label { pointer-events:none; }.spares-app .plant-irregular-label rect { fill:var(--zone); }.spares-app .plant-irregular-label text { fill:#fff; font:800 27px 'IBM Plex Mono',monospace; }
+.spares-app .plant-area-label { max-width:100%; padding:3px 7px; border-radius:3px; background:var(--zone); color:#fff; font:800 clamp(8px,.8vw,13px)/1.1 'IBM Plex Mono',monospace; letter-spacing:.06em; box-shadow:0 1px 7px #0008; }
+.spares-app .plant-map-stage.labels-hidden .plant-area-label { display:none; }
+.spares-app .plant-map-stage.labels-hidden .plant-irregular-label { display:none; }
+.spares-app .plant-area-tooltip { position:absolute; z-index:5; bottom:calc(100% + 8px); left:50%; width:max-content; max-width:230px; display:none; flex-direction:column; gap:3px; padding:9px 11px; border:1px solid var(--sp-line); border-left:3px solid var(--zone); border-radius:3px; background:var(--sp-panel); color:var(--sp-text); box-shadow:0 8px 24px var(--sp-shadow); text-align:left; line-height:1.3; font-size:11px; transform:translateX(-50%); pointer-events:none; }
+.spares-app .plant-area-overlay:hover .plant-area-tooltip,.spares-app .plant-area-overlay:focus-visible .plant-area-tooltip { display:flex; }
+.spares-app .plant-map-footer { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:8px 13px; border-top:1px solid var(--sp-line); color:var(--sp-soft); font:700 10px 'IBM Plex Mono',monospace; }
+.spares-app .plant-coverage-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:10px; }
+.spares-app .tone-high { --zone:var(--sp-green); }.spares-app .tone-medium { --zone:var(--sp-yellow); }.spares-app .tone-low { --zone:var(--sp-red); }.spares-app .tone-no-data { --zone:var(--sp-soft); }
+.spares-app .plant-coverage-legend span { color:var(--zone); }
+.spares-app .plant-coverage-summary { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; padding:10px; }
+.spares-app .plant-coverage-total,.spares-app .plant-coverage-card { min-width:0; min-height:104px; display:flex; flex-direction:column; gap:5px; padding:9px 10px; border:1px solid color-mix(in srgb,var(--zone,var(--sp-accent)) 35%,var(--sp-line)); border-radius:4px; background:color-mix(in srgb,var(--zone,var(--sp-accent)) 7%,var(--sp-panel)); color:var(--sp-text); text-align:left; }
+.spares-app .plant-coverage-total { --zone:var(--sp-accent); }.spares-app .plant-coverage-total small { color:var(--sp-accent); font:700 9px 'IBM Plex Mono',monospace; }.spares-app .plant-coverage-total strong { color:var(--sp-accent); font-size:20px; line-height:1; }.spares-app .plant-coverage-total > span { display:flex; justify-content:space-between; gap:4px; color:var(--sp-soft); font-size:10px; }.spares-app .plant-coverage-total b { color:var(--sp-text); }
+.spares-app .plant-coverage-card:hover,.spares-app .plant-coverage-card:focus-visible { border-color:var(--zone); background:var(--sp-hover); outline:0; }
+.spares-app .plant-card-heading strong { color:var(--zone); font:800 11px 'IBM Plex Mono',monospace; }
+.spares-app .plant-card-percent { color:var(--zone); font-size:18px; font-weight:800; line-height:1; }
+.spares-app .plant-card-progress { height:4px; overflow:hidden; border-radius:3px; background:var(--sp-line); }.spares-app .plant-card-progress i { display:block; height:100%; background:var(--zone); }
+.spares-app .plant-card-detail { display:flex; justify-content:space-between; gap:4px; color:var(--sp-soft); font-size:9px; }.spares-app .plant-card-detail b { color:var(--sp-text); font-variant-numeric:tabular-nums; white-space:nowrap; }
+@media (max-width:800px) { .spares-app .plant-coverage-summary { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (max-width:700px) { .spares-app .plant-layout-panel > header,.spares-app .plant-summary-panel > header { align-items:flex-start; flex-direction:column; }.spares-app .plant-map-footer { font-size:9px; } }
+@media (max-width:500px) { .spares-app .plant-coverage-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }

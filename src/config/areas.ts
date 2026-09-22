@@ -2,9 +2,10 @@ export const PLANT_AREAS = [
   { code: 'COBA', name: 'Corte de Barras', color: '#ef4444' },
   { code: 'HG', name: 'Horno Giratorio', color: '#f97316' },
   { code: 'LP', name: 'Laminador Perforador', color: '#eab308' },
+  { code: 'REMA', name: 'Recirculacion de Mandriles', color: '#3b82f6' },
   { code: 'LCO', name: 'Laminador Continuo', color: '#22c55e' },
   { code: 'ZTREF', name: 'Zona de Transferencia', color: '#06b6d4' },
-  { code: 'REMA', name: 'Recirculacion de Mandriles', color: '#3b82f6' },
+  { code: 'HBM', name: 'Horno de Barras Móviles', color: '#d97706' },
   { code: 'LRE', name: 'Laminador Rectificador Estirador', color: '#8b5cf6' },
   { code: 'PENF', name: 'Plano de Enfriamiento', color: '#14b8a6' },
   { code: 'SHA', name: 'Sierra de Haces', color: '#f59e0b' },
@@ -13,6 +14,7 @@ export const PLANT_AREAS = [
 ] as const
 
 export type PlantAreaCode = (typeof PLANT_AREAS)[number]['code']
+export const OPERATIONAL_PLANT_AREAS = PLANT_AREAS.filter((area) => area.code !== 'UNASSIGNED')
 export type AreaFilter = 'ALL' | PlantAreaCode
 
 export const DEFAULT_AREA_CODE: PlantAreaCode = 'UNASSIGNED'

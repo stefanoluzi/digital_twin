@@ -7,13 +7,16 @@
     "dev": "vite",
     "dev:lco": "vite --config vite.lco.config.ts",
     "dev:planner": "vite --config vite.planner.config.ts",
+    "dev:spares": "vite --config vite.spares.config.ts",
     "test": "vitest run",
     "build": "tsc -b && vite build",
     "build:lco": "tsc -b && vite build --config vite.lco.config.ts",
     "build:planner": "tsc -b && vite build --config vite.planner.config.ts",
+    "build:spares": "tsc -b && vite build --config vite.spares.config.ts",
     "preview": "vite preview",
     "preview:lco": "vite preview --config vite.lco.config.ts",
-    "preview:planner": "vite preview --config vite.planner.config.ts"
+    "preview:planner": "vite preview --config vite.planner.config.ts",
+    "preview:spares": "vite preview --config vite.spares.config.ts"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",

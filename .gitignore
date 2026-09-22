@@ -5,8 +5,10 @@ node_modules/
 dist/
 dist-lco/
 dist-planner/
+dist-spares/
 /Acoplamientos_LCO_Portable_*.zip
 /Planner_Mantenimiento_Portable_*.zip
+/Repuestos_Criticos_Portable_*.zip
 /backups/
 /outputs/
 /.integration-source/
