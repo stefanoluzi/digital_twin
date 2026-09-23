@@ -1,14 +1,14 @@
-import { create } from 'zustand'
+import { create, type StateCreator } from 'zustand'
 import { createDemoSparesData } from '../data/demoSpares'
 import { normalizeCriticalSparesData } from '../data/sparesNormalizer'
 import { AVAILABLE_STATUSES, getUncoveredAt } from '../domain/spareSelectors'
 import type { CriticalSparesConfig, CriticalSparesData, PhysicalSpareUnit, SpareHistoryEvent, SpareType, SpareUnitStatus } from '../types'
 
 export type SparesStorageStatus = 'IDLE' | 'LOADING' | 'SAVING' | 'SAVED' | 'ERROR'
-type SpareDraft = Omit<SpareType, 'id' | 'createdAt' | 'updatedAt' | 'uncoveredAt'>
-type UnitDraft = Omit<PhysicalSpareUnit, 'id' | 'spareTypeId'>
+export type SpareDraft = Omit<SpareType, 'id' | 'createdAt' | 'updatedAt' | 'uncoveredAt'>
+export type UnitDraft = Omit<PhysicalSpareUnit, 'id' | 'spareTypeId'>
 
-interface CriticalSparesStore extends CriticalSparesData {
+export interface CriticalSparesStore extends CriticalSparesData {
   storageStatus: SparesStorageStatus
   storageError: string
   hydrate: (data: CriticalSparesData) => void
@@ -35,7 +35,7 @@ function coverageTransition(state: CriticalSparesData, units: PhysicalSpareUnit[
 
 function nextUnitId(data: CriticalSparesData, spare: SpareType) {
   const category = spare.categoryId.replace(/[^a-z0-9]/gi, '').slice(0, 3).toUpperCase().padEnd(3, 'X')
-  const max = data.units.reduce((current, unit) => Math.max(current, Number(unit.id.match(/(\d+)$/)?.[1] ?? 0)), 0)
+  const max = [...data.units.map((unit) => unit.id), ...data.history.map((event) => event.unitId)].reduce((current, id) => Math.max(current, Number(id.match(/(\d+)$/)?.[1] ?? 0)), 0)
   return `LC1C-${category}-${String(max + 1).padStart(4, '0')}`
 }
 
@@ -44,8 +44,8 @@ function historyFor(unit: PhysicalSpareUnit, previousStatus: SpareUnitStatus | u
   return { id: uid('history'), unitId: unit.id, spareTypeId: unit.spareTypeId, timestamp: new Date().toISOString(), user, previousStatus, nextStatus: unit.status, equipmentId: unit.installedEquipmentId, comment: unit.comment, snapshot: clone(unit) }
 }
 
-const initial = createDemoSparesData()
-export const useCriticalSparesStore = create<CriticalSparesStore>((set, get) => ({
+// The same domain mutations run in an isolated server store inside a DB transaction.
+export const criticalSparesState = (initial: CriticalSparesData): StateCreator<CriticalSparesStore> => (set, get) => ({
   ...initial,
   storageStatus: 'IDLE', storageError: '',
   hydrate: (data) => set({ ...normalizeCriticalSparesData(data) }),
@@ -79,4 +79,6 @@ export const useCriticalSparesStore = create<CriticalSparesStore>((set, get) => 
     return { units, spareTypes: previous ? coverageTransition(state, units, previous.spareTypeId, new Date().toISOString()) : state.spareTypes }
   }),
   updateConfig: (config) => set({ config: clone(config) }),
-}))
+})
+
+export const useCriticalSparesStore = create<CriticalSparesStore>(criticalSparesState(createDemoSparesData()))
