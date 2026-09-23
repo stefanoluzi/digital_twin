@@ -2,7 +2,7 @@ import type { CriticalSparesData, GmbResponsible, SpareType } from '../types'
 
 /** Etiqueta de presentación: no renombra ni reasigna datos migrados. */
 export function responsibleDisplayName(person?: Pick<GmbResponsible, 'name' | 'active'>) {
-  if (!person?.name?.trim() || /^Responsable migrado\s*\(/i.test(person.name.trim())) return 'Sin responsable asignado'
+  if (!person?.name?.trim() || /^Responsable migrado\s*\(/i.test(person.name.trim())) return 'Asignación pendiente'
   return `${person.name}${person.active ? '' : ' (inactivo)'}`
 }
 
@@ -17,9 +17,9 @@ export function spareResponsibleId(data: CriticalSparesData, spare: Pick<SpareTy
 export function areaResponsibleName(data: CriticalSparesData, areaId: string) {
   const id = areaResponsibleId(data, areaId)
   const person = data.config.responsibles.find((item) => item.id === id)
-  return person ? responsibleDisplayName(person) : 'Sin responsable GMB'
+  return person ? responsibleDisplayName(person) : 'Asignación pendiente'
 }
 
 export function responsibleAreas(data: CriticalSparesData, id: string) {
-  return data.config.areas.filter((area) => (area.responsibleGmbId || 'UNASSIGNED') === id)
+  return data.config.areas.filter((area) => area.responsibleGmbId === id)
 }

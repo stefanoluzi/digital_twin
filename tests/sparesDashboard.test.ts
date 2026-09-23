@@ -81,10 +81,10 @@ describe('Dashboard ejecutivo de repuestos', () => {
     expect(filterDashboardSpares(data, { ...all, coverage: 'COVERED', cause: 'REPAIR' })).toHaveLength(0)
   })
 
-  it('maneja selección vacía, cobertura completa y GMB sin áreas', () => {
+  it('maneja selección vacía, cobertura completa y oculta GMB sin áreas', () => {
     const data = createDemoSparesData()
     data.config.responsibles.push({ id: 'empty', name: 'Sin asignaciones', active: true })
-    expect(coverageByGmb(data).find((row) => row.id === 'empty')).toMatchObject({ total: 0, areas: [] })
+    expect(coverageByGmb(data).find((row) => row.id === 'empty')).toBeUndefined()
     const covered = selectSpares(data, filterDashboardSpares(data, { ...all, coverage: 'COVERED' }))
     expect(coverageSummary(covered).percent).toBe(100)
     expect(coverageCauses(covered).every((row) => row.count === 0)).toBe(true)

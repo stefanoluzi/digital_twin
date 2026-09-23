@@ -53,7 +53,7 @@ export function selectSpares(data: CriticalSparesData, items: SpareType[]): Crit
 }
 
 export function groupedCoverage(data: CriticalSparesData, groups: { id: string; name: string }[], dimension: 'area' | 'gmb') {
-  return groups.map((group) => ({ ...group, ...coverageSummary(selectSpares(data, data.spareTypes.filter((spare) => (dimension === 'area' ? spare.area : spareResponsibleId(data, spare) || 'UNASSIGNED') === group.id))) }))
+  return groups.map((group) => ({ ...group, ...coverageSummary(selectSpares(data, data.spareTypes.filter((spare) => (dimension === 'area' ? spare.area : spareResponsibleId(data, spare)) === group.id))) }))
 }
 
 export function recoveryDetails(units: PhysicalSpareUnit[]) {

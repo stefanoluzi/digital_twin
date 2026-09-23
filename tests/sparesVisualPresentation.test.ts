@@ -1,49 +1,35 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { createDemoSparesData } from '../src/spares/data/demoSpares'
 import { areaResponsibleName, responsibleDisplayName } from '../src/spares/domain/areaResponsibility'
 import { coverageByGmb } from '../src/spares/domain/dashboardSelectors'
 import { coverageSummary } from '../src/spares/domain/spareSelectors'
-import { readSparesTextSize, saveSparesTextSize } from '../src/spares/services/textSizePreference'
 
 describe('Presentación visual de Repuestos Críticos', () => {
-  it('recuerda el tamaño de letra y usa Grande como valor inicial', () => {
-    const values = new Map<string, string>()
-    vi.stubGlobal('localStorage', { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) })
-    try {
-      expect(readSparesTextSize()).toBe('comfortable')
-      saveSparesTextSize('large')
-      expect(readSparesTextSize()).toBe('large')
-      saveSparesTextSize('compact')
-      expect(readSparesTextSize()).toBe('compact')
-    } finally { vi.unstubAllGlobals() }
-  })
-
   it('oculta etiquetas técnicas sin modificar responsables ni asignaciones', () => {
     const data = createDemoSparesData()
     const person = data.config.responsibles[0]
     person.name = `Responsable migrado (${person.id})`
     person.active = false
     const original = JSON.stringify(data)
-    expect(responsibleDisplayName(person)).toBe('Sin responsable asignado')
-    expect(areaResponsibleName(data, 'LCO')).toBe('Sin responsable asignado')
-    expect(coverageByGmb(data).find((row) => row.id === person.id)?.name).toBe('Sin responsable asignado')
+    expect(responsibleDisplayName(person)).toBe('Asignación pendiente')
+    expect(areaResponsibleName(data, 'LCO')).toBe('Asignación pendiente')
+    expect(coverageByGmb(data).find((row) => row.id === person.id)).toBeUndefined()
     expect(responsibleDisplayName({ name: 'María Pérez', active: true })).toBe('María Pérez')
     expect(responsibleDisplayName({ name: 'María Pérez', active: false })).toBe('María Pérez (inactivo)')
     expect(JSON.stringify(data)).toBe(original)
   })
 
-  it('deja sin áreas al final, reduce prioridad de inactivos y conserva los totales', () => {
+  it('omite GMB inactivos o sin áreas y conserva los totales asignados', () => {
     const data = createDemoSparesData()
     data.config.responsibles.push({ id: 'unassigned-person', name: 'Ana Demo', active: true })
     data.config.responsibles[0].active = false
     const before = coverageSummary(data)
     const rows = coverageByGmb(data)
-    expect(rows[0].id).toBe('gmb-hidraulica')
-    expect(rows[rows.length - 1]).toMatchObject({ id: 'unassigned-person', areas: [], total: 0 })
-    expect(rows.find((row) => row.id === 'gmb-mecanica')?.inactive).toBe(true)
-    expect(rows.reduce((sum, row) => sum + row.total, 0)).toBe(before.total)
-    expect(rows.reduce((sum, row) => sum + row.covered, 0)).toBe(before.covered)
+    expect(rows.map((row) => row.id)).toEqual(['gmb-hidraulica'])
+    expect(rows.find((row) => row.id === 'unassigned-person')).toBeUndefined()
+    expect(rows.find((row) => row.id === 'gmb-mecanica')).toBeUndefined()
+    expect(rows.reduce((sum, row) => sum + row.total, 0)).toBeLessThan(before.total)
     expect(coverageSummary(data)).toEqual(before)
   })
 

@@ -61,12 +61,12 @@ describe('Responsabilidad de GMB por área', () => {
     expect(normalizeCriticalSparesData(after).config.areas).toEqual(after.config.areas)
   })
 
-  it('conserva un área deliberadamente sin responsable y permite GMB inactivos sin borrar asignaciones', () => {
+  it('marca asignaciones antiguas pendientes sin presentar responsables inactivos como vigentes', () => {
     const data = createDemoSparesData()
     data.config.areas.find((area) => area.code === 'LCO')!.responsibleGmbId = undefined
     data.config.responsibles[0].active = false
     const normalized = normalizeCriticalSparesData(data)
-    expect(areaResponsibleName(normalized, 'LCO')).toBe('Sin responsable GMB')
+    expect(areaResponsibleName(normalized, 'LCO')).toBe('Asignación pendiente')
     expect(areaResponsibleName(normalized, 'PENF')).toBe('Juan Pérez DEMO (inactivo)')
   })
 })
