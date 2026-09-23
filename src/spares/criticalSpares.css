@@ -143,3 +143,6 @@
 .spares-app .uncovered-status-cards small { color:var(--sp-soft); font-size:calc(10px + var(--sp-type-boost,2px)); }
 @media (max-width:850px) { .spares-app .coverage-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }.spares-app .coverage-one-page .bar-label { width:58px; }.spares-app .uncovered-status { grid-template-columns:1fr; } }
 @media (max-width:520px) { .spares-app .uncovered-status-cards { grid-template-columns:1fr; } }
+.spares-server-error { padding: 12px; border: 1px solid var(--sp-risk); color: var(--sp-risk); white-space: pre-wrap; }
+.spares-server-error button { margin-left: 16px; }
+.spares-server-busy { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: rgba(0,0,0,.55); color: white; font-size: 20px; }

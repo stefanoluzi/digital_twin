@@ -6,7 +6,7 @@ export default defineConfig({
   base: './',
   publicDir: 'public',
   plugins: [react()],
-  server: { host: '127.0.0.1', port: 5176 },
+  server: { host: '127.0.0.1', port: 5176, proxy: { '/api': 'http://127.0.0.1:3001' } },
   preview: { host: '127.0.0.1', port: 4176 },
   build: { outDir: '../dist-spares', emptyOutDir: true },
 })

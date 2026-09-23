@@ -1,63 +1,88 @@
-import { createDemoSparesData } from '../data/demoSpares'
-import { normalizeCriticalSparesData } from '../data/sparesNormalizer'
-import { IndexedDbCriticalSparesRepository } from '../repositories/IndexedDbCriticalSparesRepository'
-import type { CriticalSparesRepository } from '../repositories/CriticalSparesRepository'
-import { useCriticalSparesStore } from '../store/criticalSparesStore'
-import type { CriticalSparesData } from '../types'
+import { HttpCriticalSparesRepository, type CentralSparesState } from '../repositories/HttpCriticalSparesRepository'
+import { useCriticalSparesStore, type SpareDraft, type UnitDraft } from '../store/criticalSparesStore'
+import { parseBackup } from '../domain/sparesValidation'
+import type { CriticalSparesConfig, CriticalSparesData } from '../types'
 
-let repository: CriticalSparesRepository | null = null
-let initializePromise: Promise<void> | null = null
-let unsubscribe: (() => void) | null = null
-let saveQueue = Promise.resolve()
-let hydrating = false
+const actorKey = 'critical-spares:actor'
+const actor = () => localStorage.getItem(actorKey) || useCriticalSparesStore.getState().config.currentUserId || 'local-user'
+const repository = new HttpCriticalSparesRepository('/api', actor)
+let revision: number | null = null
+let busy = false
+let loading: Promise<void> | null = null
 
-export function getCriticalSparesRepository() { repository ??= new IndexedDbCriticalSparesRepository(); return repository }
-
-export function initializeCriticalSparesPersistence(customRepository?: CriticalSparesRepository) {
-  if (customRepository && customRepository !== repository) { unsubscribe?.(); unsubscribe = null; initializePromise = null; repository = customRepository }
-  if (initializePromise) return initializePromise
-  initializePromise = (async () => {
-    const store = useCriticalSparesStore.getState(); store.setStorageState('LOADING')
-    try {
-      const persisted = await getCriticalSparesRepository().load()
-      const initial = persisted ?? createDemoSparesData()
-      hydrating = true; useCriticalSparesStore.getState().hydrate(initial); hydrating = false
-      if (!persisted) await getCriticalSparesRepository().replaceAll(initial)
-      useCriticalSparesStore.getState().setStorageState('SAVED')
-      unsubscribe ??= useCriticalSparesStore.subscribe((state, previous) => {
-        if (hydrating || state.spareTypes === previous.spareTypes && state.units === previous.units && state.history === previous.history && state.config === previous.config) return
-        queueSave(state)
-      })
-    } catch (error) { hydrating = false; store.setStorageState('ERROR', error instanceof Error ? error.message : 'No se pudo iniciar la base local de Repuestos.') }
-  })()
-  return initializePromise
-}
-
-function dataFrom(state: ReturnType<typeof useCriticalSparesStore.getState>): CriticalSparesData {
-  return { schemaVersion: 2, spareTypes: state.spareTypes, units: state.units, history: state.history, config: state.config }
-}
-
-function queueSave(state: ReturnType<typeof useCriticalSparesStore.getState>) {
-  useCriticalSparesStore.getState().setStorageState('SAVING')
-  const snapshot = structuredClone(dataFrom(state))
-  saveQueue = saveQueue.then(() => getCriticalSparesRepository().replaceAll(snapshot)).then(() => useCriticalSparesStore.getState().setStorageState('SAVED')).catch((error) => useCriticalSparesStore.getState().setStorageState('ERROR', error instanceof Error ? error.message : 'No se pudieron guardar los datos.'))
-}
-
-export async function replaceCriticalSparesData(data: CriticalSparesData) {
-  const normalized = normalizeCriticalSparesData(data)
-  hydrating = true; useCriticalSparesStore.getState().hydrate(normalized); hydrating = false
-  useCriticalSparesStore.getState().setStorageState('SAVING')
-  await getCriticalSparesRepository().replaceAll(normalized)
+function hydrate(state: CentralSparesState) {
+  revision = state.revision
+  const currentUserId = actor()
+  if (state.data.config.users.some((user) => user.id === currentUserId)) state.data.config.currentUserId = currentUserId
+  // v2 is validated by the server. Do not run the legacy normalizer here: it can
+  // rename catalog entries or fill missing data from the old demonstration.
+  useCriticalSparesStore.setState(structuredClone(state.data))
   useCriticalSparesStore.getState().setStorageState('SAVED')
 }
+
+export function initializeCriticalSparesPersistence() {
+  if (loading) return loading
+  if (busy) return Promise.resolve()
+  useCriticalSparesStore.getState().setStorageState('LOADING')
+  loading = repository.load().then(hydrate).catch((error) => {
+    useCriticalSparesStore.getState().setStorageState('ERROR', String(error.message))
+  }).finally(() => { loading = null })
+  return loading
+}
+
+async function mutate(operation: (revision: number) => Promise<CentralSparesState>) {
+  if (busy || loading) throw new Error('Hay una operación en curso. Esperá a que termine.')
+  if (revision === null) throw new Error('Primero conectá con el servidor.')
+  busy = true
+  useCriticalSparesStore.getState().setStorageState('SAVING')
+  try { const result = await operation(revision); hydrate(result); return result }
+  catch (error) {
+    useCriticalSparesStore.getState().setStorageState('ERROR', error instanceof Error ? error.message : 'No se pudo guardar.')
+    throw error
+  } finally { busy = false }
+}
+
+export const sparesActions = {
+  addSpare: async (draft: SpareDraft) => (await mutate((v) => repository.create(draft, v))).id!,
+  updateSpare: (id: string, draft: SpareDraft) => mutate((v) => repository.update(id, draft, v)),
+  deleteSpare: (id: string) => mutate((v) => repository.remove(id, v)),
+  addUnit: (spareTypeId: string, draft: UnitDraft) => mutate((v) => repository.createUnit(spareTypeId, draft, v)),
+  updateUnit: (id: string, draft: UnitDraft) => mutate((v) => repository.updateUnit(id, draft, v)),
+  deleteUnit: (id: string) => mutate((v) => repository.removeUnit(id, v)),
+  updateConfig: (config: CriticalSparesConfig) => mutate((v) => repository.updateConfig(config, v)),
+}
+
+// Identity is a local preference, not a shared setting that changes other PCs.
+export function selectSparesUser(currentUserId: string) {
+  localStorage.setItem(actorKey, currentUserId)
+  useCriticalSparesStore.getState().updateConfig({ ...useCriticalSparesStore.getState().config, currentUserId })
+}
+
+export async function replaceCriticalSparesData(data: CriticalSparesData) { await mutate((v) => repository.importBackup(data, v)) }
 
 export function exportCriticalSparesBackup(data: CriticalSparesData) {
   const blob = new Blob([JSON.stringify({ format: 'LACO1_CRITICAL_SPARES', version: 2, exportedAt: new Date().toISOString(), data }, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `repuestos-criticos-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url)
 }
 
-export async function parseCriticalSparesBackup(file: File) {
-  const parsed = JSON.parse(await file.text()) as { format?: string; data?: unknown }
-  if (parsed.format !== 'LACO1_CRITICAL_SPARES' || !parsed.data) throw new Error('El archivo no es un respaldo válido de Repuestos Críticos.')
-  return normalizeCriticalSparesData(parsed.data)
+export async function exportCentralSparesBackup() { exportCriticalSparesBackup((await repository.load()).data) }
+
+/** Raw read-only recovery: never opens a missing DB or normalizes/writes legacy data. */
+export async function exportLegacyIndexedDbBackup() {
+  const { MAINTENANCE_DB_NAME, CRITICAL_SPARES_STATE_STORE } = await import('../../maintenance/repositories/maintenanceIndexedDb')
+  const databases = await indexedDB.databases()
+  if (!databases.some((database) => database.name === MAINTENANCE_DB_NAME)) throw new Error('No hay una base local anterior en este navegador/origen.')
+  const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open(MAINTENANCE_DB_NAME); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
+  try {
+    if (!db.objectStoreNames.contains(CRITICAL_SPARES_STATE_STORE)) throw new Error('No hay respaldo local de Repuestos.')
+    const raw = await new Promise<CriticalSparesData>((resolve, reject) => {
+      const request = db.transaction(CRITICAL_SPARES_STATE_STORE, 'readonly').objectStore(CRITICAL_SPARES_STATE_STORE).get('active')
+      request.onsuccess = () => request.result ? resolve(request.result) : reject(new Error('No hay datos locales anteriores.'))
+      request.onerror = () => reject(request.error)
+    })
+    const blob = new Blob([JSON.stringify({ format: 'LACO1_CRITICAL_SPARES', version: raw.schemaVersion || 1, exportedAt: new Date().toISOString(), data: raw }, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'repuestos-respaldo-indexeddb-original.json'; anchor.click(); URL.revokeObjectURL(url)
+  } finally { db.close() }
 }
+
+export async function parseCriticalSparesBackup(file: File) { return parseBackup(JSON.parse(await file.text())) }
