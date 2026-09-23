@@ -133,3 +133,116 @@ model AuditLog {
   @@index([entity, entityId, createdAt])
   @@map("audit_log")
 }
+
+model LcoConfig {
+  id Int @id
+  revision Int @default(0)
+  staleDays Int @default(90)
+  veryStaleDays Int @default(180)
+  recentDays Int @default(30)
+  dueDays Int @default(60)
+  oldDays Int @default(90)
+  migratedLegacyFingerprints String[] @default([])
+}
+
+model LcoCage {
+  id String @id
+  cageNumber Int @unique
+  side String
+  assetId String?
+  shafts LcoShaft[]
+}
+
+model LcoShaft {
+  id String @id
+  cageId String
+  position String
+  cage LcoCage @relation(fields: [cageId], references: [id], onDelete: Restrict)
+  couplings LcoCoupling[]
+  events LcoEvent[]
+  @@unique([cageId, position])
+}
+
+model LcoCoupling {
+  id String @id
+  shaftId String
+  side String
+  shaft LcoShaft @relation(fields: [shaftId], references: [id], onDelete: Restrict)
+  readings LcoReading[]
+  events LcoEvent[]
+  photos LcoPhoto[]
+  @@unique([shaftId, side])
+}
+
+model LcoEvent {
+  id String @id
+  type String
+  date String
+  createdAt String
+  updatedAt String?
+  deletedAt DateTime?
+  inspector String @default("")
+  observations String?
+  couplingId String?
+  shaftId String?
+  reason String?
+  sapWorkOrder String?
+  notes String?
+  wearAtRemoval Int?
+  coupling LcoCoupling? @relation(fields: [couplingId], references: [id], onDelete: Restrict)
+  shaft LcoShaft? @relation(fields: [shaftId], references: [id], onDelete: Restrict)
+  readings LcoReading[]
+  photos LcoPhoto[]
+  versions LcoEventVersion[]
+  @@index([date, createdAt])
+  @@index([couplingId, date])
+  @@index([shaftId, date])
+}
+
+model LcoReading {
+  eventId String
+  couplingId String
+  ordinal Int
+  wearLevel Int
+  note String
+  conditionCode String?
+  event LcoEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  coupling LcoCoupling @relation(fields: [couplingId], references: [id], onDelete: Restrict)
+  @@id([eventId, couplingId])
+  @@index([couplingId])
+}
+
+model LcoPhoto {
+  eventId String
+  scope String
+  ordinal Int
+  id String
+  couplingId String?
+  fileName String
+  mimeType String
+  dataUrl String
+  createdAt String
+  caption String
+  event LcoEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  coupling LcoCoupling? @relation(fields: [couplingId], references: [id], onDelete: Restrict)
+  @@id([eventId, scope, ordinal])
+}
+
+model LcoEventVersion {
+  id String @id @default(uuid())
+  eventId String
+  revision Int
+  action String
+  actor String
+  snapshot Json
+  recordedAt DateTime @default(now())
+  event LcoEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  @@unique([eventId, revision])
+}
+
+model LcoImportReceipt {
+  hash String @id
+  eventCount Int
+  revision Int
+  createdAt DateTime @default(now())
+}
