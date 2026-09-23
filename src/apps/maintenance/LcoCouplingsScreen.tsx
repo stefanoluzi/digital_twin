@@ -45,7 +45,7 @@ import { LcoActivityPanel, LcoEditEventDialog, LcoHistorySection } from './LcoHi
 import { LcoPhotoLightbox, LcoPhotoPicker } from './LcoPhotoControls'
 import type { LcoHistoryRow } from '../../maintenance/domain/lcoHistorySelectors'
 import { LcoInspectionTracking } from './LcoInspectionTracking'
-import { dismissLegacyLcoCandidate, importLegacyLcoCandidate, initializeLcoPersistence, replacePersistentLcoData } from '../../maintenance/services/lcoPersistenceService'
+import { initializeLcoCentral, lcoCommands, importLcoCentral, migrateLocalLco, readCentralLco, runLco } from '../../maintenance/services/lcoCentralService'
 import { getLcoBackupStats, lcoBackupFileName, parseLcoBackup, serializeLcoBackup } from '../../maintenance/services/lcoBackupService'
 import { exportLcoExcelBackup } from '../../maintenance/services/lcoExcelBackupService'
 
@@ -78,22 +78,22 @@ export function LcoCouplingsScreen({ standalone = false, standaloneThemeControl 
   const shaftStates = useMemo(() => new Map(topology.shafts.map((shaft) => [shaft.id, getLcoShaftState(maintenance.lcoCouplings, shaft.cageNumber, shaft.position, maintenance.referenceDate)])), [maintenance.lcoCouplings, maintenance.referenceDate])
   const summary = useMemo(() => getLcoCouplingSummary(maintenance.lcoCouplings, maintenance.referenceDate), [maintenance.lcoCouplings, maintenance.referenceDate])
   const openHistoryTarget = (row: LcoHistoryRow) => setSelected(row.couplingId ? { type: 'COUPLING', id: row.couplingId } : { type: 'SHAFT', id: createLcoShaftId(row.cageNumber, row.shaftPosition) })
-  useEffect(() => { void initializeLcoPersistence() }, [])
+  useEffect(() => { void initializeLcoCentral() }, [])
 
   const showPosition = (couplingId: string) => {
     setView('STATE'); setHighlightedCouplingId(couplingId)
     window.setTimeout(() => setHighlightedCouplingId((current) => current === couplingId ? null : current), 3000)
     window.setTimeout(() => document.querySelector(`[data-coupling-id="${couplingId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
   }
-  const exportBackup = () => {
-    const blob = new Blob([serializeLcoBackup(maintenance.lcoCouplings)], { type: 'application/json' })
+  const exportBackup = () => runLco(async () => {
+    const blob = new Blob([serializeLcoBackup(await readCentralLco())], { type: 'application/json' })
     const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = lcoBackupFileName(); anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 0)
-  }
+  })
   const exportExcel = async () => {
     try {
       setImportError('')
       setExportingExcel(true)
-      await exportLcoExcelBackup(maintenance.lcoCouplings, maintenance.referenceDate)
+      await exportLcoExcelBackup(await readCentralLco(), maintenance.referenceDate)
     } catch (error) {
       setImportError(error instanceof Error ? `No se pudo generar el Excel: ${error.message}` : 'No se pudo generar el Excel.')
     } finally {
@@ -106,17 +106,18 @@ export function LcoCouplingsScreen({ standalone = false, standaloneThemeControl 
     catch (error) { setImportError(error instanceof Error ? error.message : 'No se pudo leer el respaldo.') }
   }
 
-  if (maintenance.lcoStorageStatus === 'IDLE' || maintenance.lcoStorageStatus === 'LOADING') return <main className="lco-couplings-screen lco-storage-loading"><strong>Inicializando almacenamiento local…</strong><span>Preparando los 32 acoplamientos.</span></main>
+  if (maintenance.lcoStorageStatus === 'IDLE' || maintenance.lcoStorageStatus === 'LOADING') return <main className="lco-couplings-screen lco-storage-loading"><strong>Conectando con PostgreSQL…</strong><span>Preparando los 32 acoplamientos.</span></main>
 
   return <main className="lco-couplings-screen">
-    {standalone ? <header className="lco-standalone-header"><div><small>LACO 1</small><h1>Acoplamientos LCO</h1><span className="lco-local-storage-note" title="Los datos permanecen en este navegador. Guarde periódicamente el respaldo restaurable y el informe Excel.">● Datos almacenados localmente en este equipo</span></div><div className="lco-standalone-actions">{standaloneThemeControl}<StorageStatus status={maintenance.lcoStorageStatus} error={maintenance.lcoStorageError} /><button title="Copia completa para recuperar la aplicación, incluidas las fotos" onClick={exportBackup}>Guardar respaldo</button><button title="Informe legible con estado actual e historial" disabled={exportingExcel} onClick={() => void exportExcel()}>{exportingExcel ? 'Generando Excel…' : 'Exportar Excel'}</button><button onClick={() => importRef.current?.click()}>Importar respaldo</button><button onClick={() => setModal({ type: 'SETTINGS' })}>Configurar</button><button className="primary" onClick={() => setModal({ type: 'INSPECTION', couplingIds: [] })}>+ Registrar inspección</button><input ref={importRef} hidden type="file" accept=".lcocouplings,.json,application/json" onChange={(event) => { void readImport(event.target.files?.[0]); event.target.value = '' }} /></div></header> : <header className="lco-screen-header">
+    {standalone ? <header className="lco-standalone-header"><div><small>LACO 1</small><h1>Acoplamientos LCO</h1><span className="lco-local-storage-note" title="Datos compartidos confirmados por el servidor.">● PostgreSQL · datos compartidos</span></div><div className="lco-standalone-actions">{standaloneThemeControl}<button onClick={() => void initializeLcoCentral()}>Actualizar datos</button><button onClick={() => runLco(migrateLocalLco)}>Migrar datos locales anteriores</button><StorageStatus status={maintenance.lcoStorageStatus} error={maintenance.lcoStorageError} /><button title="Copia completa para recuperar la aplicación, incluidas las fotos" onClick={exportBackup}>Guardar respaldo</button><button title="Informe legible con estado actual e historial" disabled={exportingExcel} onClick={() => void exportExcel()}>{exportingExcel ? 'Generando Excel…' : 'Exportar Excel'}</button><button onClick={() => importRef.current?.click()}>Importar respaldo</button><button onClick={() => setModal({ type: 'SETTINGS' })}>Configurar</button><button className="primary" onClick={() => setModal({ type: 'INSPECTION', couplingIds: [] })}>+ Registrar inspección</button><input ref={importRef} hidden type="file" accept=".lcocouplings,.json,application/json" onChange={(event) => { void readImport(event.target.files?.[0]); event.target.value = '' }} /></div></header> : <header className="lco-screen-header">
       <div><small>MÓDULO ESPECIALIZADO · LAMINADOR CONTINUO</small><h1>Estado Acoplamientos LCO</h1><p>REDUCTOR → ACOPLAMIENTO → ALUNGA → ACOPLAMIENTO → JAULA</p></div>
       <div className="lco-header-actions"><label>Fecha de referencia<input type="date" value={maintenance.referenceDate} onChange={(event) => maintenance.setReferenceDate(event.target.value)} /></label><button onClick={() => setModal({ type: 'SETTINGS' })}>Configurar</button><button className="primary" onClick={() => setModal({ type: 'INSPECTION', couplingIds: [] })}>+ Registrar inspección</button></div>
     </header>}
 
     {standalone && <div className="lco-standalone-reference"><label>Fecha de referencia<input type="date" value={maintenance.referenceDate} onChange={(event) => maintenance.setReferenceDate(event.target.value)} /></label></div>}
+    {maintenance.lcoStorageError && <div role="alert" className="lco-storage-error">{maintenance.lcoStorageError}<button onClick={() => void initializeLcoCentral()}>Actualizar desde el servidor</button></div>}
     {importError && <div className="lco-storage-error">{importError}<button onClick={() => setImportError('')}>×</button></div>}
-    {maintenance.lcoLegacyCandidate && <section className="lco-migration-banner"><div><strong>Se encontraron datos de Acoplamientos LCO en el proyecto actual.</strong><span>Podés importarlos una sola vez al almacenamiento independiente.</span></div><button onClick={() => void dismissLegacyLcoCandidate()}>Ignorar</button><button className="primary" onClick={() => void importLegacyLcoCandidate()}>Importar datos del proyecto</button></section>}
+    {maintenance.lcoLegacyCandidate && <section className="lco-migration-banner"><div><strong>Se encontraron datos de Acoplamientos LCO en el proyecto actual.</strong><span>Podés importarlos una sola vez a PostgreSQL sin borrar el original.</span></div><button onClick={() => maintenance.setLcoLegacyCandidate(null)}>Ignorar</button><button className="primary" onClick={() => runLco(() => importLcoCentral(maintenance.lcoLegacyCandidate!), () => maintenance.setLcoLegacyCandidate(null))}>Importar datos del proyecto</button></section>}
     <nav className="lco-view-tabs" aria-label="Vistas de Acoplamientos LCO">{([['STATE', 'Estado actual'], ['TRACKING', 'Seguimiento controles'], ['HISTORY', 'Historial']] as const).map(([id, label]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}>{label}</button>)}</nav>
 
     {view === 'STATE' && <><LcoStateOverview summary={summary} />
@@ -142,11 +143,11 @@ export function LcoCouplingsScreen({ standalone = false, standaloneThemeControl 
     {selected?.type === 'COUPLING' && <CouplingDetail couplingId={selected.id} onClose={() => setSelected(null)} onInspect={(id) => setModal({ type: 'INSPECTION', couplingIds: [id] })} onReplace={(id) => setModal({ type: 'COUPLING_REPLACEMENT', couplingId: id })} onEditControl={(eventId, couplingId) => setModal({ type: 'EDIT_INSPECTION', eventId, couplingId })} onOpenPhotos={setGallery} />}
     {selected?.type === 'SHAFT' && <ShaftDetail shaftId={selected.id} onClose={() => setSelected(null)} onInspect={(ids) => setModal({ type: 'INSPECTION', couplingIds: ids })} onReplace={(cageNumber, shaftPosition) => setModal({ type: 'SHAFT_REPLACEMENT', cageNumber, shaftPosition })} onOpenPhotos={setGallery} />}
     {modal?.type === 'INSPECTION' && <InspectionDialog initialCouplingIds={modal.couplingIds} onClose={() => setModal(null)} />}
-    {modal?.type === 'EDIT_INSPECTION' && <LcoEditEventDialog couplingId={modal.couplingId} event={maintenance.lcoCouplings.events.find((event) => event.id === modal.eventId)!} onSave={(event) => { maintenance.replaceLcoEvent(event); setModal(null) }} onClose={() => setModal(null)} />}
+    {modal?.type === 'EDIT_INSPECTION' && <LcoEditEventDialog couplingId={modal.couplingId} event={maintenance.lcoCouplings.events.find((event) => event.id === modal.eventId)!} onSave={(event) => { runLco(() => lcoCommands.replace(event), () => setModal(null)) }} onClose={() => setModal(null)} />}
     {modal?.type === 'COUPLING_REPLACEMENT' && <CouplingReplacementDialog couplingId={modal.couplingId} onClose={() => setModal(null)} />}
     {modal?.type === 'SHAFT_REPLACEMENT' && <ShaftReplacementDialog cageNumber={modal.cageNumber} shaftPosition={modal.shaftPosition} onClose={() => setModal(null)} />}
     {modal?.type === 'SETTINGS' && <LcoSettingsDialog onClose={() => setModal(null)} />}
-    {pendingImport && <ImportBackupDialog data={pendingImport} onClose={() => setPendingImport(null)} onConfirm={() => { void replacePersistentLcoData(pendingImport); setPendingImport(null) }} />}
+    {pendingImport && <ImportBackupDialog data={pendingImport} onClose={() => setPendingImport(null)} onConfirm={() => { runLco(() => importLcoCentral(pendingImport), () => setPendingImport(null)) }} />}
     {gallery && <LcoPhotoLightbox photos={gallery} onClose={() => setGallery(null)} />}
   </main>
 }
@@ -157,7 +158,7 @@ function StorageStatus({ status, error }: { status: ReturnType<typeof useMainten
 
 function ImportBackupDialog({ data, onClose, onConfirm }: { data: LcoCouplingModuleData; onClose: () => void; onConfirm: () => void }) {
   const stats = getLcoBackupStats(data)
-  return <LcoDialog title="Importar respaldo" subtitle="ESTA ACCIÓN REEMPLAZA LOS DATOS LOCALES" onClose={onClose} footer={<><button onClick={onClose}>Cancelar</button><button className="danger" onClick={onConfirm}>Importar y reemplazar</button></>}><div className="lco-import-summary"><p>El respaldo contiene:</p><strong>{stats.inspections} inspecciones</strong><strong>{stats.replacements} recambios</strong><strong>{stats.photos} fotos</strong><p>¿Desea reemplazar los datos locales actuales?</p></div></LcoDialog>
+  return <LcoDialog title="Importar respaldo" subtitle="IMPORTACIÓN ADITIVA A POSTGRESQL" onClose={onClose} footer={<><button onClick={onClose}>Cancelar</button><button className="danger" onClick={onConfirm}>Importar y verificar</button></>}><div className="lco-import-summary"><p>El respaldo contiene:</p><strong>{stats.inspections} inspecciones</strong><strong>{stats.replacements} recambios</strong><strong>{stats.photos} fotos</strong><p>Se agregarán eventos nuevos. Los IDs existentes distintos bloquearán la importación; no se borran datos. ¿Continuar?</p></div></LcoDialog>
 }
 
 function WearLegend() {
@@ -242,7 +243,7 @@ function FreshnessSignal({ state }: { state: LcoCouplingState }) {
 }
 
 function InspectionDialog({ initialCouplingIds, onClose }: { initialCouplingIds: string[]; onClose: () => void }) {
-  const record = useMaintenanceStore((state) => state.recordLcoInspection)
+  const record = lcoCommands.inspection
   const [date, setDate] = useState(todayDateOnly())
   const [inspector, setInspector] = useState('')
   const [observations, setObservations] = useState('')
@@ -306,7 +307,7 @@ function InspectionDialog({ initialCouplingIds, onClose }: { initialCouplingIds:
     if (!progress.selectedCount) { setError('Selecciona al menos un acoplamiento inspeccionado.'); return }
     if (!progress.canSave) { setError(`Faltan ${progress.selectedCount - progress.evaluatedCount} posiciones por evaluar.`); return }
     const readings = buildLcoInspectionReadings(selected, wear, notes, conditionCodes, readingPhotos)
-    record({ date, inspector, observations, readings, attachments: generalPhotos }); onClose()
+    runLco(() => record({ date, inspector, observations, readings, attachments: generalPhotos }), onClose)
   }
   return <LcoDialog title="Registrar inspección parcial" subtitle={`${progress.selectedCount} seleccionados · ${progress.evaluatedCount} evaluados`} wide onClose={onClose} footer={<><span className="lco-dialog-error">{error}</span><button onClick={onClose}>Cancelar</button><button className="primary" disabled={!progress.canSave} onClick={save}>Guardar inspección ({progress.selectedCount})</button></>}>
     <section className="lco-inspection-general"><label>Fecha<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label>Técnico / Inspector<input value={inspector} onChange={(event) => setInspector(event.target.value)} placeholder="Opcional" /></label><label>Observación general<input value={observations} onChange={(event) => setObservations(event.target.value)} placeholder="Opcional" /></label></section>
@@ -330,18 +331,18 @@ function InspectionDialog({ initialCouplingIds, onClose }: { initialCouplingIds:
 }
 
 function CouplingReplacementDialog({ couplingId, onClose }: { couplingId: string; onClose: () => void }) {
-  const record = useMaintenanceStore((state) => state.recordLcoCouplingReplacement)
+  const record = lcoCommands.couplingReplacement
   const coupling = getLcoCouplingById(couplingId)!
   const [wearAtRemoval, setWearAtRemoval] = useState<CouplingWearLevel | null>(null)
   const [photos, setPhotos] = useState<LcoPhotoAttachment[]>([])
-  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const data = new FormData(event.currentTarget); record({ couplingId, date: String(data.get('date')), inspector: String(data.get('inspector') || ''), reason: String(data.get('reason') || ''), sapWorkOrder: String(data.get('sapWorkOrder') || ''), notes: String(data.get('notes') || ''), wearAtRemoval, attachments: photos }); onClose() }
+  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const data = new FormData(event.currentTarget); runLco(() => record({ couplingId, date: String(data.get('date')), inspector: String(data.get('inspector') || ''), reason: String(data.get('reason') || ''), sapWorkOrder: String(data.get('sapWorkOrder') || ''), notes: String(data.get('notes') || ''), wearAtRemoval, attachments: photos }), onClose) }
   return <LcoDialog title="Cambiar acoplamiento" subtitle={couplingTitle(coupling)} onClose={onClose}><form className="lco-event-form" onSubmit={submit}><label>Fecha<input name="date" type="date" required defaultValue={todayDateOnly()} /></label><label>Técnico / Inspector<input name="inspector" placeholder="Opcional" /></label><label>Motivo<input name="reason" placeholder="Opcional" /></label><label>OT SAP<input name="sapWorkOrder" placeholder="Opcional" /></label><label>Desgaste al retiro <span className="lco-wear-picker">{COUPLING_WEAR_LEVELS.map((level) => <button type="button" className={`wear-${level} ${wearAtRemoval === level ? 'active' : ''}`} key={level} onClick={() => setWearAtRemoval(wearAtRemoval === level ? null : level)}>{level}</button>)}</span></label><label>Observación<textarea name="notes" placeholder="Opcional" /></label><LcoPhotoPicker photos={photos} onChange={setPhotos} label="Agregar fotos del recambio" /><p>El nuevo acoplamiento quedará como <strong>N · Nuevo por recambio</strong>, sin crear una inspección ficticia.</p><button className="primary" type="submit">Registrar recambio individual</button></form></LcoDialog>
 }
 
 function ShaftReplacementDialog({ cageNumber, shaftPosition, onClose }: { cageNumber: LcoCageNumber; shaftPosition: LcoShaftPosition; onClose: () => void }) {
-  const record = useMaintenanceStore((state) => state.recordLcoShaftReplacement)
+  const record = lcoCommands.shaftReplacement
   const [photos, setPhotos] = useState<LcoPhotoAttachment[]>([])
-  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const data = new FormData(event.currentTarget); record({ cageNumber, shaftPosition, date: String(data.get('date')), inspector: String(data.get('inspector') || ''), reason: String(data.get('reason') || ''), sapWorkOrder: String(data.get('sapWorkOrder') || ''), notes: String(data.get('notes') || ''), attachments: photos }); onClose() }
+  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const data = new FormData(event.currentTarget); runLco(() => record({ cageNumber, shaftPosition, date: String(data.get('date')), inspector: String(data.get('inspector') || ''), reason: String(data.get('reason') || ''), sapWorkOrder: String(data.get('sapWorkOrder') || ''), notes: String(data.get('notes') || ''), attachments: photos }), onClose) }
   return <LcoDialog title="Cambiar alunga completa" subtitle={`J${cageNumber} · ${shaftPosition === 'UPPER' ? 'Superior' : 'Inferior'}`} onClose={onClose}><form className="lco-event-form" onSubmit={submit}><label>Fecha<input name="date" type="date" required defaultValue={todayDateOnly()} /></label><label>Técnico / Inspector<input name="inspector" placeholder="Opcional" /></label><label>Motivo<input name="reason" placeholder="Opcional" /></label><label>OT SAP<input name="sapWorkOrder" placeholder="Opcional" /></label><label>Observación<textarea name="notes" placeholder="Opcional" /></label><LcoPhotoPicker photos={photos} onChange={setPhotos} label="Agregar fotos del cambio de alunga" /><p>Este único evento reemplaza la alunga y deriva ambos extremos —Reductor y Jaula— como nuevos instalados. La alunga conserva sólo su fecha e historial de recambio.</p><button className="primary" type="submit">Registrar cambio de alunga</button></form></LcoDialog>
 }
 
@@ -388,9 +389,8 @@ function LcoSettingsDialog({ onClose }: { onClose: () => void }) {
   const valid = recentDays > 0 && dueDays > recentDays && oldDays > dueDays
   const save = () => {
     if (!valid) return
-    maintenance.setLcoInspectionAgeThresholds({ recentDays, dueDays, oldDays })
-    maintenance.setLcoFreshnessThresholds({ staleDays: recentDays, veryStaleDays: oldDays })
-    onClose()
+    const { events: _events, ...config } = maintenance.lcoCouplings
+    runLco(() => lcoCommands.config({ ...config, inspectionAgeThresholds: { recentDays, dueDays, oldDays }, inspectionFreshnessThresholds: { staleDays: recentDays, veryStaleDays: oldDays } }), onClose)
   }
   return <LcoDialog title="Configuración Acoplamientos LCO" subtitle="ANTIGÜEDAD DE CONTROLES" onClose={onClose} footer={<><button onClick={onClose}>Cancelar</button><button className="primary" disabled={!valid} onClick={save}>Guardar configuración</button></>}><p className="lco-settings-intro">Definí cuándo un control pasa de reciente a próximo, antiguo y muy antiguo. Estos estados dependen únicamente de la fecha de inspección, no del desgaste.</p><section className="lco-settings-thresholds"><label>Control reciente hasta<input type="number" min="1" value={recentDays} onChange={(event) => setRecentDays(Number(event.target.value))} /><span>días</span></label><label>Control próximo hasta<input type="number" min={recentDays + 1} value={dueDays} onChange={(event) => setDueDays(Number(event.target.value))} /><span>días</span></label><label>Control antiguo hasta<input type="number" min={dueDays + 1} value={oldDays} onChange={(event) => setOldDays(Number(event.target.value))} /><span>días</span></label></section>{!valid && <p className="lco-settings-error">Los límites deben ser crecientes. Ejemplo recomendado: 30 / 60 / 90 días.</p>}<div className="lco-settings-preview"><span>0–{recentDays}: reciente</span><span>{recentDays + 1}–{dueDays}: próximo</span><span>{dueDays + 1}–{oldDays}: antiguo</span><span>&gt; {oldDays}: muy antiguo</span></div></LcoDialog>
 }

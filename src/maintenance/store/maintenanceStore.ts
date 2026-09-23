@@ -17,6 +17,7 @@ export type MaintenanceCriticalityFilter = 'ALL' | 'A' | 'B' | 'C' | 'D'
 export type LcoStorageStatus = 'IDLE' | 'LOADING' | 'SAVING' | 'SAVED' | 'ERROR'
 
 interface MaintenanceStore extends MaintenanceData {
+  lcoCentralized: boolean
   referenceDate: string
   viewMode: MaintenanceViewMode
   statusFilter: MaintenanceStatusFilter
@@ -70,6 +71,7 @@ const id = (prefix: string) => `${prefix}_${globalThis.crypto?.randomUUID?.() ??
 const now = () => new Date().toISOString()
 
 export const useMaintenanceStore = create<MaintenanceStore>((set, get) => ({
+  lcoCentralized: false,
   ...structuredClone(EMPTY_MAINTENANCE_DATA),
   referenceDate: todayDateOnly(), viewMode: 'NORMAL', statusFilter: 'ALL', filterBehavior: 'DIM', showOkBadges: false, operationalView: 'STATUS', criticalityFilter: 'ALL', recentDays: null, areaFilter: AREA_FILTER_ALL, levelFilter: ALL_LEVELS, selectedSubassemblyId: null, drawerOpen: false, lcoStorageStatus: 'IDLE', lcoStorageError: '', lcoLegacyCandidate: null,
   loadMaintenance: (data) => {
@@ -80,7 +82,7 @@ export const useMaintenanceStore = create<MaintenanceStore>((set, get) => ({
     const candidateFingerprint = fingerprintLcoData(normalized.lcoCouplings)
     const currentLco = get().lcoCouplings
     const hasNewLegacyData = independent && normalized.lcoCouplings.events.length > 0 && !currentLco.migratedLegacyFingerprints.includes(candidateFingerprint)
-    const recoverLegacyNow = hasNewLegacyData && currentLco.events.length === 0
+    const recoverLegacyNow = !get().lcoCentralized && hasNewLegacyData && currentLco.events.length === 0
     const recoveredLco = recoverLegacyNow ? normalizeLcoCouplingData({ ...normalized.lcoCouplings, migratedLegacyFingerprints: [...new Set([...currentLco.migratedLegacyFingerprints, candidateFingerprint])] }) : currentLco
     const candidate = hasNewLegacyData && !recoverLegacyNow ? normalized.lcoCouplings : get().lcoLegacyCandidate
     set({ ...normalized, ...(independent ? { lcoCouplings: recoveredLco, lcoLegacyCandidate: candidate } : {}), selectedSubassemblyId: null, drawerOpen: false })

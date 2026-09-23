@@ -1,4 +1,5 @@
 import { normalizeLcoCouplingData } from '../data/lcoCouplingNormalizer'
+import { validateLcoData } from '../domain/lcoValidation'
 import { createEmptyLcoCouplingData, type CouplingInspectionEvent, type CouplingReplacementEvent, type ExtensionShaftReplacementEvent, type LcoCouplingEvent, type LcoCouplingModuleData, type LcoPhotoAttachment } from '../domain/lcoCouplings'
 import type { LcoCouplingsRepository } from './LcoCouplingsRepository'
 import {
@@ -23,7 +24,11 @@ interface StoredAttachment {
 }
 
 export class IndexedDbLcoCouplingsRepository implements LcoCouplingsRepository {
-  constructor(private readonly dbName = MAINTENANCE_DB_NAME) {}
+  constructor(private readonly dbName = MAINTENANCE_DB_NAME, private readonly readOnlyLegacy = false) {}
+
+  private assertWritable() {
+    if (this.readOnlyLegacy) throw new Error('El origen de migración es de solo lectura.')
+  }
 
   async load(): Promise<LcoCouplingModuleData> {
     const db = await this.open()
@@ -38,7 +43,8 @@ export class IndexedDbLcoCouplingsRepository implements LcoCouplingsRepository {
     await Promise.all(attachments.map(async (item) => photos.set(item.id, { id: item.id, fileName: item.fileName, mimeType: item.mimeType as LcoPhotoAttachment['mimeType'], dataUrl: await blobToDataUrl(item.blob), caption: item.caption, createdAt: item.createdAt })))
     const hydrated = events.map((event) => hydrateEvent(event, attachments, photos))
     db.close()
-    return normalizeLcoCouplingData({ ...createEmptyLcoCouplingData(), ...(config ?? {}), events: hydrated })
+    const data = { ...createEmptyLcoCouplingData(), ...(config ?? {}), events: hydrated }
+    return this.readOnlyLegacy ? validateLcoData(data) : normalizeLcoCouplingData(data)
   }
 
   async getEvents() { return (await this.load()).events }
@@ -59,11 +65,13 @@ export class IndexedDbLcoCouplingsRepository implements LcoCouplingsRepository {
   async deleteShaftReplacement(eventId: string) { await this.deleteEvent(eventId) }
 
   async saveConfig(data: Omit<LcoCouplingModuleData, 'events'>) {
+    this.assertWritable()
     const db = await this.open(); const transaction = db.transaction(CONFIG, 'readwrite')
     const done = transactionDone(transaction); transaction.objectStore(CONFIG).put(structuredClone(data), 'module'); await done; db.close()
   }
 
   async replaceAll(data: LcoCouplingModuleData) {
+    this.assertWritable()
     const normalized = normalizeLcoCouplingData(data)
     const prepared = await Promise.all(normalized.events.map(prepareEvent))
     const db = await this.open(); const transaction = db.transaction([EVENTS, ATTACHMENTS, CONFIG], 'readwrite')
@@ -81,6 +89,7 @@ export class IndexedDbLcoCouplingsRepository implements LcoCouplingsRepository {
   async clear() { await this.replaceAll(createEmptyLcoCouplingData()) }
 
   private async saveEvent(event: LcoCouplingEvent) {
+    this.assertWritable()
     const prepared = await prepareEvent(event)
     const db = await this.open(); const transaction = db.transaction([EVENTS, ATTACHMENTS], 'readwrite')
     const done = transactionDone(transaction)
@@ -91,6 +100,7 @@ export class IndexedDbLcoCouplingsRepository implements LcoCouplingsRepository {
   }
 
   private async deleteEvent(eventId: string) {
+    this.assertWritable()
     const db = await this.open(); const transaction = db.transaction([EVENTS, ATTACHMENTS], 'readwrite')
     const done = transactionDone(transaction)
     transaction.objectStore(EVENTS).delete(eventId)
@@ -98,7 +108,20 @@ export class IndexedDbLcoCouplingsRepository implements LcoCouplingsRepository {
     await done; db.close()
   }
 
-  private open() {
+  private async open() {
+    if (this.readOnlyLegacy) {
+      const databases = await indexedDB.databases()
+      if (!databases.some((entry) => entry.name === this.dbName)) throw new Error('No hay una base LCO anterior en este origen. Exportá el respaldo desde el navegador/puerto original e importalo aquí.')
+      return new Promise<IDBDatabase>((resolve, reject) => {
+        const open = indexedDB.open(this.dbName)
+        open.onupgradeneeded = () => { open.transaction?.abort(); reject(new Error('La base anterior ya no existe.')) }
+        open.onerror = () => reject(open.error)
+        open.onsuccess = () => {
+          if (![EVENTS, ATTACHMENTS, CONFIG].every((name) => open.result.objectStoreNames.contains(name))) { open.result.close(); reject(new Error('La base no contiene datos de Acoplamientos.')); return }
+          resolve(open.result)
+        }
+      })
+    }
     return openMaintenanceDatabase(this.dbName)
   }
 }

@@ -1,5 +1,6 @@
 import type { LcoPhotoAttachment } from '../maintenance/domain/lcoCouplings'
 import { fileToDataUrl } from './dataUrlService'
+import { createUuid } from '../utils/createUuid'
 
 const ACCEPTED_MIME_TYPES = new Set<LcoPhotoAttachment['mimeType']>(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_IMAGE_DIMENSION = 1800
@@ -18,7 +19,7 @@ async function processPhoto(file: File): Promise<LcoPhotoAttachment> {
   const shouldEncode = scale < 1 || file.size > REENCODE_SIZE_THRESHOLD
   const dataUrl = shouldEncode ? encodeImage(image, mimeType, scale) : sourceDataUrl
   return {
-    id: globalThis.crypto?.randomUUID?.() ?? `PHOTO_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    id: createUuid(),
     fileName: file.name,
     mimeType,
     dataUrl,
