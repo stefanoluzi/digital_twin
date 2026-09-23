@@ -15,6 +15,9 @@ COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --from=build --chown=node:node /app/server ./server
 COPY --from=build --chown=node:node /app/src/spares ./src/spares
 COPY --from=build --chown=node:node /app/src/config ./src/config
+COPY --from=build --chown=node:node /app/src/utils ./src/utils
+COPY --from=build --chown=node:node /app/src/maintenance/domain ./src/maintenance/domain
+COPY --from=build --chown=node:node /app/src/maintenance/data ./src/maintenance/data
 COPY --from=build --chown=node:node /app/prisma ./prisma
 COPY --from=build --chown=node:node /app/scripts/start-container.mjs ./scripts/start-container.mjs
 USER node
