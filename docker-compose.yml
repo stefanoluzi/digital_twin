@@ -1,0 +1,41 @@
+name: critical-spares
+services:
+  postgres:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-critical_spares}
+      POSTGRES_USER: ${POSTGRES_USER:-spares}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # No ports: PostgreSQL is only reachable inside the Compose network.
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-critical_spares}
+      POSTGRES_USER: ${POSTGRES_USER:-spares}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en .env}
+      HOST: 0.0.0.0
+      PORT: 3001
+      NODE_ENV: production
+      STATIC_DIR: dist-spares
+    ports:
+      - "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-8080}:3001"
+    command: ["node", "scripts/start-container.mjs"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+volumes:
+  postgres_data:
