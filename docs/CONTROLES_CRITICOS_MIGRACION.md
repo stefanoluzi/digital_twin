@@ -57,3 +57,46 @@ importación repetida y rollback. Validación manual dos clientes y reinicio bac
 Esta PC no tiene Docker Engine: validación Compose estática no equivale a ejecución
 de contenedores/reinicio VM. Backup pg_dump cubre todas las tablas de la misma DB.
 Sin autenticación real ni HTTPS aún: solo LAN confiable, no Internet.
+
+## Procedimiento one-time implementado
+
+1. Antes de cambiar de origen, exportar el respaldo `.lcocouplings` desde el navegador
+   original y conservarlo fuera de la PC. El backend no puede descubrir otros perfiles,
+   Chrome vs Edge, ni otros puertos/orígenes.
+2. En Acoplamientos de la plataforma, usar **Migrar datos locales** SOLO si se está
+   en el mismo origen/perfil que contiene `LACO1_MAINTENANCE`. El lector detecta la DB
+   existente, abre sin upgrade y usa transacciones readonly. Sus métodos de escritura
+   están bloqueados en modo migración.
+3. Para otro origen/PC, usar **Importar respaldo** y seleccionar el `.lcocouplings`.
+   Ambas vías validan estrictamente: no descartan silenciosamente fechas/fotos/lecturas.
+4. Confirmar la cantidad de eventos. La API importa en una transacción aditiva,
+   conserva IDs, fechas, fotos, notas y configuración compatible. Conflictos cancelan
+   TODO el lote (409). No es una restauración destructiva del módulo.
+5. El servidor genera SHA256 canónico y guarda LcoImportReceipt; el cliente consulta
+   ese receipt para verificar hash/cantidad. Es la marca de completado en PostgreSQL,
+   sin flag local. Repetir el mismo lote no duplica ni resucita eventos borrados.
+6. Recargar y abrir en un segundo cliente; verificar historial/fotos y cantidades.
+   Hacer backup PostgreSQL. Los originales IndexedDB/archivo NO se borran automáticamente.
+
+Si hay configuración central diferente o un mismo ID corregido en ambas fuentes,
+revisar el conflicto antes de reintentar. No inventar IDs nuevos para evitarlo.
+La app no ha migrado automáticamente datos reales durante este trabajo.
+Los únicos datos de pruebas se escribieron en la base dedicada `_test`.
+
+## Verificación final de esta iteración
+
+- 148 tests generales aprobados (incluyen servicio central, validación y lector readonly).
+- 19 tests PostgreSQL real aprobados: 12 Repuestos + 7 LCO.
+- TypeScript frontend/backend y builds `build`, `build:spares` aprobados.
+- Compose validado con CLI oficial: puerto app único, DB interna, volumen/healthchecks.
+- Navegador: portada → ambos módulos; categoría creada y conservada tras reload;
+  inspección creada, corregida y conservada tras reload y reinicio del backend QA.
+- API tests: dos clientes/revisiones, fotos, recambios, historial, soft delete,
+  rollback/importación duplicada, FK/422/428/409 y revisiones de dominios independientes.
+- pg_dump/pg_restore real a `platform_restore_test`: recuperó Repuestos, eventos LCO
+  y versiones (6 repuestos, 1 evento y 1 versión del fixture final).
+- Reinicio de contenedores/VM pendiente: esta PC no dispone de Docker Engine.
+- Lectura de un IndexedDB REAL con datos de usuario pendiente de la migración explícita;
+  el flujo se prueba con origen simulado y el importador con PostgreSQL real.
+- Build del proyecto madre conserva warnings de chunks grandes; plataforma separa
+  módulos lazy y no mostró ese warning. No se añadió autenticación ni object storage.
