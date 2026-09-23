@@ -6,6 +6,7 @@ import { createDemoSparesData } from '../../src/spares/data/demoSpares'
 import { HttpCriticalSparesRepository } from '../../src/spares/repositories/HttpCriticalSparesRepository'
 import { coverageSummary } from '../../src/spares/domain/spareSelectors'
 import type { SpareDraft } from '../../src/spares/store/criticalSparesStore'
+import { createUuid } from '../../src/spares/domain/createUuid'
 
 // Explicit opt-in: normal npm test never modifies a developer/production DB.
 describe.skipIf(process.env.RUN_POSTGRES_TESTS !== '1')('PostgreSQL real + API + clientes independientes', () => {
@@ -23,6 +24,47 @@ describe.skipIf(process.env.RUN_POSTGRES_TESTS !== '1')('PostgreSQL real + API +
   afterAll(async () => { await new Promise<void>((resolve) => server?.close(() => resolve())); await db?.$disconnect() })
   beforeEach(async () => { const { revision } = await a.load(); await a.importBackup(createDemoSparesData(), revision) })
   const draft = (name: string): SpareDraft => ({ sapNumber: '', name, description: 'Prueba central', categoryId: 'reductor', area: 'LCO', compatibleEquipmentIds: ['eq-transfer-4', 'eq-transfer-5'], drawingNumber: '', comments: '' })
+
+  it('catálogos vacíos: Rodamientos, Juan Perez y Perforador persisten y B los ve', async () => {
+    const empty = createDemoSparesData()
+    empty.spareTypes = []; empty.units = []; empty.history = []
+    empty.config.categories = []; empty.config.responsibles = []; empty.config.equipment = []
+    empty.config.areas = empty.config.areas.map(({ responsibleGmbId: _r, migrationCandidateIds: _m, ...area }) => area)
+    empty.config.users = [{ id: 'local-user', name: 'Usuario local', role: 'ADMIN' }]
+    empty.config.currentUserId = 'local-user'
+    await a.importBackup(empty, (await a.load()).revision)
+    // Dedicated test DB only: reproduce the initial migration's revision exactly.
+    await db.revision.update({ where: { id: 1 }, data: { version: 0 } })
+    let state = await a.load()
+    const category = { id: `category-${createUuid()}`, name: 'Rodamientos' }
+    state = await a.updateConfig({ ...state.data.config, categories: [category] }, state.revision)
+    expect(state.revision).toBe(1)
+    expect(await db.category.findUnique({ where: { id: category.id } })).toEqual(category)
+    expect((await b.load()).data.config.categories).toEqual([category])
+    const responsible = { id: `responsible-${createUuid()}`, name: 'Juan Perez', active: true }
+    state = await a.updateConfig({ ...state.data.config, responsibles: [responsible] }, state.revision)
+    expect(state.revision).toBe(2)
+    expect(await db.responsible.findUnique({ where: { id: responsible.id } })).toEqual(responsible)
+    expect((await b.load()).data.config.responsibles).toEqual([responsible])
+    const equipment = { id: `equipment-${createUuid()}`, name: 'Perforador', area: 'LCO' as const }
+    state = await a.updateConfig({ ...state.data.config, equipment: [equipment] }, state.revision)
+    expect(state.revision).toBe(3)
+    expect(await db.equipment.findUnique({ where: { id: equipment.id } })).toEqual(equipment)
+    expect(await b.load()).toEqual(state)
+    const areas = state.data.config.areas.map((area) => area.id === 'LCO' ? { ...area, responsibleGmbId: responsible.id } : area)
+    state = await a.updateConfig({ ...state.data.config, areas }, state.revision)
+    expect((await b.load()).data.config.areas.find((area) => area.id === 'LCO')?.responsibleGmbId).toBe(responsible.id)
+    expect((await db.revision.findUniqueOrThrow({ where: { id: 1 } })).version).toBe(4)
+  })
+
+  it('PUT config rechaza 428/409/422 sin alterar datos ni revisión', async () => {
+    const state = await a.load()
+    const options = { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.data.config) }
+    expect((await fetch(`${base}/config`, options)).status).toBe(428)
+    await expect(a.updateConfig(state.data.config, state.revision - 1)).rejects.toMatchObject({ status: 409 })
+    await expect(a.updateConfig({ ...state.data.config, categories: [{ id: 'invalid', name: '' }] }, state.revision)).rejects.toMatchObject({ status: 422 })
+    expect(await b.load()).toEqual(state)
+  })
 
   it('escucha en 0.0.0.0 y sirve frontend y API en el mismo puerto', async () => {
     expect((server.address() as { address: string }).address).toBe('0.0.0.0')

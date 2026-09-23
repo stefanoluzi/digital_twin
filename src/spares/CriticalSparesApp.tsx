@@ -20,7 +20,11 @@ import { readSparesTheme, saveSparesTheme } from './services/themePreference'
 const CORE_AREAS = OPERATIONAL_PLANT_AREAS
 const statuses = Object.entries(STATUS_LABELS) as [SpareUnitStatus, string][]
 const today = () => new Date().toISOString().slice(0, 10)
-const run = (operation: () => Promise<unknown>) => { void operation().catch((error) => alert(error instanceof Error ? error.message : 'No se pudo completar la operación.')) }
+const run = (operation: () => Promise<unknown>) => { void Promise.resolve().then(operation).catch((error) => {
+  const message = error instanceof Error ? error.message : 'No se pudo completar la operación.'
+  useCriticalSparesStore.getState().setStorageState('ERROR', message)
+  alert(message)
+}) }
 const saveConfig = (config: CriticalSparesConfig) => run(() => sparesActions.updateConfig(config))
 const emptySpare = (area: PlantAreaCode = 'LCO') => ({ sapNumber: '', name: '', description: '', categoryId: '', area, compatibleEquipmentIds: [] as string[], drawingNumber: '', drawingPdf: undefined as string | undefined, drawingPdfName: undefined as string | undefined, referencePhoto: undefined as string | undefined, comments: '' })
 const emptyUnit = (): Omit<PhysicalSpareUnit, 'id' | 'spareTypeId'> => ({ status: 'WAREHOUSE', statusSince: today(), comment: '', location: '' })
@@ -157,7 +161,22 @@ function UnitEditor({ data, spareId, unit, onClose, onSave, onDelete }: { data: 
 
 function Configuration({ data, isAdmin, onChange, onExport, onImport, onDemo }: { data: CriticalSparesData; isAdmin: boolean; onChange: (config: CriticalSparesConfig) => void; onExport: () => void; onImport: () => void; onDemo: () => void }) {
   const [category, setCategory] = useState(''); const [responsible, setResponsible] = useState(''); const [equipmentName, setEquipmentName] = useState(''); const [equipmentArea, setEquipmentArea] = useState<PlantAreaCode>('LCO')
-  const add = (kind: 'category' | 'responsible' | 'equipment') => { if (!isAdmin) return; const id = `${kind}-${createUuid()}`; if (kind === 'category' && category.trim()) { onChange({ ...data.config, categories: [...data.config.categories, { id, name: category.trim() }] }); setCategory('') } if (kind === 'responsible' && responsible.trim()) { onChange({ ...data.config, responsibles: [...data.config.responsibles, { id, name: responsible.trim(), active: true }] }); setResponsible('') } if (kind === 'equipment' && equipmentName.trim()) { onChange({ ...data.config, equipment: [...data.config.equipment, { id, name: equipmentName.trim(), area: equipmentArea }] }); setEquipmentName('') } }
+  const add = (kind: 'category' | 'responsible' | 'equipment') => run(async () => {
+    if (!isAdmin) throw new Error('Seleccioná un usuario administrador para editar la configuración.')
+    const name = (kind === 'category' ? category : kind === 'responsible' ? responsible : equipmentName).trim()
+    if (!name) throw new Error('Escribí un nombre antes de agregar el registro.')
+    const id = `${kind}-${createUuid()}`
+    const config = { ...data.config }
+    if (kind === 'category') config.categories = [...config.categories, { id, name }]
+    if (kind === 'responsible') config.responsibles = [...config.responsibles, { id, name, active: true }]
+    if (kind === 'equipment') config.equipment = [...config.equipment, { id, name, area: equipmentArea }]
+    // Preserve the draft on failure (including 409/422/428). Only the confirmed
+    // response hydrates the store and advances its revision in the service.
+    await sparesActions.updateConfig(config)
+    if (kind === 'category') setCategory((value) => value.trim() === name ? '' : value)
+    if (kind === 'responsible') setResponsible((value) => value.trim() === name ? '' : value)
+    if (kind === 'equipment') setEquipmentName((value) => value.trim() === name ? '' : value)
+  })
   return <div className="config-page"><header><div><small>ADMINISTRACIÓN DEL MÓDULO</small><h2>Configuración</h2><p>Categorías, equipos y responsables reutilizados por los repuestos.</p></div><span className={isAdmin ? 'admin-role' : 'supervisor-role'}>{isAdmin ? 'ADMIN · edición habilitada' : 'SUPERVISOR · solo lectura'}</span></header><AreaResponsibilitySettings data={data} isAdmin={isAdmin} onChange={onChange} /><section className="config-grid"><ConfigList title="Categorías" values={data.config.categories} value={category} setValue={setCategory} onAdd={() => add('category')} disabled={!isAdmin} /><ResponsibleConfigCard data={data} isAdmin={isAdmin} value={responsible} setValue={setResponsible} onAdd={() => add('responsible')} onChange={onChange} /><article className="config-card"><header><h3>Equipos</h3><span>{data.config.equipment.length}</span></header><div className="config-list">{data.config.equipment.map((item) => <div key={item.id}><AreaTag code={item.area} /><span>{item.name}</span>{isAdmin && <button onClick={() => onChange({ ...data.config, equipment: data.config.equipment.filter((entry) => entry.id !== item.id) })}>×</button>}</div>)}</div><footer><select value={equipmentArea} onChange={(event) => setEquipmentArea(event.target.value as PlantAreaCode)} disabled={!isAdmin}>{CORE_AREAS.map((item) => <option key={item.code}>{item.code}</option>)}</select><input value={equipmentName} onChange={(event) => setEquipmentName(event.target.value)} placeholder="Nuevo equipo" disabled={!isAdmin} /><button onClick={() => add('equipment')} disabled={!isAdmin}><Plus /></button></footer></article></section><section className="backup-card"><div><Download /><span><strong>Respaldo portable</strong><small>Los datos operativos son compartidos y viven en PostgreSQL. Exportá un JSON para recuperación o traslado.</small></span></div><div><button className="ghost" onClick={onImport}><Upload /> Importar</button><button className="primary" onClick={onExport}><Download /> Exportar respaldo</button><button className="danger-button" onClick={onDemo} disabled={!isAdmin}>Restablecer demo</button></div></section></div>
 }
 

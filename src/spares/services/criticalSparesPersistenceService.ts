@@ -31,11 +31,14 @@ export function initializeCriticalSparesPersistence() {
 }
 
 async function mutate(operation: (revision: number) => Promise<CentralSparesState>) {
-  if (busy || loading) throw new Error('Hay una operación en curso. Esperá a que termine.')
-  if (revision === null) throw new Error('Primero conectá con el servidor.')
+  const blocked = busy || loading ? 'Hay una operación en curso. Esperá a que termine.' : revision === null ? 'Primero conectá con el servidor.' : null
+  if (blocked) {
+    useCriticalSparesStore.setState({ storageError: blocked })
+    throw new Error(blocked)
+  }
   busy = true
   useCriticalSparesStore.getState().setStorageState('SAVING')
-  try { const result = await operation(revision); hydrate(result); return result }
+  try { const result = await operation(revision!); hydrate(result); return result }
   catch (error) {
     useCriticalSparesStore.getState().setStorageState('ERROR', error instanceof Error ? error.message : 'No se pudo guardar.')
     throw error

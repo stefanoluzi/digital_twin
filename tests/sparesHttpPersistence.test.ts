@@ -3,11 +3,11 @@ import { createDemoSparesData } from '../src/spares/data/demoSpares'
 
 describe('Frontend de persistencia central', () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.resetModules() })
-  const setup = async () => {
+  const setup = async (data = createDemoSparesData(), revision = 7) => {
     vi.stubGlobal('localStorage', { getItem: () => null, setItem: vi.fn() })
     const indexedDB = { open: vi.fn(() => { throw new Error('No acceder a IndexedDB') }) }
     vi.stubGlobal('indexedDB', indexedDB)
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: createDemoSparesData(), revision: 7 }), { status: 200 }))
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data, revision }), { status: 200 }))
     vi.stubGlobal('fetch', fetch)
     const service = await import('../src/spares/services/criticalSparesPersistenceService')
     const { useCriticalSparesStore: store } = await import('../src/spares/store/criticalSparesStore')
@@ -19,6 +19,37 @@ describe('Frontend de persistencia central', () => {
     expect(fetch.mock.calls[0][0]).toBe('/api/state')
     expect(store.getState().storageStatus).toBe('SAVED')
     expect(indexedDB.open).not.toHaveBeenCalled()
+  })
+  it('altas consecutivas desde revisión 0 hidratan catálogos y envían la revisión nueva', async () => {
+    const data = createDemoSparesData()
+    data.config.categories = []; data.config.responsibles = []; data.config.equipment = []
+    const { service, store, fetch } = await setup(data, 0)
+    const entries = [
+      { categories: [{ id: 'cat-test', name: 'Rodamientos' }] },
+      { responsibles: [{ id: 'gmb-test', name: 'Juan Perez', active: true }] },
+      { equipment: [{ id: 'eq-test', name: 'Perforador', area: 'LCO' as const }] },
+    ]
+    for (const [index, entry] of entries.entries()) {
+      const config = { ...store.getState().config, ...entry }
+      fetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: { ...data, config }, revision: index + 1 }), { status: 200 }))
+      await service.sparesActions.updateConfig(config)
+      expect(fetch.mock.calls.at(-1)?.[0]).toBe('/api/config')
+      expect(fetch.mock.calls.at(-1)?.[1].method).toBe('PUT')
+      expect(fetch.mock.calls.at(-1)?.[1].headers['If-Match']).toBe(String(index))
+      expect(store.getState().config).toEqual(config)
+      expect(store.getState().storageStatus).toBe('SAVED')
+    }
+  })
+  it.each([409, 428, 422])('config HTTP %s muestra error y conserva estado/revisión confirmados', async (status) => {
+    const { service, store, fetch } = await setup()
+    const before = store.getState().config
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'No se pudo guardar la configuración', details: ['Revisá los datos'] }), { status }))
+    await expect(service.sparesActions.updateConfig({ ...before, categories: [] })).rejects.toMatchObject({ status })
+    expect(store.getState().config).toBe(before)
+    expect(store.getState().storageError).toContain('Revisá los datos')
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: createDemoSparesData(), revision: 8 }), { status: 200 }))
+    await service.sparesActions.updateConfig(before)
+    expect(fetch.mock.calls.at(-1)?.[1].headers['If-Match']).toBe('7')
   })
   it('un conflicto no modifica el estado confirmado ni guarda localmente', async () => {
     const { service, store, fetch, indexedDB } = await setup()
