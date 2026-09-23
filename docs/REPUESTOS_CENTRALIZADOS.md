@@ -215,6 +215,12 @@ La suite general omite intencionalmente los tests destructivos de PostgreSQL. El
 ejecuta CRUD, relaciones, A→DB→B, concurrencia, backup y rollback real (trigger temporal
 que falla en auditoría después de escribir datos). No hay script lint en el proyecto.
 
+Validación del 23/09/2026: **130 tests generales + 8 tests PostgreSQL aprobados**,
+TypeScript y ambos builds correctos. Se probó pg_dump/restore a otra base y se recuperaron
+6 repuestos, 9 unidades y la auditoría de prueba. En navegador se verificaron dashboard,
+alta, edición, búsqueda y recarga; el diálogo automatizado del borrado se bloqueó,
+por lo que ese paso manual no se cuenta como aprobado (sí pasó el test API/DB).
+
 Limitaciones deliberadas:
 
 - Sin autenticación real: `X-Actor-Id`/selector local es identidad declarada y falsificable,
