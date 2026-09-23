@@ -1,4 +1,5 @@
 import { create, type StateCreator } from 'zustand'
+import { createUuid } from '../domain/createUuid'
 import { createDemoSparesData } from '../data/demoSpares'
 import { normalizeCriticalSparesData } from '../data/sparesNormalizer'
 import { AVAILABLE_STATUSES, getUncoveredAt } from '../domain/spareSelectors'
@@ -23,7 +24,7 @@ export interface CriticalSparesStore extends CriticalSparesData {
 }
 
 const clone = <T,>(value: T): T => structuredClone(value)
-const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`
+const uid = (prefix: string) => `${prefix}-${createUuid()}`
 
 function coverageTransition(state: CriticalSparesData, units: PhysicalSpareUnit[], spareId: string, effectiveDate: string) {
   const wasCovered = state.units.some((unit) => unit.spareTypeId === spareId && AVAILABLE_STATUSES.includes(unit.status))

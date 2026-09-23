@@ -14,7 +14,7 @@ describe.skipIf(process.env.RUN_POSTGRES_TESTS !== '1')('PostgreSQL real + API +
   beforeAll(async () => {
     if (!process.env.DATABASE_URL || !new URL(process.env.DATABASE_URL).pathname.endsWith('_test')) throw new Error('Base de prueba dedicada requerida')
     db = new PrismaClient()
-    server = createApp(db).listen(0, '127.0.0.1')
+    server = createApp(db, 'dist-spares').listen(0, '0.0.0.0')
     await new Promise<void>((resolve) => server.on('listening', resolve))
     base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api`
     a = new HttpCriticalSparesRepository(base, () => 'admin-demo')
@@ -23,6 +23,26 @@ describe.skipIf(process.env.RUN_POSTGRES_TESTS !== '1')('PostgreSQL real + API +
   afterAll(async () => { await new Promise<void>((resolve) => server?.close(() => resolve())); await db?.$disconnect() })
   beforeEach(async () => { const { revision } = await a.load(); await a.importBackup(createDemoSparesData(), revision) })
   const draft = (name: string): SpareDraft => ({ sapNumber: '', name, description: 'Prueba central', categoryId: 'reductor', area: 'LCO', compatibleEquipmentIds: ['eq-transfer-4', 'eq-transfer-5'], drawingNumber: '', comments: '' })
+
+  it('escucha en 0.0.0.0 y sirve frontend y API en el mismo puerto', async () => {
+    expect((server.address() as { address: string }).address).toBe('0.0.0.0')
+    const root = await fetch(base.replace('/api', '/'))
+    expect(root.status).toBe(200)
+    expect(await root.text()).toContain('id="root"')
+    expect(await (await fetch(`${base}/health`)).json()).toEqual({ status: 'ok', database: 'postgresql' })
+  })
+  it('cerrar y recrear app y cliente Prisma conserva datos de A visibles para B', async () => {
+    const created = await a.create(draft('Persistente tras reinicio'), (await a.load()).revision)
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+    await db.$disconnect()
+    db = new PrismaClient()
+    server = createApp(db, 'dist-spares').listen(0, '0.0.0.0')
+    await new Promise<void>((resolve) => server.on('listening', resolve))
+    base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api`
+    a = new HttpCriticalSparesRepository(base, () => 'admin-demo')
+    b = new HttpCriticalSparesRepository(base, () => 'supervisor-demo')
+    expect((await b.load()).data.spareTypes.find((spare) => spare.id === created.id)?.name).toBe('Persistente tras reinicio')
+  })
 
   it('A crea → PostgreSQL persiste → B ve; edita y elimina con relaciones N:M', async () => {
     const created = await a.create(draft('Cliente A'), (await a.load()).revision)

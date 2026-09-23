@@ -34,7 +34,38 @@ despliegue centralizado; descargar solo `dist-spares` ya no alcanza para este m�
 - Otra PC ve los cambios al abrir, recargar o pulsar **Actualizar datos**. No hay push
   en tiempo real ni polling que cambie un formulario mientras se edita.
 
-## Levantar en la VM con Docker
+## Despliegue operativo en VM
+
+### 1. Preparar la VM (una sola vez, tarea de TI)
+
+Instalar Git y un motor Docker para **contenedores Linux**, con Docker Compose v2 o
+posterior. No instalar Node ni PostgreSQL por separado. Las PCs cliente solo necesitan
+un navegador actualizado y acceso a la red interna.
+
+- **Linux (recomendado para servidor):** instalar [Docker Engine](https://docs.docker.com/engine/install/)
+  y el [plugin Compose](https://docs.docker.com/compose/install/linux/). Instalar Git con
+  el gestor de paquetes de la distribución. En una VM con systemd, TI debe habilitar
+  el arranque de Docker: `sudo systemctl enable --now docker`.
+- **Windows 10/11 compatible:** instalar Git y [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
+  con motor Linux/WSL2 o Hyper-V; la VM necesita virtualización anidada soportada.
+  Configurar inicio de Docker y comprobarlo después de reiniciar; Docker Desktop puede
+  depender del inicio de sesión. No prometer arranque desatendido sin probarlo con TI.
+- **Windows Server:** Docker Desktop no está soportado oficialmente. No basta con
+  instalar un motor de contenedores Windows para estas imágenes Linux. TI debe
+  proporcionar un host Linux compatible (por ejemplo VM Linux en Hyper-V). Se usa
+  exactamente este mismo Compose, no una segunda arquitectura.
+
+Verificar en la VM:
+
+```sh
+git --version
+docker version
+docker compose version
+```
+
+`docker version` debe mostrar también **Server**. Si no, el motor no está arrancado.
+
+### 2. Descargar y configurar
 
 Requiere Docker Engine/Desktop con Compose v2 y permiso para ejecutar contenedores Linux.
 Descargar el código de **codex/editor-upgrades**, no el ZIP de la rama portable antigua.
@@ -50,6 +81,121 @@ docker compose logs --tail=100 app
 ```
 
 En PowerShell usar `Copy-Item .env.example .env` en lugar de `cp` si se prefiere.
+Editar `.env` con el editor de texto de la VM. Para producción interna usar:
+
+```dotenv
+POSTGRES_DB=critical_spares
+POSTGRES_USER=spares
+POSTGRES_PASSWORD=REEMPLAZAR_POR_UNA_CLAVE_LARGA_Y_UNICA
+APP_BIND_ADDRESS=0.0.0.0
+APP_PORT=8080
+```
+
+No copiar el `.env` de desarrollo de la PC personal. `DATABASE_URL`, `HOST` y `PORT`
+del ejemplo solo son para ejecución nativa; Compose establece esos valores internamente.
+En Linux proteger `.env` con `chmod 600 .env`. No subirlo a Git.
+
+### 3. Iniciar, verificar y abrir desde otra PC
+
+```sh
+docker compose config --quiet
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=100 app postgres
+```
+
+Esperar `app` y `postgres` en estado **healthy**. Compose espera el healthcheck de
+PostgreSQL; app ejecuta las migraciones y recién después inicia Express, que sirve
+el frontend y `/api` en el mismo puerto. No ejecutar comandos npm manualmente.
+
+En el navegador de cualquier PC de la LAN abrir:
+
+```text
+http://IP_DE_LA_VM:8080/api/health
+http://IP_DE_LA_VM:8080
+```
+
+Health debe responder `{"status":"ok","database":"postgresql"}`. No se necesita SSH,
+localhost, HTTPS, ni procesos en la PC personal. `0.0.0.0` es el bind, **no** la dirección
+que se escribe en el navegador. No hay URLs API absolutas apuntando a localhost en
+el frontend desplegado: el repository usa `/api`.
+
+**HTTP por IP:** Configuración usa una abstracción UUID v4 con fallback criptográfico
+`getRandomValues` cuando `randomUUID` no está disponible. Las altas de repuestos/unidades
+se procesan en backend. No se requieren APIs de secure context para el flujo operacional.
+HTTPS queda como mejora futura. HTTP no cifra el tráfico: limitarlo a una LAN confiable.
+
+### 4. Firewall y primera carga
+
+TI debe permitir únicamente **TCP 8080** (o `APP_PORT`) desde las PCs/subredes autorizadas
+hacia la VM, tanto en el firewall del SO como en el hipervisor si aplica. No abrir 5432
+ni 3001. PostgreSQL no tiene `ports` en Compose; solo está en la red Docker del proyecto.
+No modificar las reglas ni los servicios del otro servidor Node existente.
+
+La base empieza vacía de repuestos. No importar IndexedDB ni pulsar Restablecer demo.
+En Configuración crear categoría y GMB activo, asignar el GMB a un área y, opcionalmente,
+crear un equipo. Luego Repuestos → Nuevo repuesto → guardar.
+
+Verificar desde la VM (con los nombres recomendados arriba):
+
+```sh
+docker compose exec postgres psql -U spares -d critical_spares
+```
+
+Dentro de psql: `SELECT id, name, area FROM "Spare";` y `\q` para salir.
+Desde PC B abrir la misma URL por IP y pulsar Actualizar datos: debe aparecer el registro.
+
+### 5. Backup, actualización y reinicio
+
+Primer backup Linux: `sh scripts/backup-db.sh`. En Windows usar los comandos
+`pg_dump` + `docker compose cp` de la sección Backups más abajo. Copiar el dump fuera
+de la VM; el volumen no sustituye al backup.
+
+Actualizar siempre desde la misma carpeta/proyecto Compose, después de un backup:
+
+```sh
+git pull --ff-only origin codex/editor-upgrades
+docker compose up -d --build
+docker compose ps
+```
+
+`app` y `postgres` tienen `restart: unless-stopped`. Con el motor Docker arrancando
+al iniciar la VM, los contenedores no detenidos manualmente volverán a levantarse.
+Si PostgreSQL demora en estar listo al reiniciar el motor, el arranque de app puede
+fallar temporalmente y la política reintentará. Verificar ambos healthchecks.
+
+Prueba de aceptación con un repuesto guardado (hacerla en horario acordado):
+
+```sh
+docker compose restart app
+docker compose up -d --build --force-recreate app
+```
+
+Refrescar desde PC B después de cada comando y confirmar el mismo registro. Luego TI
+debe reiniciar la VM y repetir `docker compose ps`, `/api/health` y la consulta del repuesto.
+La prueba real de reinicio/reconstrucción Docker queda a realizar donde exista el motor.
+
+### 6. Qué no hacer
+
+- Reconstruir/recrear **app** no borra PostgreSQL: el named volume `postgres_data` es independiente.
+- `docker compose down` retira contenedores/red pero **conserva** el volumen. Para volver:
+  `docker compose up -d`. Un proyecto bajado con `down` no reaparece solo al reiniciar.
+- **`docker compose down -v` sí elimina el volumen y sus datos. No usar en producción.**
+- No borrar volúmenes con Docker Desktop/prune ni cambiar el nombre del proyecto Compose.
+- No ejecutar `prisma migrate reset`, no publicar PostgreSQL ni exponer la app a Internet.
+- No detener el otro servidor Node ni reutilizar un puerto ocupado.
+
+### Auditoría de dependencias del navegador
+
+Se revisó `src/` completo: los dos puntos del módulo Repuestos que invocaban directamente
+`crypto.randomUUID()` ahora usan `src/spares/domain/createUuid.ts`. La API fetch es relativa.
+Los usos de IndexedDB se limitan al respaldo legado y preferencias; los datos operativos
+no dependen de él. No hay clipboard, service worker, geolocalización, mediaDevices ni
+File System Access API requeridos por este standalone. Los selectores de archivo son HTML.
+Se detectaron UUID/clipboard en módulos del Digital Twin/Maintenance ajenos al standalone;
+no se cambiaron porque no forman parte de este despliegue. Los launchers estáticos antiguos
+en `spares-standalone/public` y puertos Vite son herramientas locales, no el arranque Compose.
+
 Abrir `http://IP_DE_LA_VM:8080`. El arranque ejecuta `prisma migrate deploy` antes
 de iniciar la API. Una instalación nueva está **vacía**, con áreas y usuario local;
 no crea repuestos de demostración ni importa automáticamente datos de una PC.
@@ -106,7 +252,10 @@ npm run db:generate
 Versionar SQL generado y schema. Producción usa `migrate deploy`, nunca `db push`
 ni `migrate reset`.
 
-## Migrar los datos que ya están en IndexedDB
+## Importación opcional de IndexedDB (no necesaria para este despliegue)
+
+La decisión actual es empezar PostgreSQL vacío. Omitir esta sección; queda únicamente
+como referencia de recuperación futura, sin migración automática ni pendiente.
 
 1. **No borrar caché, datos del sitio ni el perfil del navegador.** Abrir el mismo
    navegador/origen que contenía los datos, por ejemplo `http://127.0.0.1:5176`.
@@ -205,6 +354,7 @@ npm test
 npm run typecheck:server
 npm run build
 npm run build:spares
+npm run check:compose
 # Crear previamente una DB vacía exclusiva, por ejemplo critical_spares_test.
 # Configurar TEST_DATABASE_URL, sin usar producción:
 npm run test:postgres
@@ -215,11 +365,18 @@ La suite general omite intencionalmente los tests destructivos de PostgreSQL. El
 ejecuta CRUD, relaciones, A→DB→B, concurrencia, backup y rollback real (trigger temporal
 que falla en auditoría después de escribir datos). No hay script lint en el proyecto.
 
-Validación del 23/09/2026: **130 tests generales + 8 tests PostgreSQL aprobados**,
+Validación del 23/09/2026: **134 tests generales + 10 tests PostgreSQL aprobados**,
 TypeScript y ambos builds correctos. Se probó pg_dump/restore a otra base y se recuperaron
 6 repuestos, 9 unidades y la auditoría de prueba. En navegador se verificaron dashboard,
 alta, edición, búsqueda y recarga; el diálogo automatizado del borrado se bloqueó,
 por lo que ese paso manual no se cuenta como aprobado (sí pasó el test API/DB).
+
+Se verificaron además bind 0.0.0.0, frontend/API en el mismo puerto, persistencia tras
+recrear app/cliente Prisma y fallback UUID sin randomUUID. El test PostgreSQL requiere
+`npm run build:spares` previo para comprobar el frontend compilado. En navegador real
+por IP LAN/HTTP se crearon categoría, GMB y equipo, confirmados tras recarga.
+`npm run check:compose` validó el modelo con la CLI oficial de Compose sin Docker Engine:
+puerto único 8080, PostgreSQL no publicado, volumen, healthchecks y restart policies.
 
 Limitaciones deliberadas:
 
@@ -236,7 +393,8 @@ Limitaciones deliberadas:
 - Una restauración de DB puede retroceder revisión: detener app y recargar todas las
   pestañas después de restaurar. No mantener clientes editando durante un restore.
 - El bundle standalone mantiene advertencia >500 kB.
-- Docker Compose está preparado, pero no fue ejecutado en esta PC (no tiene Docker).
+- No se ejecutaron contenedores Docker en esta PC (no tiene Docker Engine).
+  Build/up, reconstrucción Docker y reinicio real de VM deben verificarse en la VM.
   Validación runtime realizada con PostgreSQL portable real + API nativa y navegador.
 - `npm audit` conserva avisos de herramientas Prisma/Vitest cuya solución exige cambios
   mayores; no se forzaron upgrades. No iniciar Vitest UI en una interfaz pública.

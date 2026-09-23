@@ -2,7 +2,8 @@
 
 Actualizado el 23/09/2026. La migración de código a PostgreSQL/API está implementada.
 **Los datos reales del usuario siguen intactos en IndexedDB y todavía NO fueron
-importados a PostgreSQL.** No confundir la DB vacía de desarrollo con pérdida de datos.
+importados a PostgreSQL.** Por decisión del usuario, producción comenzará vacía:
+NO hay una migración de datos pendiente. No confundir la DB vacía con pérdida de datos.
 
 ## Arquitectura actual
 
@@ -22,6 +23,10 @@ importados a PostgreSQL.** No confundir la DB vacía de desarrollo con pérdida 
 
 ## Cambios de esta sesión
 
+- Despliegue HTTP por IP: APP_BIND_ADDRESS=0.0.0.0 y APP_PORT=8080 explícitos.
+- UUID centralizado con fallback criptográfico getRandomValues para HTTP sin secure
+  context; sin cambios de UI/modelo. Validación estática de Compose: npm run check:compose.
+- Guía operativa VM, firewall, backup, actualización y reinicio; mismo Compose Linux/Windows.
 - Esquema Prisma y migraciones versionadas, API REST, validación estricta de estructura
   y relaciones, auditoría por campo, importación transaccional y control de concurrencia.
 - Reutilización de mutaciones de dominio mediante stores aislados dentro de transacciones.
@@ -33,13 +38,13 @@ importados a PostgreSQL.** No confundir la DB vacía de desarrollo con pérdida 
   espera de guardado, actualizar datos y recuperación del respaldo anterior.
 - Actualizaciones npm compatibles de seguridad. No se forzaron upgrades mayores.
 
-## IndexedDB legado y migración real pendiente
+## IndexedDB legado (importación opcional, no solicitada)
 
 - Origen original: http://127.0.0.1:5176 (mismo navegador/perfil).
 - DB LACO1_MAINTENANCE, versión 3, store criticalSparesState, clave active.
 - La aplicación central NO escribe allí. El adaptador antiguo queda archivado en código.
 - Configuración → Descargar respaldo local anterior (IndexedDB): exporta raw, readonly.
-- Guardar original fuera de la VM; luego Importar en la aplicación central.
+- Guardar original fuera de la VM si se desea conservarlo. No importarlo para este despliegue.
 - La importación reemplaza datos compartidos tras confirmación y preserva auditoría;
   si falla se revierte todo. No borra IndexedDB.
 - Validación exige GMB activo para áreas con repuestos, referencias correctas y IDs únicos.
@@ -54,6 +59,7 @@ importados a PostgreSQL.** No confundir la DB vacía de desarrollo con pérdida 
 - server/index.ts, server/db.ts: arranque y cliente Prisma.
 - prisma/schema.prisma, prisma/migrations/: modelo y migraciones.
 - src/spares/domain/sparesValidation.ts: formatos, import v1/v2 e integridad.
+- src/spares/domain/createUuid.ts: IDs compatibles con HTTP por IP; tests/sparesUuid.test.ts.
 - src/spares/repositories/HttpCriticalSparesRepository.ts: contrato central y cliente REST.
 - src/spares/services/criticalSparesPersistenceService.ts: carga, comandos y backups.
 - src/spares/store/criticalSparesStore.ts: estado y mutaciones de dominio reutilizadas en API.
@@ -65,8 +71,8 @@ importados a PostgreSQL.** No confundir la DB vacía de desarrollo con pérdida 
 
 ## Validación realizada
 
-- Suite general: 130 tests aprobados, 8 tests PostgreSQL omitidos deliberadamente en npm test.
-- npm run test:postgres: los 8 tests aprobaron contra PostgreSQL real (no mock).
+- Suite general: 134 tests aprobados, 10 tests PostgreSQL omitidos deliberadamente en npm test.
+- npm run test:postgres: los 10 tests aprobaron contra PostgreSQL real (no mock).
   Incluyen A crea → consulta directa DB → B lee, conflictos simultáneos, relaciones,
   import/export, validación y rollback inducido DESPUÉS de escribir datos.
 - npm run typecheck:server y TypeScript del frontend aprobados.
@@ -76,7 +82,11 @@ importados a PostgreSQL.** No confundir la DB vacía de desarrollo con pérdida 
   confirmados. El diálogo manual de eliminación bloqueó la herramienta; no contar ese
   paso manual como aprobado. Eliminación validada por test API/DB.
 - pg_dump/pg_restore real a otra DB: 6 repuestos, 9 unidades y auditoría recuperados.
-- Docker Compose NO ejecutado: Docker no está instalado en esta PC. Verificar en VM.
+- Compose config validado con CLI oficial: bind, puerto único, DB sin exposición,
+  healthchecks, dependencia, volumen y restart. No hay Docker Engine en esta PC:
+  build/up, reconstrucción de contenedores y reinicio real de VM quedan por probar en VM.
+- HTTP por IP LAN real: categoría, GMB y equipo creados y presentes tras recarga.
+- Test API/DB comprueba mismo puerto frontend/API y persistencia tras recrear app/cliente DB.
 
 ## Entorno local preparado (no producción)
 
@@ -84,7 +94,7 @@ importados a PostgreSQL.** No confundir la DB vacía de desarrollo con pérdida 
 - Clúster de desarrollo/validación en tmp/postgres-runtime/validation-data,
   escucha SOLO 127.0.0.1:55432; autenticación trust únicamente para pruebas locales.
 - DB critical_spares_test para tests, critical_spares_restore_test para restore,
-  critical_spares_dev vacía para uso local/migración explícita del respaldo del usuario.
+  critical_spares_dev vacía para uso local, sin importar datos del usuario.
 - .env local ignorado apunta a DB dev y configura TEST_DATABASE_URL independiente.
 - API de desarrollo en 127.0.0.1:3001; frontend Vite existente en 5176 proxy /api a 3001.
 - Nada de este runtime temporal, credenciales, dumps ni datos del usuario va a Git.
@@ -103,7 +113,7 @@ importados a PostgreSQL.** No confundir la DB vacía de desarrollo con pérdida 
 
 ## Riesgos y siguientes pasos
 
-- Importar y verificar el JSON real del usuario: todavía pendiente, sin inventar datos.
+- Comenzar producción vacía según decisión del usuario, sin importar IndexedDB.
 - Verificar Docker build/up/health/backup/restore en VM con Docker y firewall interno.
 - Identidad declarada X-Actor-Id, NO autenticación/autorización real. No exponer a Internet.
 - audit_log no es antimanipulación ante un DBA; adjuntos auditados por hash y longitud.

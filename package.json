@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "check:compose": "node scripts/verify-compose.mjs",
     "dev:server": "tsx watch server/index.ts",
     "start:server": "tsx server/index.ts",
     "db:generate": "prisma generate",
