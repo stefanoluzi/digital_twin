@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Revision {
+  id      Int @id
+  version Int @default(0)
+}
+
+model Responsible {
+  id     String @id
+  name   String
+  active Boolean
+  areas  Area[]
+}
+
+model Area {
+  id                    String @id
+  code                  String @unique
+  name                  String
+  responsibleGmbId      String?
+  migrationCandidateIds String[] @default([])
+  responsible           Responsible? @relation(fields: [responsibleGmbId], references: [id], onDelete: Restrict)
+  spares                Spare[]
+  equipment             Equipment[]
+}
+
+model Category {
+  id     String @id
+  name   String
+  spares Spare[]
+}
+
+model AppUser {
+  id   String @id
+  name String
+  role String
+}
+
+model Equipment {
+  id    String @id
+  area  String
+  name  String
+  owner Area @relation(fields: [area], references: [id], onDelete: Restrict)
+  spares SpareEquipment[]
+  installedUnits Unit[]
+}
+
+model Spare {
+  id             String @id
+  sapNumber      String
+  name           String
+  description    String
+  categoryId     String
+  area           String
+  drawingNumber  String
+  drawingPdf     String?
+  drawingPdfName String?
+  referencePhoto String?
+  comments       String
+  createdAt      String
+  updatedAt      String
+  uncoveredAt    String?
+  owner          Area @relation(fields: [area], references: [id], onDelete: Restrict)
+  category       Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  equipment      SpareEquipment[]
+  units          Unit[]
+  history        History[]
+  @@index([area])
+  @@index([sapNumber])
+}
+
+model SpareEquipment {
+  spareId     String
+  equipmentId String
+  spare       Spare @relation(fields: [spareId], references: [id], onDelete: Cascade)
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  @@id([spareId, equipmentId])
+}
+
+model Unit {
+  id                   String @id
+  spareTypeId          String
+  status               String
+  statusSince          String
+  comment              String
+  location             String
+  installedEquipmentId String?
+  installationDate     String?
+  sapNotice            String?
+  repairStartDate      String?
+  solp                 String?
+  purchaseOrder        String?
+  eta                  String?
+  photo                String?
+  spare                Spare @relation(fields: [spareTypeId], references: [id], onDelete: Cascade)
+  equipment            Equipment? @relation(fields: [installedEquipmentId], references: [id], onDelete: Restrict)
+  @@index([spareTypeId])
+  @@index([status])
+}
+
+model History {
+  id             String @id
+  unitId         String
+  spareTypeId    String
+  timestamp      String
+  user           String
+  previousStatus String?
+  nextStatus     String
+  equipmentId    String?
+  comment        String
+  snapshot       Json
+  spare          Spare @relation(fields: [spareTypeId], references: [id], onDelete: Cascade)
+  // Historical IDs intentionally survive removal of units/equipment.
+  @@index([spareTypeId, timestamp])
+}
+
+model AuditLog {
+  id        String @id @default(uuid())
+  user      String
+  entity    String
+  entityId  String
+  action    String
+  field     String
+  oldValue  Json?
+  newValue  Json?
+  createdAt DateTime @default(now())
+  @@index([entity, entityId, createdAt])
+  @@map("audit_log")
+}
