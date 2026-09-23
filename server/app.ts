@@ -77,7 +77,9 @@ export function createApp(db: PrismaClient, staticDirectory?: string) {
         else if (req.method === 'DELETE' && id) { exists(data.units); actions.deleteUnit(id) }
         else throw new ApiError(404, 'Operación no disponible')
       } else if (collection === 'config' && segments.length === 1 && req.method === 'PUT') {
-        actions.updateConfig(configSchema.parse(req.body) as CriticalSparesConfig)
+        const config = configSchema.parse(req.body) as CriticalSparesConfig
+        if (data.config.responsibles.some((person) => person.active && !config.responsibles.some((next) => next.id === person.id))) throw new ApiError(422, 'Inactivá el GMB antes de eliminarlo, y reasigná sus áreas.')
+        actions.updateConfig(config)
       } else throw new ApiError(404, 'Operación no disponible')
       const updated = local.getState()
       const snapshot: CriticalSparesData = { schemaVersion: 2, spareTypes: updated.spareTypes, units: updated.units, history: updated.history, config: updated.config }

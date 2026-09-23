@@ -6,12 +6,12 @@ import { ApiError } from './errors'
 type Tx = Prisma.TransactionClient
 const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value))
 const clean = <T>(value: T): T => JSON.parse(JSON.stringify(value, (_key, item) => item === null ? undefined : item))
-const optionalFields = (row: object, fields: string[]) => Object.fromEntries(fields.map((key) => [key, (row as Record<string, unknown>)[key] || null]))
+const optionalFields = (row: object, fields: string[]) => Object.fromEntries(fields.map((key) => [key, key === 'installedEquipmentId' ? (row as Record<string, unknown>)[key] || null : (row as Record<string, unknown>)[key] ?? null]))
 
 export async function readData(tx: Tx): Promise<CriticalSparesData> {
   const [spares, units, history, areas, categories, equipment, responsibles, users] = await Promise.all([
-    tx.spare.findMany({ include: { equipment: true }, orderBy: { createdAt: 'asc' } }),
-    tx.unit.findMany({ orderBy: { id: 'asc' } }), tx.history.findMany({ orderBy: { timestamp: 'asc' } }),
+    tx.spare.findMany({ include: { equipment: { orderBy: { equipmentId: 'asc' } } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
+    tx.unit.findMany({ orderBy: { id: 'asc' } }), tx.history.findMany({ orderBy: [{ timestamp: 'asc' }, { id: 'asc' }] }),
     tx.area.findMany({ orderBy: { id: 'asc' } }), tx.category.findMany({ orderBy: { name: 'asc' } }),
     tx.equipment.findMany({ orderBy: { id: 'asc' } }), tx.responsible.findMany({ orderBy: { id: 'asc' } }),
     tx.appUser.findMany({ orderBy: { id: 'asc' } }),

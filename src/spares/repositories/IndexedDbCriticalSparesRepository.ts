@@ -5,6 +5,8 @@ import type { CriticalSparesRepository } from './CriticalSparesRepository'
 
 const ACTIVE_STATE_KEY = 'active'
 
+/** Legacy adapter retained for compatibility only. The running app uses HTTP.
+ * Do not reconnect its replaceAll autosave to the centralized operational store. */
 export class IndexedDbCriticalSparesRepository implements CriticalSparesRepository {
   constructor(private readonly dbName = MAINTENANCE_DB_NAME) {}
 

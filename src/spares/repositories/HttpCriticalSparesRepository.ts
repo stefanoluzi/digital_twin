@@ -2,12 +2,25 @@ import type { CriticalSparesConfig, CriticalSparesData } from '../types'
 import type { SpareDraft, UnitDraft } from '../store/criticalSparesStore'
 
 export interface CentralSparesState { data: CriticalSparesData; revision: number; id?: string }
+export interface CentralCriticalSparesRepository {
+  load(): Promise<CentralSparesState>
+  list(): Promise<{ revision: number; items: CriticalSparesData['spareTypes'] }>
+  get(id: string): Promise<{ revision: number; item: CriticalSparesData['spareTypes'][number] }>
+  create(draft: SpareDraft, revision: number): Promise<CentralSparesState>
+  update(id: string, draft: SpareDraft, revision: number): Promise<CentralSparesState>
+  remove(id: string, revision: number): Promise<CentralSparesState>
+  createUnit(spareTypeId: string, draft: UnitDraft, revision: number): Promise<CentralSparesState>
+  updateUnit(id: string, draft: UnitDraft, revision: number): Promise<CentralSparesState>
+  removeUnit(id: string, revision: number): Promise<CentralSparesState>
+  updateConfig(config: CriticalSparesConfig, revision: number): Promise<CentralSparesState>
+  importBackup(data: CriticalSparesData, revision: number): Promise<CentralSparesState>
+}
 export class SparesApiError extends Error {
   constructor(message: string, public status: number) { super(message) }
 }
 
 /** Operational persistence. No IndexedDB fallback and no optimistic local writes. */
-export class HttpCriticalSparesRepository {
+export class HttpCriticalSparesRepository implements CentralCriticalSparesRepository {
   constructor(private base = '/api', private actor = () => 'local-user') {}
   private async request<T>(path: string, method = 'GET', body?: unknown, revision?: number): Promise<T> {
     let response: Response
@@ -26,7 +39,7 @@ export class HttpCriticalSparesRepository {
   }
   load() { return this.request<CentralSparesState>('/state') }
   list() { return this.request<{ revision: number; items: CriticalSparesData['spareTypes'] }>('/spares') }
-  get(id: string) { return this.request(`/spares/${encodeURIComponent(id)}`) }
+  get(id: string) { return this.request<{ revision: number; item: CriticalSparesData['spareTypes'][number] }>(`/spares/${encodeURIComponent(id)}`) }
   create(draft: SpareDraft, revision: number) { return this.request<CentralSparesState>('/spares', 'POST', draft, revision) }
   update(id: string, draft: SpareDraft, revision: number) { return this.request<CentralSparesState>(`/spares/${encodeURIComponent(id)}`, 'PUT', draft, revision) }
   remove(id: string, revision: number) { return this.request<CentralSparesState>(`/spares/${encodeURIComponent(id)}`, 'DELETE', undefined, revision) }

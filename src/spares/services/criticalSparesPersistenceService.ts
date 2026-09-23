@@ -1,11 +1,11 @@
-import { HttpCriticalSparesRepository, type CentralSparesState } from '../repositories/HttpCriticalSparesRepository'
+import { HttpCriticalSparesRepository, type CentralCriticalSparesRepository, type CentralSparesState } from '../repositories/HttpCriticalSparesRepository'
 import { useCriticalSparesStore, type SpareDraft, type UnitDraft } from '../store/criticalSparesStore'
 import { parseBackup } from '../domain/sparesValidation'
 import type { CriticalSparesConfig, CriticalSparesData } from '../types'
 
 const actorKey = 'critical-spares:actor'
 const actor = () => localStorage.getItem(actorKey) || useCriticalSparesStore.getState().config.currentUserId || 'local-user'
-const repository = new HttpCriticalSparesRepository('/api', actor)
+const repository: CentralCriticalSparesRepository = new HttpCriticalSparesRepository('/api', actor)
 let revision: number | null = null
 let busy = false
 let loading: Promise<void> | null = null

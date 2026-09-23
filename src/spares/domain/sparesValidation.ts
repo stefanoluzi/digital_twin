@@ -58,6 +58,7 @@ export function validateSparesData(input: unknown): CriticalSparesData {
     return seen
   }
   const areas = unique(data.config.areas, 'Áreas')
+  for (const definition of OPERATIONAL_PLANT_AREAS) if (!areas.has(definition.code)) issues.push(`Falta el área ${definition.code}`)
   const categories = unique(data.config.categories, 'Categorías')
   const equipment = unique(data.config.equipment, 'Equipos')
   const people = unique(data.config.responsibles, 'GMB')
