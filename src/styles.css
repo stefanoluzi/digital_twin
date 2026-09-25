@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+@import './platform/typography.css';
+@import './platform/lcoTypography.css';
 
 :root { font-family: Inter, system-ui, sans-serif; color: #dce4ea; background: #161b20; font-synthesis: none; }
 * { box-sizing: border-box; }

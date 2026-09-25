@@ -1,0 +1,21 @@
+/* Extracted from criticalSpares.css, including its fixed text-large (+4px).
+   No global element rules: importing these tokens cannot restyle another module. */
+:root {
+  --lc-font: Inter, system-ui, sans-serif;
+  --lc-mono: 'IBM Plex Mono', monospace;
+  --lc-text: 16px;
+  --lc-secondary: 14px;
+  --lc-badge: 13px;
+  --lc-technical: 12px;
+  --lc-compact: 9px;
+  --lc-micro: 8px;
+  --lc-title: 19px;
+  --lc-heading: 20px;
+  --lc-metric: 32px;
+  --lc-regular: 400;
+  --lc-bold: 700;
+  --lc-leading: normal;
+  --lc-prose-leading: 1.45;
+  --lc-label-tracking: .14em;
+  --lc-kpi-tracking: .06em;
+}

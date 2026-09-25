@@ -9,6 +9,7 @@ import { useCriticalSparesStore } from './store/criticalSparesStore'
 import type { CriticalSparesConfig, CriticalSparesData, PhysicalSpareUnit, SpareType, SpareUnitStatus, SparesView } from './types'
 import './criticalSpares.css'
 import { CoverageByAreaCards, CoverageByGmbChart } from './components/CoverageCharts'
+import { CoverageHistoryView } from './components/CoverageHistoryView'
 import { PlantCoverageLayout } from './components/PlantCoverageLayout'
 import { coverageByArea } from './domain/dashboardSelectors'
 import { areaResponsibleName, responsibleAreas, responsibleDisplayName } from './domain/areaResponsibility'
@@ -64,6 +65,7 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
         <NavButton active={view === 'DASHBOARD'} onClick={() => setView('DASHBOARD')} icon={<LayoutDashboard />}>Dashboard</NavButton>
         <NavButton active={view === 'SPARES'} onClick={() => setView('SPARES')} icon={<Boxes />}>Repuestos</NavButton>
         <NavButton active={view === 'TRACKING'} onClick={() => setView('TRACKING')} icon={<ClipboardList />}>Seguimiento</NavButton>
+        <NavButton active={view === 'HISTORY'} onClick={() => setView('HISTORY')} icon={<ClipboardList />}>Históricos</NavButton>
         <NavButton active={view === 'CONFIG'} onClick={() => setView('CONFIG')} icon={<Settings />}>Configuración</NavButton>
       </nav>
       <div className="spares-session">
@@ -95,6 +97,7 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
       />}
       {view === 'SPARES' && <SparesList data={snapshot} items={filtered} equipment={equipment} setEquipment={(value) => setFilter('equipment', value)} onOpen={setSelectedSpareId} onEdit={(item) => setEditingSpare(item)} />}
       {view === 'TRACKING' && <TrackingView data={dashboardData} unitState={unitState} onOpen={setSelectedSpareId} />}
+      {view === 'HISTORY' && <CoverageHistoryView refreshKey={data.storageStatus} />}
       {view === 'CONFIG' && <><Configuration data={snapshot} isAdmin={currentUser?.role === 'ADMIN'} onChange={saveConfig} onExport={() => run(exportCentralSparesBackup)} onImport={() => importRef.current?.click()} onDemo={() => { if (confirm('¿Reemplazar TODOS los datos compartidos de PostgreSQL por la demostración? Esta acción afecta a todos los usuarios. Exportá primero un respaldo.')) run(() => replaceCriticalSparesData(createDemoSparesData())) }} /><button className="ghost" onClick={() => run(exportLegacyIndexedDbBackup)}>Descargar respaldo local anterior (IndexedDB)</button></>}
     </main>
 

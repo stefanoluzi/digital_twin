@@ -2,6 +2,43 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model CoverageSnapshot {
+  id Int @id @default(autoincrement())
+  capturedAt DateTime @default(now())
+  revision Int
+  signature String
+  total Int
+  covered Int
+  uncovered Int
+  percent Int
+  repair Int
+  purchase Int
+  groups CoverageSnapshotGroup[]
+  @@index([capturedAt, id])
+}
+
+model CoverageSnapshotGroup {
+  snapshotId Int
+  dimension String
+  key String
+  name String
+  responsibleId String?
+  responsibleName String?
+  areaIds String[]
+  total Int
+  covered Int
+  uncovered Int
+  percent Int
+  repair Int
+  purchase Int
+  trackedSince DateTime?
+  lastImprovedAt DateTime?
+  snapshot CoverageSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  // Historical identity intentionally has no FK to mutable/deletable catalogs.
+  @@id([snapshotId, dimension, key])
+  @@index([dimension, key, snapshotId])
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -17,6 +54,7 @@ model Responsible {
   name   String
   active Boolean
   areas  Area[]
+  repairRequests RepairRequest[]
 }
 
 model Area {
@@ -49,6 +87,120 @@ model Equipment {
   owner Area @relation(fields: [area], references: [id], onDelete: Restrict)
   spares SpareEquipment[]
   installedUnits Unit[]
+  repairProfile RepairEquipmentProfile?
+  repairRequests RepairRequest[]
+}
+
+model RepairEquipmentProfile {
+  equipmentId String @id
+  idrep String @unique
+  sector String
+  trade String
+  active Boolean @default(true)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+}
+
+model RepairConfig {
+  id Int @id
+  revision Int @default(0)
+  warningDays Int @default(7)
+  blockCategories Json
+  workshops String[]
+}
+
+model RepairRequest {
+  id String @id @default(uuid())
+  equipmentId String
+  quantity Int
+  targetMonth DateTime @db.Date
+  requiredDate DateTime? @db.Date
+  criticality String
+  criticalReason String
+  fixedDeadline Boolean
+  criticalDueDate DateTime? @db.Date
+  responsibleId String?
+  workshop String
+  notes String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  responsible Responsible? @relation(fields: [responsibleId], references: [id], onDelete: Restrict)
+  items RepairItem[]
+  events RepairEvent[]
+  @@index([targetMonth, equipmentId])
+  @@index([requiredDate, criticality])
+  @@index([workshop, responsibleId])
+}
+
+model RepairItem {
+  id String @id @default(uuid())
+  requestId String
+  ordinal Int
+  status String @default("PENDING")
+  startedAt DateTime? @db.Date
+  sentAt DateTime? @db.Date
+  request RepairRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  commitments RepairCommitment[]
+  blocks RepairBlock[]
+  delivery RepairDelivery?
+  @@unique([requestId, ordinal])
+  @@index([status])
+}
+
+model RepairCommitment {
+  id String @id @default(uuid())
+  itemId String
+  date DateTime @db.Date
+  reason String
+  recordedAt DateTime @default(now())
+  actor String
+  sequence Int
+  item RepairItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  @@unique([itemId, sequence])
+}
+
+model RepairBlock {
+  id String @id @default(uuid())
+  itemId String
+  startedAt DateTime @db.Date
+  resolvedAt DateTime? @db.Date
+  durationDays Int?
+  owner String
+  category String
+  description String
+  comment String
+  actor String
+  resolvedBy String?
+  previousStatus String
+  item RepairItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  @@index([owner, resolvedAt])
+  @@index([itemId, startedAt])
+}
+
+model RepairDelivery {
+  id String @id @default(uuid())
+  itemId String @unique
+  deliveredAt DateTime @db.Date
+  recordedAt DateTime @default(now())
+  actor String
+  comment String
+  item RepairItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  @@index([deliveredAt])
+}
+
+model RepairEvent {
+  id Int @id @default(autoincrement())
+  requestId String
+  action String
+  actor String
+  recordedAt DateTime @default(now())
+  revision Int
+  detail Json
+  snapshot Json
+  request RepairRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  @@index([requestId, recordedAt, id])
+  @@index([recordedAt, id])
 }
 
 model Spare {

@@ -91,4 +91,4 @@ export interface CriticalSparesData {
   config: CriticalSparesConfig
 }
 
-export type SparesView = 'DASHBOARD' | 'SPARES' | 'TRACKING' | 'CONFIG'
+export type SparesView = 'DASHBOARD' | 'SPARES' | 'TRACKING' | 'HISTORY' | 'CONFIG'

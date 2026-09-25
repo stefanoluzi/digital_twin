@@ -1,0 +1,112 @@
+/* Typography only. Keep topology, grid tracks, mechanical dimensions and state colors. */
+.lco-couplings-screen {
+  font-family: var(--lc-font);
+  font-size: var(--lc-text);
+  font-weight: var(--lc-regular);
+  line-height: var(--lc-leading);
+}
+.lco-couplings-screen .lco-view-tabs { align-items:center; }
+.lco-couplings-screen .lco-view-tabs > button { white-space:nowrap; align-self:stretch; }
+.lco-couplings-screen .lco-view-tabs .lco-standalone-reference { margin:0 0 0 auto; padding-left:16px; }
+.lco-couplings-screen .lco-actions-menu { position:relative; }
+.lco-couplings-screen .lco-actions-menu > summary { cursor:pointer; padding:8px 12px; border:1px solid var(--border-soft); border-radius:3px; background:var(--button-bg); font-size:var(--lc-secondary); white-space:nowrap; }
+.lco-couplings-screen .lco-actions-dropdown { position:absolute; z-index:100; top:calc(100% + 6px); right:0; width:260px; padding:6px; display:flex; flex-direction:column; gap:4px; border:1px solid var(--border); border-radius:4px; background:var(--panel-bg); box-shadow:0 8px 24px #0003; }
+.lco-couplings-screen .lco-actions-dropdown > button { width:100%; text-align:left; justify-content:flex-start; font-size:var(--lc-secondary); padding-inline:10px; }
+.lco-couplings-screen .lco-actions-dropdown > button:hover { background:var(--hover-bg); }
+.lco-couplings-screen .lco-train-cage { padding-bottom:12px; }
+@media (max-width:760px) {
+  .lco-couplings-screen .lco-view-tabs { flex-wrap:wrap; }
+  .lco-couplings-screen .lco-view-tabs .lco-standalone-reference { margin-left:0; padding:6px 0; }
+  .lco-couplings-screen .lco-standalone-header { flex-wrap:wrap; gap:10px; }
+}
+.lco-couplings-screen :is(button, input, select, textarea) { font-family: var(--lc-font); }
+.lco-couplings-screen :is(.lco-standalone-header h1, .lco-screen-header h1) {
+  font-size: var(--lc-title); font-weight: var(--lc-bold); letter-spacing: normal;
+}
+.lco-couplings-screen :is(.lco-view-tabs button, .lco-filter-bar button, .lco-standalone-actions button, .lco-header-actions button) {
+  font-size: var(--lc-text);
+}
+.lco-couplings-screen :is(.lco-view-tabs button, button.primary) { font-weight: var(--lc-bold); }
+.lco-couplings-screen :is(.lco-local-storage-note, .lco-screen-header p, .lco-header-actions label,
+ .lco-header-actions input, .lco-standalone-reference label, .lco-standalone-reference input,
+ .lco-filter-bar span, .lco-state-chart header > span, .lco-state-legend > span,
+ .lco-state-overview aside span, .lco-activity-list span, .lco-activity-panel header button,
+ .lco-control-tracking header p, .lco-control-tracking header label, .lco-control-tracking select,
+ .lco-history-section header p, .lco-history-filters label, .lco-history-filters input,
+ .lco-history-filters select, .lco-age-summary span) {
+  font-family: var(--lc-font); font-size: var(--lc-secondary); letter-spacing: normal;
+}
+.lco-couplings-screen :is(.lco-standalone-header small, .lco-screen-header > div > small,
+ .lco-control-tracking header small, .lco-history-section header small,
+ .lco-activity-panel header small, .lco-dialog header small, .lco-detail-drawer header small) {
+  font-family: var(--lc-mono); font-size: var(--lc-badge);
+  font-weight: var(--lc-bold); letter-spacing: var(--lc-label-tracking);
+}
+.lco-couplings-screen :is(.lco-state-chart header small, .lco-state-overview aside small,
+ .lco-activity-list strong, .lco-detail-body section > h3) {
+  font-family: var(--lc-mono); font-size: var(--lc-technical);
+  font-weight: var(--lc-bold); letter-spacing: var(--lc-kpi-tracking);
+}
+.lco-couplings-screen :is(.lco-train-toolbar strong, .lco-activity-panel h2,
+ .lco-history-section h2, .lco-control-tracking h2, .lco-dialog h2, .lco-detail-drawer h2) {
+  font-size: var(--lc-heading); font-weight: var(--lc-bold);
+}
+.lco-couplings-screen :is(.lco-state-chart header strong, .lco-state-legend strong,
+ .lco-activity-target, .lco-control-table, .lco-history-table) { font-size: var(--lc-text); }
+.lco-couplings-screen :is(.lco-control-table th, .lco-history-table th) {
+  font-family: var(--lc-mono); font-size: var(--lc-technical); font-weight: var(--lc-bold);
+}
+.lco-couplings-screen :is(.lco-storage-status, .lco-age-badge, .lco-event-type,
+ .lco-activity-list time, .lco-history-list time, .lco-wear-evolution time) {
+  font-family: var(--lc-mono); font-size: var(--lc-badge);
+}
+.lco-couplings-screen :is(.lco-control-actions button, .lco-photo-count, .lco-row-actions button,
+ .lco-history-inline-actions button, .lco-history-section > header button) { font-size: var(--lc-secondary); }
+.lco-couplings-screen :is(.lco-state-overview aside strong, .lco-age-summary strong) {
+  font-size: var(--lc-metric); line-height: 1; font-variant-numeric: tabular-nums;
+}
+.lco-couplings-screen .lco-state-donut strong { font-size: var(--lc-title); }
+.lco-couplings-screen .lco-state-donut span { font-size: var(--lc-micro); }
+/* Smallest existing Repuestos scale for fixed-width mechanical annotations. */
+.lco-couplings-screen :is(.lco-mechanical-labels, .lco-freshness-signal,
+ .lco-train-cage > header span) {
+  font-family: var(--lc-font); font-size: var(--lc-compact); letter-spacing: normal;
+}
+.lco-couplings-screen :is(.lco-train-lane > header strong, .lco-train-lane > header span,
+ .lco-train-direction, .lco-train-shaft > strong, .lco-wear-legend > span:first-child) {
+  font-family: var(--lc-mono); font-size: var(--lc-technical);
+  font-weight: var(--lc-bold); letter-spacing: var(--lc-kpi-tracking);
+}
+.lco-couplings-screen .lco-train-shaft > strong { letter-spacing: normal; }
+.lco-couplings-screen .lco-train-cage > header button { font-size: var(--lc-title); font-weight: var(--lc-bold); }
+.lco-couplings-screen .lco-wear-legend { font-size: var(--lc-technical); }
+.lco-couplings-screen :is(.lco-dialog, .lco-detail-drawer, .lco-hover-tooltip) { font-family: var(--lc-font); }
+.lco-couplings-screen :is(.lco-dialog label, .lco-dialog input, .lco-dialog select,
+ .lco-dialog textarea, .lco-dialog button, .lco-dialog p, .lco-detail-actions button,
+ .lco-current-state span, .lco-current-state em, .lco-shaft-current span,
+ .lco-coupling-facts strong, .lco-coupling-evidence span, .lco-history-list p,
+ .lco-hover-tooltip, .lco-settings-thresholds label, .lco-settings-preview span) {
+  font-size: var(--lc-secondary);
+}
+.lco-couplings-screen :is(.lco-current-state small, .lco-coupling-facts small,
+ .lco-shaft-current small, .lco-coupling-evidence small) { font-size: var(--lc-technical); }
+.lco-couplings-screen :is(.lco-event-form p, .lco-settings-intro, .lco-history-list p) { line-height: var(--lc-prose-leading); }
+/* The inspection grid has fixed narrow cells: retain compact hierarchy, not wider tracks. */
+.lco-couplings-screen :is(.lco-reading-row label, .lco-reading-row button,
+ .lco-inspection-grid header small, .lco-inspection-grid header button,
+ .lco-inspection-shaft-header > strong, .lco-inspection-shaft-header button,
+ .lco-select-prompt, .lco-keyboard-hint, .lco-inspection-progress span) { font-size: var(--lc-technical); }
+.lco-couplings-screen .lco-reading-row label { font-size: var(--lc-compact); }
+
+/* Compact existing tokens keep the original one-row toolbar and fixed diagram. */
+@media (max-width: 1600px) {
+  .lco-couplings-screen .lco-standalone-actions button { font-size: var(--lc-technical); }
+  .lco-couplings-screen .lco-storage-status { font-size: var(--lc-technical); }
+  .lco-couplings-screen :is(.lco-train-toolbar strong, .lco-activity-panel h2) { font-size: var(--lc-text); }
+  .lco-couplings-screen .lco-wear-legend { font-size: var(--lc-compact); }
+  .lco-couplings-screen .lco-activity-panel header small { font-size: var(--lc-technical); letter-spacing: var(--lc-kpi-tracking); }
+}
+@media (max-width: 1400px) {
+  .lco-couplings-screen .lco-standalone-actions button { padding-inline: 4px; }
+  .lco-couplings-screen .lco-activity-panel h2 { font-size: var(--lc-secondary); }
+}

@@ -10,6 +10,8 @@ import type { SpareDraft, UnitDraft } from '../src/spares/store/criticalSparesSt
 import { readState, mutateState } from './sparesDatabase'
 import { ApiError } from './errors'
 import { createLcoRouter } from './lco/router'
+import { coverageHistoryRouter } from './coverageHistory'
+import { createRepairsRouter } from './repairs/router'
 
 export function createApp(db: PrismaClient, staticDirectory?: string) {
   const app = express()
@@ -23,6 +25,8 @@ export function createApp(db: PrismaClient, staticDirectory?: string) {
   })
   app.use(express.json({ limit: '100mb' }))
   app.use('/api/controles-criticos/acoplamientos', createLcoRouter(db))
+  app.use('/api/coverage-history', coverageHistoryRouter(db))
+  app.use('/api/repairs', createRepairsRouter(db))
   app.get('/api/health', async (_req, res) => { await db.$queryRaw`SELECT 1`; res.json({ status: 'ok', database: 'postgresql' }) })
   app.get('/api/state', async (_req, res) => res.json(await readState(db)))
   app.get('/api/backup', async (_req, res) => {

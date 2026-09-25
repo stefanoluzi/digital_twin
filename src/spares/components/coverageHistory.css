@@ -1,0 +1,29 @@
+.coverage-history { display: grid; gap: 16px; min-width: 0; }
+.coverage-history .history-controls, .history-selectors, .history-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.history-controls label { display: grid; gap: 4px; }
+.history-controls input, .history-controls select { min-height: 32px; border: 1px solid var(--sp-line); border-radius: 3px; background: var(--sp-field); color: var(--sp-text); padding: 5px 8px; }
+.coverage-history .spares-panel > header { flex-wrap: wrap; gap: 12px; }
+.coverage-history .history-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.history-note { color: var(--sp-soft); margin: 10px 14px; line-height: 1.5; }
+.history-message { padding: 18px; }
+.history-chart { height: 290px; min-width: 0; }
+.history-chart .recharts-text { fill: var(--sp-soft); font-size: 12px; }
+.history-selectors, .history-legend { padding: 12px 16px; }
+.history-selectors label { display: flex; align-items: center; gap: 6px; }
+.history-selectors input { width: 16px; height: 16px; }
+.history-tooltip { background: var(--sp-panel); color: var(--sp-text); border: 1px solid var(--sp-line); padding: 12px; max-width: 430px; box-shadow: 0 3px 12px #0002; }
+.history-tooltip p { margin: 8px 0; }
+.history-legend span { display: inline-flex; gap: 6px; align-items: center; }
+.history-legend i { width: 16px; height: 3px; }
+.history-table { overflow-x: auto; }
+.history-table table { width: 100%; }
+.history-table th, .history-table td { white-space: normal; }
+.history-gmb { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 12px; }
+.history-gmb dl { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: 12px 0; }
+.history-gmb dd { margin: 0; font-weight: 600; }
+.history-status { font-weight: 600; color: var(--sp-soft); }
+.history-status.good { color: var(--sp-green); }
+.history-status.warning { color: var(--sp-yellow); }
+.history-status.risk { color: var(--sp-red); }
+@media (max-width: 1000px) { .history-gmb, .coverage-history .history-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .history-gmb, .coverage-history .history-kpis { grid-template-columns: 1fr; } }

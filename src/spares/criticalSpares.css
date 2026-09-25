@@ -1,4 +1,5 @@
 @import './sparesPalette.css';
+@import '../platform/typography.css';
 
 .spares-app .coverage-presentation-tabs { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; border-bottom:1px solid var(--sp-line); }
 .spares-app .coverage-presentation-tabs button { padding:9px 14px; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--sp-soft); font-weight:700; }
@@ -68,7 +69,7 @@
 .spares-app .responsible-actions .delete-responsible svg { width:14px; height:14px; }
 
 /* Escala tipográfica del módulo. Normal conserva el tamaño previo; Grande es el predeterminado. */
-.spares-app.text-large { --sp-type-boost:4px; }
+.spares-app.text-large { --sp-type-boost:4px; font-family:var(--lc-font); }
 .spares-app { font-size:calc(12px + var(--sp-type-boost,2px)); }
 .spares-app :is(.spares-brand small,.spares-panel header small,.config-page > header small,.coverage-hero small,.form-modal header small,.spare-detail header small) { font-size:calc(9px + var(--sp-type-boost)); }
 .spares-app :is(.spares-panel th,.detail-section th,.detail-overview dt,.detail-coverage small) { font-size:calc(8px + var(--sp-type-boost)); }

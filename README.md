@@ -1,5 +1,13 @@
 # Industrial Digital Twin MVP
 
+## Plataforma Mantenimiento LC1C (versión actual)
+
+Para clonar y ejecutar **Repuestos Críticos, Reparaciones Taller y Acoplamientos**
+con API + PostgreSQL, seguir [CLONAR_Y_EJECUTAR.md](docs/CLONAR_Y_EJECUTAR.md).
+El Dockerfile construye esta plataforma con `build:spares`; `npm run dev` más abajo
+corresponde al editor Digital Twin, no al despliegue centralizado.
+
+
 Industrial Digital Twin MVP is a web-based 3D plant layout editor for modeling and inspecting industrial assets in a technical scene. The current version focuses on a stable MVP for arranging equipment, editing metadata, importing layouts, and exporting the scene as JSON.
 
 ## Project Objective

@@ -29,7 +29,7 @@ export function readDashboardNavigation(search: string): { filters: DashboardFil
   if (!['ALL', 'COVERED', 'UNCOVERED'].includes(filters.coverage)) filters.coverage = 'ALL'
   if (!['ALL', 'WAREHOUSE', 'MACHINE_SIDE', 'INSTALLED', 'IN_REPAIR', 'ON_ORDER'].includes(filters.unitState)) filters.unitState = 'ALL'
   const view = params.get('rc.view') as SparesView
-  return { filters, view: ['DASHBOARD', 'SPARES', 'TRACKING', 'CONFIG'].includes(view) ? view : 'DASHBOARD' }
+  return { filters, view: ['DASHBOARD', 'SPARES', 'TRACKING', 'HISTORY', 'CONFIG'].includes(view) ? view : 'DASHBOARD' }
 }
 
 export function dashboardSearch(search: string, filters: DashboardFilters, view: SparesView) {

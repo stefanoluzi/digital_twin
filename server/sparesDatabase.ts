@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from '@prisma/client'
 import { createHash } from 'node:crypto'
 import type { CriticalSparesData } from '../src/spares/types'
 import { ApiError } from './errors'
+import { recordCoverage } from './coverageHistory'
 
 type Tx = Prisma.TransactionClient
 const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value))
@@ -96,10 +97,19 @@ export async function mutateState(db: PrismaClient, revision: number, actor: str
     const rows = await tx.$queryRaw<{ version: number }[]>`SELECT version FROM "Revision" WHERE id = 1 FOR UPDATE`
     if (rows[0]?.version !== revision) throw new ApiError(409, 'Otro usuario modificó los datos. Actualizá desde el servidor y revisá tu edición antes de guardar.')
     const before = await readData(tx)
+    await recordCoverage(tx, before, revision)
     const result = mutate(structuredClone(before))
     await writeData(tx, before, result.data)
     await auditChanges(tx, before, result.data, actor, importing)
+    await recordCoverage(tx, result.data, revision + 1)
     await tx.revision.update({ where: { id: 1 }, data: { version: { increment: 1 } } })
     return { data: await readData(tx), revision: revision + 1, id: result.id }
   }, { maxWait: 15000, timeout: 60000 })
+}
+
+export async function initializeCoverageHistory(db: PrismaClient) {
+  await db.$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<{ version: number }[]>`SELECT version FROM "Revision" WHERE id=1 FOR UPDATE`
+    await recordCoverage(tx, await readData(tx), rows[0].version)
+  }, { timeout: 60000 })
 }

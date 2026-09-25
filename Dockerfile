@@ -14,6 +14,7 @@ COPY --from=build --chown=node:node /app/dist-spares ./dist-spares
 COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --from=build --chown=node:node /app/server ./server
 COPY --from=build --chown=node:node /app/src/spares ./src/spares
+COPY --from=build --chown=node:node /app/src/repairs ./src/repairs
 COPY --from=build --chown=node:node /app/src/config ./src/config
 COPY --from=build --chown=node:node /app/src/utils ./src/utils
 COPY --from=build --chown=node:node /app/src/maintenance/domain ./src/maintenance/domain
