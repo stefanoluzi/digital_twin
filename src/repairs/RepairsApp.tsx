@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { BusyButton, ModuleLoading, PageTransition, RefreshStatus } from '../shared/ux/LoadingFeedback'
 import { CalendarDays, ClipboardList, History, LayoutDashboard, Settings, X } from 'lucide-react'
-import { readSparesTheme, saveSparesTheme } from '../spares/services/themePreference'
+import { useAppTheme, useAppUser } from '../shared/AppShell'
 import { RepairsRepository } from './repository'
 import { BLOCK_OWNERS, OWNER_LABELS, STATUS_LABELS, type BlockOwner, type RepairEvent, type RepairRequest, type RepairState } from './types'
 import { blockedDays, dashboardMetrics, requestMetrics, today } from './domain'
@@ -44,11 +45,14 @@ export default function RepairsApp() {
   const [yearOverride, setYearOverride] = useState<number | null>(null)
   const year = yearOverride ?? fiscalYear(realToday)
   const [seed, setSeed] = useState<RepairSeed | undefined>()
-  const [theme, setTheme] = useState(readSparesTheme)
+  const theme = useAppTheme()
   const [state, setState] = useState<RepairState | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const pending = useRef(false)
   const [actor, setActor] = useState('')
+  const user = state?.users.find((item) => item.id === actor)
+  useAppUser(user ? `${user.name} · ${user.role}` : undefined)
   const [view, setView] = useState<View>(() => { const value = new URLSearchParams(location.search).get('rt.view'); return views.includes(value as View) ? value as View : 'Plan del ejercicio' })
   const [selected, setSelected] = useState<string | null>(null)
   const [editor, setEditor] = useState<'NEW' | 'EDIT' | 'EQUIPMENT' | 'CONFIG' | Action | null>(null)
@@ -57,16 +61,17 @@ export default function RepairsApp() {
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState({ area: '', trade: '', month: '', status: '', criticality: '', owner: '', workshop: '', gmb: '', overdue: false })
 
-  const load = async () => { setBusy(true); setError(''); try { const next = await repository.load(); setState(next); setActor((value) => next.users.some((user) => user.id === value) ? value : next.users[0]?.id || 'local-user') } catch (e) { setError((e as Error).message) } finally { setBusy(false) } }
+  const load = async () => { if (pending.current) return; pending.current = true; setBusy(true); setError(''); try { const next = await repository.load(); setState(next); setActor((value) => next.users.some((user) => user.id === value) ? value : next.users[0]?.id || 'local-user') } catch (e) { setError((e as Error).message) } finally { pending.current = false; setBusy(false) } }
   useEffect(() => { void load() }, [])
   useEffect(() => { const pop = () => { const value = new URLSearchParams(location.search).get('rt.view'); setView(views.includes(value as View) ? value as View : 'Plan del ejercicio') }; window.addEventListener('popstate', pop); return () => window.removeEventListener('popstate', pop) }, [])
   useEffect(() => { if (!selected) return; let cancelled = false; setEvents([]); setEventError(''); void repository.events(selected).then((value) => { if (!cancelled) setEvents(value) }).catch((e) => { if (!cancelled) setEventError(e.message) }); return () => { cancelled = true } }, [selected, state?.revision])
   const navigate = (next: View) => { setView(next); const url = new URL(location.href); url.searchParams.set('rt.view', next); history.pushState(null, '', url) }
   const save = async (path: string, body: unknown, method = 'POST') => {
-    if (!state || busy) return false
+    if (!state || pending.current) return false
+    pending.current = true
     setBusy(true); setError('')
     try { const next = await repository.save(path, body, state.revision, actor, method); setState(next); setEditor(null); if (path === '/requests' && next.id && view !== 'Plan del ejercicio') setSelected(next.id); return true }
-    catch (e) { setError((e as Error).message); return false } finally { setBusy(false) }
+    catch (e) { setError((e as Error).message); return false } finally { pending.current = false; setBusy(false) }
   }
   const current = state?.requests.find((request) => request.id === selected)
   const filtered = state?.requests.filter((r) => {
@@ -74,11 +79,12 @@ export default function RepairsApp() {
     return (!query || `${r.equipment.repairProfile?.idrep} ${r.equipment.name}`.toLowerCase().includes(query.toLowerCase())) && (!filters.area || r.equipment.area === filters.area) && (!filters.trade || r.equipment.repairProfile?.trade === filters.trade) && (view === 'Plan del ejercicio' || !filters.month || r.targetMonth.startsWith(filters.month)) && (!filters.status || r.items.some((item) => item.status === filters.status)) && (!filters.criticality || r.criticality === filters.criticality) && (!filters.owner || m.blocks.some((b) => b.owner === filters.owner)) && (!filters.workshop || r.workshop === filters.workshop) && (!filters.gmb || r.responsibleId === filters.gmb) && (!filters.overdue || m.overdue)
   }) || []
   return <div className={`spares-app text-large theme-${theme} repairs-app`}>
-    <header className="spares-header"><div className="spares-brand"><span>RT</span><h1>Reparaciones Taller</h1></div><nav aria-label="Reparaciones Taller">{views.map((name, index) => { const Icon = icons[index]; return <button key={name} className={view === name ? 'active' : ''} onClick={() => navigate(name)}><Icon />{name}</button> })}</nav><div className="spares-session"><button className="ghost" onClick={() => { const next = theme === 'light' ? 'dark' : 'light'; setTheme(next); saveSparesTheme(next) }}>{theme === 'light' ? '☾ Modo oscuro' : '☀ Modo claro'}</button><button className="ghost" onClick={() => void load()} disabled={busy}>Actualizar datos</button><label>Usuario<select value={actor} onChange={(e) => setActor(e.target.value)}>{state?.users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label></div></header>
+    <header className="spares-header"><div className="spares-brand"><span>RT</span><h1>Reparaciones Taller</h1></div><nav aria-label="Reparaciones Taller">{views.map((name, index) => { const Icon = icons[index]; return <button key={name} className={view === name ? 'active' : ''} onClick={() => navigate(name)}><Icon />{name}</button> })}</nav></header>
     <main className="spares-main">
-      {error && <div className="spares-server-error" role="alert">{error}<button onClick={() => void load()} disabled={busy}>Actualizar</button></div>}
-      {busy && <p role="status">{state ? 'Procesando con PostgreSQL…' : 'Cargando Reparaciones Taller…'}</p>}
-      {!state ? <button className="ghost" onClick={() => void load()}>Reintentar conexión</button> : <>
+      {error && <div className="spares-server-error" role="alert">{error}<span> Recargá la página para volver a consultar.</span></div>}
+      <RefreshStatus active={busy && !!state} label="Procesando…" />
+      <PageTransition transitionKey={`${view}:${Boolean(state)}`}>
+      {!state ? error ? <BusyButton busy={busy} className="ghost" onClick={() => void load()}>Reintentar conexión</BusyButton> : <ModuleLoading title="Reparaciones Taller" /> : <>
         <div className="repairs-title"><div><small>LC1C · REPARACIONES TALLER</small><h2>{view}</h2></div><button className="primary" onClick={() => { setSelected(null); setSeed(undefined); setEditor('NEW') }} disabled={busy}>+ Nueva necesidad</button></div>
         {view === 'Resumen' && <RepairDashboard state={state} onOpen={setSelected} />}
         {(view === 'Reparaciones' || view === 'Plan del ejercicio') && <>
@@ -92,6 +98,7 @@ export default function RepairsApp() {
         {view === 'Configuración' && <Panel title="Importar lote revisado"><RepairImport busy={busy} onImport={(body) => save('/import', body)} /></Panel>}
         {view === 'Configuración' && <><Panel title="Equipos habilitados para taller" extra={<button className="primary" onClick={() => setEditor('EQUIPMENT')}>+ Equipo / vincular catálogo</button>}><div className="table-scroll"><table><thead><tr><th>IDREP</th><th>Equipo</th><th>Área</th><th>Sector</th><th>Rubro</th><th>Activo</th></tr></thead><tbody>{state.equipment.filter((e) => e.repairProfile).map((e) => <tr key={e.id}><td>{e.repairProfile!.idrep}</td><td>{e.name}</td><td>{e.area}</td><td>{e.repairProfile!.sector}</td><td>{e.repairProfile!.trade}</td><td>{e.repairProfile!.active ? 'Sí' : 'No'}</td></tr>)}</tbody></table></div></Panel><Panel title="Talleres y categorías de bloqueo" extra={<button className="ghost" onClick={() => setEditor('CONFIG')}>Editar configuración</button>}><p className="repairs-note">Aviso de criticidad: {state.config.warningDays} días. Talleres: {state.config.workshops.join(' · ')}.</p><div className="repairs-categories">{state.config.blockCategories.map((c, i) => <span key={i}>{OWNER_LABELS[c.owner]}: {c.name}</span>)}</div></Panel><Panel title="Importación legacy"><p className="repairs-note">Prepará el Excel con el script de revisión documentado en docs/REPARACIONES_TALLER.md. No se interpretan colores ni fechas ausentes automáticamente. La carga de datos requiere confirmar áreas, años y fechas concretas.</p></Panel></>}
       </>}
+      </PageTransition>
     </main>
     {current && !editor && <Modal title={`${current.equipment.repairProfile?.idrep} · ${current.equipment.name}`} onClose={() => setSelected(null)}>
       <RepairDetail request={current} state={state!} events={events} eventError={eventError} busy={busy} onSave={save} onAction={setEditor} />
@@ -145,6 +152,6 @@ function RepairEditor({ kind, state, request, busy, error, onClose, onSave, seed
         {kind === 'BLOCK' && <><Field label="Responsable del bloqueo"><select value={owner} onChange={(e) => setOwner(e.target.value as BlockOwner)}>{BLOCK_OWNERS.map((v) => <option key={v} value={v}>{OWNER_LABELS[v]}</option>)}</select></Field><Field label="Categoría"><select key={owner} name="category" required>{state.config.blockCategories.filter((c) => c.owner === owner).map((c) => <option key={c.name}>{c.name}</option>)}</select></Field><Field label="Qué falta / descripción"><textarea name="description" required /></Field></>}
         <Field label={kind === 'COMMIT' ? 'Motivo del compromiso / reprogramación' : 'Comentario / motivo'}><textarea name="comment" required={['COMMIT', 'CANCEL', 'RESOLVE', 'COMMENT', 'BLOCK'].includes(kind)} /></Field>
       </>}
-    </fieldset><footer className="repairs-actions"><button className="ghost" type="button" onClick={onClose} disabled={busy}>Volver</button><button className="primary" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</button></footer>
+    </fieldset><footer className="repairs-actions"><button className="ghost" type="button" onClick={onClose} disabled={busy}>Volver</button><BusyButton className="primary" type="submit" busy={busy}>Guardar</BusyButton></footer>
   </form></Modal>
 }

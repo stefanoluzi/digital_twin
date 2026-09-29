@@ -55,6 +55,7 @@ model Responsible {
   active Boolean
   areas  Area[]
   repairRequests RepairRequest[]
+  rexExecutions RexExecution[]
 }
 
 model Area {
@@ -66,6 +67,7 @@ model Area {
   responsible           Responsible? @relation(fields: [responsibleGmbId], references: [id], onDelete: Restrict)
   spares                Spare[]
   equipment             Equipment[]
+  rexTasks              RexTask[]
 }
 
 model Category {
@@ -89,6 +91,7 @@ model Equipment {
   installedUnits Unit[]
   repairProfile RepairEquipmentProfile?
   repairRequests RepairRequest[]
+  rexTasks RexTask[]
 }
 
 model RepairEquipmentProfile {
@@ -397,4 +400,191 @@ model LcoImportReceipt {
   eventCount Int
   revision Int
   createdAt DateTime @default(now())
+}
+
+model RexConfig {
+  id Int @id
+  revision Int @default(0)
+  hoursPerDay Decimal @default(9) @db.Decimal(6, 3)
+  hourlyRate Decimal? @db.Decimal(18, 4)
+  currency String @default("USD")
+}
+
+model RexTask {
+  id String @id @default(uuid())
+  code String @default("")
+  line String @default("LC1C")
+  areaId String
+  equipmentId String?
+  name String
+  description String @default("")
+  specialty String
+  impact String @default("")
+  criticality String
+  active Boolean @default(true)
+  frequencyType String
+  intervalMonths Int?
+  frequencyCriteria String @default("")
+  referenceOt String @default("")
+  technicalPlan String @default("")
+  controlData String @default("")
+  justification String @default("")
+  interventionTime String @default("")
+  resources Json @default("{}")
+  estimates RexEstimate[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  updatedBy String
+  area Area @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  equipment Equipment? @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  scope RexTaskScopeItem[]
+  documents RexTaskDocument[]
+  executions RexExecution[]
+  @@index([areaId, active])
+  @@index([specialty, criticality])
+  @@index([equipmentId])
+}
+
+model RexTaskScopeItem {
+  id String @id @default(uuid())
+  taskId String
+  description String
+  ordinal Int
+  required Boolean @default(true)
+  quantity Decimal @db.Decimal(14, 3)
+  unit String
+  notes String @default("")
+  active Boolean @default(true)
+  task RexTask @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  executionItems RexExecutionItem[]
+  @@index([taskId, active, ordinal])
+}
+
+model RexTaskDocument {
+  id String @id @default(uuid())
+  taskId String
+  name String
+  path String
+  type String @default("")
+  notes String @default("")
+  task RexTask @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  @@index([taskId])
+}
+
+model RexEvent {
+  id String @id @default(uuid())
+  name String
+  type String
+  startDate DateTime? @db.Date
+  endDate DateTime? @db.Date
+  exercise Int?
+  status String
+  notes String @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  updatedBy String
+  executions RexExecution[]
+  @@index([exercise, status])
+}
+
+model RexExecution {
+  id String @id @default(uuid())
+  taskId String
+  eventId String?
+  intent String
+  status String
+  startedAt DateTime? @db.Date
+  performedAt DateTime? @db.Date
+  ot String @default("")
+  notes String @default("")
+  responsibleId String?
+  source String @default("MANUAL")
+  taskSnapshot Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  updatedBy String
+  task RexTask @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  event RexEvent? @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  responsible Responsible? @relation(fields: [responsibleId], references: [id], onDelete: Restrict)
+  items RexExecutionItem[]
+  resolutions RexPendingResolution[]
+  @@index([taskId, performedAt, id])
+  @@index([eventId, status])
+  @@index([status, performedAt])
+  @@index([responsibleId])
+}
+
+model RexExecutionItem {
+  id String @id @default(uuid())
+  executionId String
+  scopeItemId String?
+  description String
+  ordinal Int
+  required Boolean
+  quantity Decimal @db.Decimal(14, 3)
+  completed Decimal @db.Decimal(14, 3)
+  unit String
+  status String
+  reason String @default("")
+  notes String @default("")
+  execution RexExecution @relation(fields: [executionId], references: [id], onDelete: Restrict)
+  scopeItem RexTaskScopeItem? @relation(fields: [scopeItemId], references: [id], onDelete: Restrict)
+  pending RexPending?
+  resolution RexPendingResolution?
+  @@index([executionId, ordinal])
+  @@index([scopeItemId])
+}
+
+model RexPending {
+  id String @id @default(uuid())
+  originItemId String @unique
+  quantity Decimal @db.Decimal(14, 3)
+  reason String
+  notes String
+  originDate DateTime? @db.Date
+  createdAt DateTime @default(now())
+  originItem RexExecutionItem @relation(fields: [originItemId], references: [id], onDelete: Restrict)
+  resolutions RexPendingResolution[]
+}
+
+model RexPendingResolution {
+  id String @id @default(uuid())
+  pendingId String
+  executionId String
+  itemId String @unique
+  quantity Decimal @db.Decimal(14, 3)
+  performedAt DateTime? @db.Date
+  createdAt DateTime @default(now())
+  createdBy String
+  pending RexPending @relation(fields: [pendingId], references: [id], onDelete: Restrict)
+  execution RexExecution @relation(fields: [executionId], references: [id], onDelete: Restrict)
+  item RexExecutionItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  @@index([pendingId])
+  @@index([executionId])
+}
+
+model RexEstimate {
+  id Int @id @default(autoincrement())
+  taskId String
+  durationDays Decimal @db.Decimal(10, 3)
+  mechanical Decimal @db.Decimal(8, 0)
+  electrical Decimal @db.Decimal(8, 0)
+  mro Decimal @db.Decimal(20, 2)
+  services Decimal @db.Decimal(20, 2)
+  ownLabor Decimal @db.Decimal(20, 2)
+  hoursPerDay Decimal @db.Decimal(6, 3)
+  hourlyRate Decimal @db.Decimal(18, 4)
+  currency String
+  people Decimal @db.Decimal(9, 0)
+  hoursPerPerson Decimal @db.Decimal(18, 6)
+  manHours Decimal @db.Decimal(24, 6)
+  contractorLabor Decimal @db.Decimal(30, 2)
+  total Decimal @db.Decimal(30, 2)
+  createdAt DateTime @default(now())
+  createdBy String
+  task RexTask @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  @@index([taskId, id])
 }

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { ModuleLoading } from '../../shared/ux/LoadingFeedback'
 import { PlantScene, type AssetVisualState } from '../../components/Scene/PlantScene'
 import { getMaintenanceAssetVisualStateMap } from '../../maintenance/domain/maintenanceSelectors'
 import { useMaintenanceStore } from '../../maintenance/store/maintenanceStore'
@@ -33,7 +34,7 @@ function MaintenanceCriticalSparesShell() {
   return <div className="planner-platform-shell">
     <AppNavigation active="MAINTENANCE" />
     <header className="planner-module-strip"><strong>LACO 1 Maintenance</strong><nav aria-label="Módulos de Maintenance">{MAINTENANCE_MODULES.map((module) => <button key={module.id} className={module.id === 'CRITICAL_SPARES' ? 'active' : ''} onClick={() => navigate(module.path)}>{module.label}</button>)}</nav></header>
-    <Suspense fallback={<main className="app-route-loading">Cargando Repuestos Críticos…</main>}><CriticalSparesApp embedded /></Suspense>
+    <Suspense fallback={<ModuleLoading title="Repuestos Críticos - LC1C" />}><CriticalSparesApp embedded /></Suspense>
   </div>
 }
 
@@ -41,7 +42,7 @@ function MaintenancePlannerShell() {
   return <div className="planner-platform-shell">
     <AppNavigation active="MAINTENANCE" />
     <header className="planner-module-strip"><strong>LACO 1 Maintenance</strong><nav aria-label="Módulos de Maintenance">{MAINTENANCE_MODULES.map((module) => <button key={module.id} className={module.id === 'PLANNER' ? 'active' : ''} onClick={() => navigate(module.path)}>{module.label}</button>)}</nav></header>
-    <Suspense fallback={<main className="app-route-loading">Cargando Planner…</main>}><PlannerApp embedded /></Suspense>
+    <Suspense fallback={<ModuleLoading title="Planner" />}><PlannerApp embedded /></Suspense>
   </div>
 }
 

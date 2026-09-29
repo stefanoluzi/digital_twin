@@ -26,6 +26,19 @@ describe('LCO cliente central sin fallback local', () => {
     expect(store.getState().lcoStorageStatus).toBe('SAVED')
     expect(indexedDB.open).not.toHaveBeenCalled()
   })
+  it('mantiene acoplamientos visibles durante el refresco y después de un error', async () => {
+    const { fetch, service, store } = await setup()
+    const before = store.getState().lcoCouplings
+    let reject!: (error: Error) => void
+    fetch.mockImplementationOnce(() => new Promise<Response>((_resolve, fail) => { reject = fail }))
+    const refresh = service.initializeLcoCentral()
+    expect(store.getState().lcoStorageStatus).toBe('LOADING')
+    expect(store.getState().lcoCouplings).toBe(before)
+    reject(new Error('offline'))
+    await refresh
+    expect(store.getState().lcoStorageStatus).toBe('ERROR')
+    expect(store.getState().lcoCouplings).toBe(before)
+  })
   it('409 conserva snapshot confirmado y muestra error, sin guardar localmente', async () => {
     const { data, fetch, service, store, indexedDB } = await setup()
     const { events: _events, ...config } = data

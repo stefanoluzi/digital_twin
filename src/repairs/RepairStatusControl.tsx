@@ -1,3 +1,4 @@
+import { BusyButton } from '../shared/ux/LoadingFeedback'
 import { useState, type FormEvent } from 'react'
 import { BLOCK_OWNERS, OWNER_LABELS, STATUS_LABELS, type BlockOwner, type RepairItem, type RepairRequest, type RepairState, type RepairStatus } from './types'
 import { RepairDatePicker } from './RepairCalendar'
@@ -46,7 +47,7 @@ export function RepairStatusControl({ request, state, busy, onSave, item }: { re
         {target !== 'PENDING' && <label>{target === 'CANCELLED' ? 'Motivo de cancelación' : blocked ? 'Resolución del bloqueo' : target === 'DELIVERED' ? 'Observación' : 'Comentario'}<textarea name="comment" required={target === 'BLOCKED' || target === 'CANCELLED' || blocked} /></label>}
       </fieldset>
       {error && <p role="alert">{error}</p>}
-      <div className="repairs-actions"><button className="ghost" type="button" disabled={busy} onClick={() => setTarget('')}>Volver</button><button className="primary" disabled={busy || !eligible.length}>{busy ? 'Guardando…' : 'Confirmar'}</button></div>
+      <div className="repairs-actions"><button className="ghost" type="button" disabled={busy} onClick={() => setTarget('')}>Volver</button><BusyButton type="submit" className="primary" busy={busy} disabled={!eligible.length}>Confirmar</BusyButton></div>
     </form>}
   </div>
 }

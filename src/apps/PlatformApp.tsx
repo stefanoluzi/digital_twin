@@ -1,4 +1,6 @@
 import { useEffect } from 'react'
+import { useAppTheme } from '../shared/AppShell'
+import { PageTransition } from '../shared/ux/LoadingFeedback'
 import { EditorApp } from './editor/EditorApp'
 import { HomeApp } from './home/HomeApp'
 import { MaintenanceApp } from './maintenance/MaintenanceApp'
@@ -8,7 +10,9 @@ import { useProjectStore } from '../store/projectStore'
 import { useSceneStore } from '../store/sceneStore'
 
 export default function PlatformApp({ location }: { location: string }) {
-  const theme = useSceneStore((state) => state.view.theme)
+  const theme = useAppTheme()
+  const sceneTheme = useSceneStore((state) => state.view.theme)
+  useEffect(() => { if (sceneTheme !== theme) useSceneStore.getState().updateView({ theme }) }, [theme, sceneTheme])
   useEffect(() => useSceneStore.subscribe((state, previous) => { if (state.objects !== previous.objects || state.referenceLayout !== previous.referenceLayout || state.snap !== previous.snap || state.view !== previous.view) useProjectStore.getState().markDirty() }), [])
   useEffect(() => useMaintenanceStore.subscribe((state, previous) => { if (state.equipment !== previous.equipment || state.subassemblies !== previous.subassemblies || state.plans !== previous.plans || state.events !== previous.events || state.units !== previous.units) useProjectStore.getState().markDirty() }), [])
   useEffect(() => {
@@ -18,5 +22,5 @@ export default function PlatformApp({ location }: { location: string }) {
   }, [])
   useEffect(() => { const beforeUnload = (event: BeforeUnloadEvent) => { if (!useProjectStore.getState().isDirty) return; event.preventDefault(); event.returnValue = '' }; window.addEventListener('beforeunload', beforeUnload); return () => window.removeEventListener('beforeunload', beforeUnload) }, [])
   const pathname = location.split('?')[0]
-  return <div className={`app-shell theme-${theme}`}>{pathname.startsWith('/maintenance') ? <MaintenanceApp key={location} /> : pathname.startsWith('/editor') ? <EditorApp key={location} /> : <HomeApp />}</div>
+  return <PageTransition transitionKey={pathname} className={`app-shell theme-${theme}`}>{pathname.startsWith('/maintenance') ? <MaintenanceApp key={location} /> : pathname.startsWith('/editor') ? <EditorApp key={location} /> : <HomeApp />}</PageTransition>
 }

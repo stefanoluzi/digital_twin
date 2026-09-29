@@ -11,7 +11,7 @@ cp .env.example .env
 
 Completar `.env`:
 
-- POSTGRES_DB=critical_spares (nombre histórico, contiene ambos dominios).
+- POSTGRES_DB=critical_spares (nombre histórico, contiene todos los módulos).
 - POSTGRES_USER=spares.
 - POSTGRES_PASSWORD: contraseña fuerte propia; nunca el ejemplo ni subir .env a Git.
 - APP_PORT=8080 o un puerto libre.
@@ -40,8 +40,10 @@ URLs (sustituir host/puerto):
 - http://IP_VM:8080/repuestos
 - http://IP_VM:8080/controles-criticos
 - http://IP_VM:8080/controles-criticos/acoplamientos
+- http://IP_VM:8080/reparaciones-taller
+- http://IP_VM:8080/tareas-globales-rex
 
-Crear un control, recargar y abrir desde otra PC → Actualizar datos. Repetir con
+Crear un control, recargar y abrir desde otra PC (recargar o reingresar al módulo). Repetir con
 un dato de Repuestos. Consultar directamente PostgreSQL:
 
 ```sh
@@ -71,7 +73,42 @@ npm run start:server
 ```
 
 Abrir http://127.0.0.1:3001/ (PORT configurable). Para hot reload, mantener backend
-y ejecutar `npm run dev:spares` en otra terminal. El build:spares incluye AMBOS módulos.
+y ejecutar `npm run dev:spares` en otra terminal. El build:spares incluye la plataforma
+con Repuestos, Acoplamientos, Reparaciones Taller y Tareas Globales REX.
 
 Antes de actualizar: backup. Luego `git pull --ff-only`, `docker compose up -d --build`.
 No migrar automáticamente IndexedDB: seguir CONTROLES_CRITICOS_MIGRACION.md.
+
+## Actualizar una instalación existente a la versión REX
+
+Ejecutar desde el mismo checkout/directorio Compose de la instalación actual.
+Conservar `.env`, nombre del proyecto Compose y volumen existentes. No copiar encima
+el `.env.example` ni cambiar credenciales de una base ya inicializada.
+
+```sh
+sh scripts/backup-db.sh
+git switch codex/editor-upgrades
+git pull --ff-only origin codex/editor-upgrades
+docker compose config --quiet
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=100 app
+```
+
+El arranque aplica las migraciones de tareas REX y estimaciones antes de iniciar la
+API. No requiere reset, seed ni importar datos demo. Nunca ejecutar `down -v`.
+Guardar el dump también fuera de la VM antes de actualizar. No detener otros servicios.
+
+Verificar `/api/health` (status `ok`) y `/api/rex/state`. Abrir Tareas Globales REX:
+en **Configuración REX** definir la tarifa real. Jornada inicial: 9 h/día, moneda USD;
+la tarifa comienza vacía deliberadamente. Si faltan áreas, crearlas en Configuración
+de Repuestos. Crear una tarea y verificarla tras recargar y desde otra PC.
+
+La configuración y todas las tablas REX se incluyen en el backup completo PostgreSQL;
+no forman parte del respaldo JSON exclusivo de Repuestos. Los datos locales no viajan
+con Git: un clon en un servidor nuevo inicia una base vacía, salvo restauración explícita.
+
+No hay autenticación real: restringir el acceso a la red interna/firewall. No publicar
+esta instalación directamente a Internet. Esta versión fue validada con PostgreSQL
+real y builds locales; ejecutar contenedores requiere Docker Engine, no disponible en
+la PC de desarrollo usada para esta entrega.

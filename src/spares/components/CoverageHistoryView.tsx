@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ModuleLoading, RefreshStatus } from '../../shared/ux/LoadingFeedback'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { coverageChange, groupProgress, type CoverageGroup, type CoverageHistoryResponse, type CoverageMetrics, type CoveragePoint, type HistoryPeriod } from '../domain/coverageHistory'
 import './coverageHistory.css'
@@ -15,16 +16,17 @@ export function CoverageHistoryView({ refreshKey }: { refreshKey: string }) {
   const [until, setUntil] = useState(new Date().toISOString().slice(0, 10))
   const [result, setResult] = useState<CoverageHistoryResponse | null>(null)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
   const [retry, setRetry] = useState(0)
   useEffect(() => {
     const abort = new AbortController()
-    setError(''); setResult(null)
+    setError(''); setLoading(true)
     const query = new URLSearchParams({ period, from, until })
     void fetch(`/api/coverage-history?${query}`, { signal: abort.signal }).then(async (response) => {
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || 'No se pudo consultar el histórico.')
       if (!abort.signal.aborted) setResult(body)
-    }).catch((failure: unknown) => { if (!abort.signal.aborted) setError(failure instanceof Error ? failure.message : 'Error de conexión con el servidor.') })
+    }).catch((failure: unknown) => { if (!abort.signal.aborted) setError(failure instanceof Error ? failure.message : 'Error de conexión con el servidor.') }).finally(() => { if (!abort.signal.aborted) setLoading(false) })
     return () => abort.abort()
   }, [period, from, until, refreshKey, retry])
   const current = result?.current
@@ -37,7 +39,9 @@ export function CoverageHistoryView({ refreshKey }: { refreshKey: string }) {
     <section className="spares-panel"><header><div><small>HISTÓRICOS</small><h2>Evolución de cobertura de repuestos críticos</h2></div><div className="history-controls"><label>Período<select value={period} onChange={(event) => setPeriod(event.target.value as HistoryPeriod)}>{periods.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{period === 'CUSTOM' && <><label>Desde<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label><label>Hasta<input type="date" value={until} onChange={(event) => setUntil(event.target.value)} /></label></>}</div></header>
       <p className="history-note">{result?.availableSince ? `Histórico disponible desde ${date(result.availableSince)}. ` : ''}Datos globales, sin los filtros temporales de Repuestos. Fechas en UTC.</p>
     </section>
-    {error ? <section className="spares-panel history-message" role="alert">{error} <button onClick={() => setRetry(retry + 1)}>Reintentar</button></section> : !result ? <p role="status">Consultando histórico en PostgreSQL…</p> : !current ? <p>No hay registros para el período seleccionado.</p> : <>
+    {error && <section className="spares-panel history-message" role="alert">{error} <button onClick={() => setRetry(retry + 1)}>Reintentar</button></section>}
+    <RefreshStatus active={loading && !!result} label="Actualizando histórico… Se mantienen los últimos datos consultados." />
+    {!result ? loading ? <ModuleLoading title="Histórico de cobertura" chart /> : null : !current ? <p>No hay registros para el período seleccionado.</p> : <>
       <section className="coverage-kpis history-kpis">
         <Kpi label={period === 'CUSTOM' ? 'COBERTURA AL CIERRE' : 'COBERTURA ACTUAL'} value={percent(current)} note={`${current.covered} de ${current.total} repuestos cubiertos`} />
         <Kpi label="VARIACIÓN DEL PERÍODO" value={delta(coverageChange(baseline, current))} note={baseline ? `Desde ${date(result.baseline ? result.from : baseline.capturedAt)}` : 'Sin comparación anterior'} />

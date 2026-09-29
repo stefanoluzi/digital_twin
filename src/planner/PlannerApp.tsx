@@ -1,3 +1,4 @@
+import { useAppTheme } from '../shared/AppShell';
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Plus, 
@@ -53,6 +54,7 @@ import { parsePlannerBackup, plannerBackupFileName, serializePlannerBackup } fro
 import './planner.css';
 
 export default function PlannerApp({ embedded = false }: { embedded?: boolean }) {
+  const theme = useAppTheme();
   const planner = usePlannerStore();
   const { projectInfo, paradas, tasks, setProjectInfo, setParadas, setTasks } = planner;
 
@@ -362,7 +364,7 @@ export default function PlannerApp({ embedded = false }: { embedded?: boolean })
   };
 
   return (
-    <div className={`planner-app planner-workbench flex flex-col ${embedded ? 'h-full' : 'h-screen'} bg-bg-gray font-sans text-gray-900 overflow-hidden`}>
+    <div className={`planner-app planner-workbench theme-${theme} flex flex-col ${embedded ? 'h-full' : 'h-screen'} bg-bg-gray font-sans text-gray-900 overflow-hidden`}>
       {/* Header */}
       <header className="planner-workbench-header bg-brand-blue border-b-3 border-brand-orange px-5 h-[52px] flex items-center justify-between sticky top-0 z-40 text-white shrink-0 shadow-md">
         <div className="planner-workbench-title flex items-center gap-3">
@@ -393,9 +395,9 @@ export default function PlannerApp({ embedded = false }: { embedded?: boolean })
           <div className="hidden md:block h-6 w-[1px] bg-white/20" />
 
           <div className="flex items-center gap-2">
-            <span className={`planner-storage-status planner-storage-${planner.storageStatus.toLowerCase()}`} title={planner.storageError}>
-              {planner.storageStatus === 'LOADING' ? 'CARGANDO…' : planner.storageStatus === 'SAVING' ? 'GUARDANDO…' : planner.storageStatus === 'ERROR' ? 'ERROR DE DATOS' : '✓ GUARDADO'}
-            </span>
+            {planner.storageStatus !== 'SAVED' && <span role="status" className={`planner-storage-status planner-storage-${planner.storageStatus.toLowerCase()}`} title={planner.storageError}>
+              {planner.storageStatus === 'LOADING' ? 'CARGANDO…' : planner.storageStatus === 'SAVING' ? 'GUARDANDO…' : planner.storageStatus === 'ERROR' ? 'ERROR DE DATOS' : ''}
+            </span>}
             <div className="flex flex-col items-end">
               <span className="text-[9px] uppercase font-bold text-white/60 tracking-widest leading-none">Fecha Base</span>
               <span className="text-xs font-black text-white">{format(planningStartDate, "dd/MM/yyyy")}</span>
@@ -721,10 +723,6 @@ export default function PlannerApp({ embedded = false }: { embedded?: boolean })
         <p>© 2026 Planta - Planificación General</p>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1"><HardHat className="w-3 h-3 text-brand-orange" /> Mantenimiento General</span>
-          <div className="flex items-center gap-1 text-green-600">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            Control de Operación: {(import.meta as any).env?.VITE_USER_EMAIL || 'SUPERVISOR'}
-          </div>
         </div>
       </footer>
 

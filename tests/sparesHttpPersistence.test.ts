@@ -20,6 +20,19 @@ describe('Frontend de persistencia central', () => {
     expect(store.getState().storageStatus).toBe('SAVED')
     expect(indexedDB.open).not.toHaveBeenCalled()
   })
+  it('conserva las filas confirmadas durante una actualización lenta y fallida', async () => {
+    const { service, store, fetch } = await setup()
+    const before = store.getState().spareTypes
+    let reject!: (error: Error) => void
+    fetch.mockImplementationOnce(() => new Promise<Response>((_resolve, fail) => { reject = fail }))
+    const refresh = service.initializeCriticalSparesPersistence()
+    expect(store.getState().storageStatus).toBe('LOADING')
+    expect(store.getState().spareTypes).toBe(before)
+    reject(new Error('offline'))
+    await refresh
+    expect(store.getState().storageStatus).toBe('ERROR')
+    expect(store.getState().spareTypes).toBe(before)
+  })
   it('altas consecutivas desde revisión 0 hidratan catálogos y envían la revisión nueva', async () => {
     const data = createDemoSparesData()
     data.config.categories = []; data.config.responsibles = []; data.config.equipment = []

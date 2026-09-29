@@ -1,0 +1,22 @@
+.ux-spinner{display:inline-block;flex:none;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:ux-spin .85s linear infinite}
+.ux-refresh{min-height:26px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sp-soft,var(--text-muted,#607787))}
+button.ux-button{display:inline-grid;align-items:center;justify-content:center}
+button.ux-button[hidden]{display:none}
+.ux-fieldset{border:0;margin:0;padding:0;min-width:0}
+.ux-button-label{grid-area:1/1;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.ux-module-loading{padding:20px;min-height:480px;color:var(--sp-text,var(--text,#344f60));background:var(--sp-bg,var(--app-bg,#f2f6f9))}
+.ux-module-loading header{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:56px;margin-bottom:18px}
+.ux-module-loading header span{display:inline-flex;align-items:center;gap:8px;font-size:14px}
+.ux-skeleton-dashboard{display:grid;gap:18px}
+.ux-skeleton-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.ux-skeleton-card,.ux-skeleton-table,.ux-skeleton-chart{border:1px solid var(--sp-line,var(--border,#cbd5dd));background:var(--sp-panel,var(--panel-bg,#fff));padding:18px}
+.ux-skeleton-card{min-height:118px;display:grid;gap:14px;align-content:center}
+.ux-skeleton{height:12px;background:currentColor;color:var(--sp-soft,var(--text-muted,#607787));opacity:.12;border-radius:2px;animation:ux-pulse 1.8s ease-in-out infinite}
+.ux-skeleton-card>.ux-skeleton{width:65%}.ux-skeleton-card>.ux-skeleton-value{height:30px;width:34%}
+.ux-skeleton-heading{height:26px;margin-bottom:10px}
+.ux-skeleton-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:24px;min-height:52px;align-items:center;border-top:1px solid var(--sp-line,var(--border,#cbd5dd))}
+.ux-skeleton-chart{display:flex;align-items:flex-end;gap:6%;padding-top:35px}.ux-bar{flex:1}.ux-bar-45{height:45%}.ux-bar-65{height:65%}.ux-bar-50{height:50%}.ux-bar-80{height:80%}.ux-bar-60{height:60%}.ux-bar-75{height:75%}
+.ux-enter,.history-chart,.repair-chart{animation:ux-enter .18s ease-out}
+@keyframes ux-enter{from{opacity:0}to{opacity:1}}@keyframes ux-spin{to{transform:rotate(360deg)}}@keyframes ux-pulse{50%{opacity:.19}}
+@media(max-width:700px){.ux-skeleton-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ux-module-loading header{align-items:flex-start;flex-direction:column}}
+@media(prefers-reduced-motion:reduce){.ux-spinner,.ux-skeleton,.ux-enter,.history-chart,.repair-chart{animation:none!important}}

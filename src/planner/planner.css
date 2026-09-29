@@ -26,6 +26,15 @@
 }
 
 .planner-app *, .planner-app *::before, .planner-app *::after { box-sizing: border-box; }
+.planner-app.planner-workbench.theme-dark{color-scheme:dark;--planner-canvas:#111a21;--planner-panel:#19252e;--planner-line:#41515d;--planner-line-strong:#586977;--planner-ink:#e0eaf0;--planner-muted:#a2b0ba;--color-bg-gray:#111a21;--color-border-gray:#41515d;color:var(--planner-ink)}
+.planner-app.theme-dark :is(.bg-white,.bg-gray-50,.bg-slate-50){background:var(--planner-panel);color:var(--planner-ink)}
+.planner-app.theme-dark :is(.text-gray-900,.text-gray-800,.text-gray-700,.text-brand-blue){color:var(--planner-ink)}
+.planner-app.theme-dark :is(.text-gray-500,.text-gray-600,.text-slate-500){color:var(--planner-muted)}
+.planner-app.theme-dark :is(input,select,textarea){background:#121d25;color:var(--planner-ink);border-color:var(--planner-line)}
+.planner-app.theme-dark :is(.planner-sidebar,.planner-board-toolbar,.planner-board-footer,.planner-table-head,.planner-zone-row td,.planner-supervisor-row td,.planner-schedule-table thead th){background:var(--planner-panel);color:var(--planner-ink);border-color:var(--planner-line)}
+.planner-app.theme-dark .planner-schedule-table thead th:nth-child(n+4),.planner-app.theme-dark .planner-schedule-table tbody tr.group\/row:hover{background:var(--planner-canvas)}
+.planner-app.theme-dark .planner-schedule-table thead th:nth-child(n+4)>div>span:first-child,.planner-app.theme-dark .planner-task-summary span.text-xs{color:var(--planner-ink)}
+.planner-app.theme-dark .planner-task-summary p,.planner-app.theme-dark .planner-supervisor-row td span{color:var(--planner-muted)}
 .planner-app h1, .planner-app h2, .planner-app h3, .planner-app h4, .planner-app p { margin: 0; }
 .planner-app button, .planner-app input, .planner-app select, .planner-app textarea { font: inherit; }
 .planner-app button.text-white { color: #ffffff; }

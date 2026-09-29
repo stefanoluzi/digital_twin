@@ -54,5 +54,5 @@ export async function migrateLocalLco() {
 }
 export async function readCentralLco() { return (await repository.load()).data }
 export function runLco(operation: () => Promise<unknown>, onSuccess?: () => void) {
-  void Promise.resolve().then(operation).then(() => onSuccess?.()).catch((error) => { fail(error); alert(error instanceof Error ? error.message : 'No se pudo guardar.') })
+  return Promise.resolve().then(operation).then(() => onSuccess?.()).catch((error) => { fail(error); alert(error instanceof Error ? error.message : 'No se pudo guardar.') })
 }

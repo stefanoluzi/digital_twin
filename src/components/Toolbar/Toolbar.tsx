@@ -282,7 +282,6 @@ export function Toolbar() {
           view={store.view}
           onToggle={toggleMenu}
           onClose={() => setOpenMenu(null)}
-          onTheme={() => store.updateView({ theme: store.view.theme === 'dark' ? 'light' : 'dark' })}
           onRestore={projectState.requestCameraRestore}
           onFrontChange={changePlantFrontDirection}
         />
