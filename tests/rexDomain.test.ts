@@ -1,11 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { addMonths, deriveStatus, taskMetrics } from '../src/rex/domain'
+import { addMonths, deriveStatus, taskMetrics, compareTaskDueRows } from '../src/rex/domain'
 import type { RexExecution, RexState, RexTask } from '../src/rex/types'
 import { taskSchema, eventSchema, executionSchema } from '../server/rex/validation'
 const task = { id: 'task', active: true, frequencyType: 'PERIODIC', intervalMonths: 24 } as RexTask
 const base = { tasks: [task], executions: [], pending: [], events: [] } as unknown as RexState
 const execution = (patch: Partial<RexExecution>) => ({ id: 'e', taskId: 'task', intent: 'FULL_TASK', status: 'COMPLETED', performedAt: '2024-05-18', createdAt: '2024-05-18', items: [{ quantity: 1, completed: 1, required: true }], ...patch }) as RexExecution
 describe('Dominio REX', () => {
+  it('prioriza vencidas por antigüedad, luego fechas próximas y finalmente sin fecha', () => {
+    const specs = [
+      ['sin-fecha', 'A sin historial', null], ['futura', 'A futura', '2027-01-01'],
+      ['proxima', 'Z próxima', '2026-10-02'], ['vencida', 'A vencida', '2026-09-01'],
+      ['antigua', 'Z vencida con pendiente', '2026-07-01'], ['hoy', 'Hoy', '2026-10-01'],
+    ]
+    const tasks = specs.map(([id, name]) => ({ ...task, id: id!, name: name!, intervalMonths: 12 }))
+    const state = { ...base, tasks, executions: specs.filter(([, , due]) => due).map(([id, , due]) => execution({ id: id!, taskId: id!, performedAt: addMonths(due!, -12) })), pending: [{ taskId: 'antigua', remaining: '1' }] } as RexState
+    const rows = tasks.map(t => ({ task: t, metrics: taskMetrics(t, state, '2026-10-01') }))
+    expect(rows.find(r => r.task.id === 'antigua')!.metrics.status).toBe('PARTIAL_PENDING')
+    expect(rows.sort(compareTaskDueRows).map(r => r.task.id)).toEqual(['antigua', 'vencida', 'hoy', 'proxima', 'futura', 'sin-fecha'])
+  })
   it('sin historial no inventa un ciclo', () => { expect(taskMetrics(task, base).cycle).toBe('NO_HISTORY'); expect(taskMetrics(task, base).due).toBeNull() })
   it('suma meses calendario respetando fin de mes y bisiestos', () => { expect(addMonths('2024-01-31', 1)).toBe('2024-02-29'); expect(addMonths('2024-02-29', 12)).toBe('2025-02-28'); expect(addMonths('2024-05-18', 24)).toBe('2026-05-18') })
   it('calcula vencida y próxima 90 días sin timezone drift', () => {

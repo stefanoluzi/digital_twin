@@ -37,7 +37,7 @@ function coverageTransition(state: CriticalSparesData, units: PhysicalSpareUnit[
 function nextUnitId(data: CriticalSparesData, spare: SpareType) {
   const category = spare.categoryId.replace(/[^a-z0-9]/gi, '').slice(0, 3).toUpperCase().padEnd(3, 'X')
   const max = [...data.units.map((unit) => unit.id), ...data.history.map((event) => event.unitId)].reduce((current, id) => Math.max(current, Number(id.match(/(\d+)$/)?.[1] ?? 0)), 0)
-  return `LC1C-${category}-${String(max + 1).padStart(4, '0')}`
+  return `Planta-${category}-${String(max + 1).padStart(4, '0')}`
 }
 
 function historyFor(unit: PhysicalSpareUnit, previousStatus: SpareUnitStatus | undefined, data: CriticalSparesData): SpareHistoryEvent {

@@ -18,7 +18,7 @@ const optional = (v?: string | null) => v ? date(v) : null
 const json = (v: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(v))
 const includeRequest = { equipment: { include: { repairProfile: true } }, responsible: true, items: { orderBy: { ordinal: 'asc' as const }, include: { commitments: { orderBy: { sequence: 'asc' as const } }, blocks: { orderBy: { startedAt: 'asc' as const } }, delivery: true } } }
 const requestSchema = z.object({ equipmentId: text, quantity: z.number().int().min(1).max(1000), targetMonth: civil.refine((v) => v.endsWith('-01'), 'El mes objetivo debe ser el primer día del mes'), requiredDate: optionalDate, criticality: z.enum(['NORMAL', 'HIGH', 'CRITICAL']), criticalReason: note, fixedDeadline: z.boolean(), criticalDueDate: optionalDate, responsibleId: z.union([text, z.literal(''), z.null()]).optional(), workshop: text, notes: note }).strict().refine((v) => v.criticality === 'NORMAL' || !!v.criticalReason, 'Indicá el motivo de criticidad')
-const editSchema = z.object({ targetMonth: civil.refine((v) => v.endsWith('-01')), requiredDate: optionalDate, criticality: z.enum(['NORMAL', 'HIGH', 'CRITICAL']), criticalReason: note, fixedDeadline: z.boolean(), criticalDueDate: optionalDate, responsibleId: z.union([text, z.literal(''), z.null()]).optional(), workshop: text, notes: note, reason: text }).strict().refine((v) => v.criticality === 'NORMAL' || !!v.criticalReason, 'Indicá el motivo de criticidad')
+const editSchema = z.object({ targetMonth: civil.refine((v) => v.endsWith('-01')), requiredDate: optionalDate, criticality: z.enum(['NORMAL', 'HIGH', 'CRITICAL']), criticalReason: note, fixedDeadline: z.boolean(), criticalDueDate: optionalDate, responsibleId: z.union([text, z.literal(''), z.null()]).optional(), workshop: text, notes: note, reason: text, quantity: z.number().int().min(1).max(1000).optional(), operations: z.array(z.record(z.unknown())).max(10).optional() }).strict().refine((v) => v.criticality === 'NORMAL' || !!v.criticalReason, 'Indicá el motivo de criticidad')
 const equipmentSchema = z.object({ equipmentId: z.string().optional(), idrep: text, name: text, area: text, sector: text, trade: text, active: z.boolean() }).strict()
 const configSchema = z.object({ warningDays: z.number().int().min(1).max(365), workshops: z.array(text).min(1).max(100), blockCategories: z.array(z.object({ owner: z.enum(BLOCK_OWNERS), name: text }).strict()).min(1).max(200) }).strict()
 const actionSchema = z.discriminatedUnion('action', [
@@ -33,6 +33,59 @@ const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('COMMENT'), comment: text }).strict(),
 ])
 
+async function applyRepairAction(tx: Tx, request: Prisma.RepairRequestGetPayload<{ include: typeof includeRequest }>, config: Prisma.RepairConfigGetPayload<object>, body: z.infer<typeof actionSchema>, actor: string) {
+          if (body.action !== 'COMMENT') {
+            if (new Set(body.itemIds).size !== body.itemIds.length || body.itemIds.some((itemId) => !request.items.some((item) => item.id === itemId))) throw new ApiError(422, 'Selección de unidades inválida')
+            for (const item of request.items.filter((item) => body.itemIds.includes(item.id))) {
+              if (['DELIVERED', 'CANCELLED'].includes(item.status)) throw new ApiError(422, `La unidad #${item.ordinal} ya está cerrada`)
+              const at = date(body.date)
+              const activeBlock = item.blocks.find((block) => !block.resolvedAt)
+              if (body.action === 'START' || body.action === 'PEND') {
+                const nextStatus = body.action === 'START' ? 'IN_PROGRESS' : 'PENDING'
+                if (item.status === nextStatus) throw new ApiError(422, 'La unidad ya tiene ese estado')
+                if (activeBlock) {
+                  if (at < activeBlock.startedAt) throw new ApiError(422, 'La resolución no puede preceder al bloqueo')
+                  if (body.action === 'START' && !body.comment.trim()) throw new ApiError(422, 'Indicá cómo se resolvió el bloqueo')
+                  await tx.repairBlock.update({ where: { id: activeBlock.id }, data: { resolvedAt: at, durationDays: daysBetween(activeBlock.startedAt.toISOString(), body.date), resolvedBy: actor, comment: `${activeBlock.comment}\nResolución: ${body.comment || 'Vuelve a pendiente'}` } })
+                }
+                if (item.sentAt && at < item.sentAt) throw new ApiError(422, 'El inicio no puede ser anterior al envío')
+                if (item.blocks.some((b) => b.resolvedAt && at < b.resolvedAt)) throw new ApiError(422, 'La fecha no puede preceder al último bloqueo resuelto')
+                await tx.repairItem.update({ where: { id: item.id }, data: { status: nextStatus, startedAt: body.action === 'PEND' ? null : item.startedAt || at } })
+              } else if (body.action === 'SENT') {
+                if (item.sentAt) throw new ApiError(422, 'El envío ya está registrado')
+                if (item.startedAt && at > item.startedAt) throw new ApiError(422, 'El envío no puede ser posterior al inicio')
+                await tx.repairItem.update({ where: { id: item.id }, data: { sentAt: at } })
+              } else if (body.action === 'COMMIT') {
+                if (item.commitments.at(-1)?.date.getTime() === at.getTime()) throw new ApiError(422, 'La fecha comprometida no cambió')
+                await tx.repairCommitment.create({ data: { itemId: item.id, date: at, reason: body.comment, actor, sequence: item.commitments.length + 1 } })
+              } else if (body.action === 'BLOCK') {
+                if (activeBlock) throw new ApiError(422, 'La unidad ya tiene un bloqueo abierto')
+                if (item.startedAt && at < item.startedAt || item.blocks.some((block) => block.resolvedAt && at < block.resolvedAt)) throw new ApiError(422, 'El bloqueo no puede preceder al último avance registrado')
+                const categories = config.blockCategories as { owner: string; name: string }[]
+                if (!categories.some((category) => category.owner === body.owner && category.name === body.category)) throw new ApiError(422, 'Categoría de bloqueo no configurada para ese responsable')
+                await tx.repairBlock.create({ data: { itemId: item.id, startedAt: at, owner: body.owner, category: body.category, description: body.description, comment: body.comment, actor, previousStatus: item.status } })
+                await tx.repairItem.update({ where: { id: item.id }, data: { status: 'BLOCKED' } })
+              } else if (body.action === 'RESOLVE') {
+                if (!activeBlock || at < activeBlock.startedAt) throw new ApiError(422, 'No hay bloqueo abierto o la resolución precede al bloqueo')
+                await tx.repairBlock.update({ where: { id: activeBlock.id }, data: { resolvedAt: at, durationDays: daysBetween(activeBlock.startedAt.toISOString(), body.date), resolvedBy: actor, comment: `${activeBlock.comment}\nResolución: ${body.comment}` } })
+                await tx.repairItem.update({ where: { id: item.id }, data: { status: activeBlock.previousStatus } })
+              } else if (body.action === 'DELIVER') {
+                if (activeBlock) throw new ApiError(422, 'Resolvé primero el bloqueo para registrar la entrega')
+                if (item.startedAt && at < item.startedAt || item.blocks.some((block) => block.resolvedAt && at < block.resolvedAt)) throw new ApiError(422, 'La entrega no puede ser anterior al trabajo registrado')
+                await tx.repairDelivery.create({ data: { itemId: item.id, deliveredAt: at, actor, comment: body.comment } })
+                await tx.repairItem.update({ where: { id: item.id }, data: { status: 'DELIVERED' } })
+              } else if (body.action === 'CANCEL') {
+                if (item.startedAt && at < item.startedAt || item.blocks.some((block) => block.resolvedAt && at < block.resolvedAt)) throw new ApiError(422, 'Cancelación anterior al trabajo registrado')
+                if (activeBlock) {
+                  if (at < activeBlock.startedAt) throw new ApiError(422, 'Cancelación anterior al bloqueo')
+                  await tx.repairBlock.update({ where: { id: activeBlock.id }, data: { resolvedAt: at, durationDays: daysBetween(activeBlock.startedAt.toISOString(), body.date), resolvedBy: actor, comment: `${activeBlock.comment}\nCancelación: ${body.comment}` } })
+                }
+                await tx.repairItem.update({ where: { id: item.id }, data: { status: 'CANCELLED' } })
+              }
+            }
+          }
+
+}
 export async function initializeRepairs(db: PrismaClient) {
   await db.repairConfig.upsert({ where: { id: 1 }, update: {}, create: { id: 1, blockCategories: json(DEFAULT_BLOCK_CATEGORIES), workshops: ['Taller central'] } })
 }
@@ -155,61 +208,41 @@ export function createRepairsRouter(db: PrismaClient) {
           if (!dateInMonth(body.requiredDate, body.targetMonth)) throw new ApiError(422, 'La fecha de necesidad debe pertenecer al mes objetivo')
           if (!config.workshops.includes(body.workshop)) throw new ApiError(422, 'Taller no configurado')
           await validateAssignment(tx, body.responsibleId)
-          const { reason, ...values } = body
-          await tx.repairRequest.update({ where: { id }, data: { ...values, targetMonth: date(values.targetMonth), requiredDate: optional(values.requiredDate), criticalDueDate: optional(values.criticalDueDate), responsibleId: values.responsibleId || null } })
-          await event(tx, id, 'EDIT', actor, revision, { ...body, before: { targetMonth: request.targetMonth, requiredDate: request.requiredDate, criticality: request.criticality, criticalReason: request.criticalReason, workshop: request.workshop, responsibleId: request.responsibleId } })
-        } else if (route[2] && req.method === 'POST') {
-          const body = actionSchema.parse(req.body)
-          if (body.action !== 'COMMENT') {
-            if (new Set(body.itemIds).size !== body.itemIds.length || body.itemIds.some((itemId) => !request.items.some((item) => item.id === itemId))) throw new ApiError(422, 'Selección de unidades inválida')
-            for (const item of request.items.filter((item) => body.itemIds.includes(item.id))) {
-              if (['DELIVERED', 'CANCELLED'].includes(item.status)) throw new ApiError(422, `La unidad #${item.ordinal} ya está cerrada`)
-              const at = date(body.date)
-              const activeBlock = item.blocks.find((block) => !block.resolvedAt)
-              if (body.action === 'START' || body.action === 'PEND') {
-                const nextStatus = body.action === 'START' ? 'IN_PROGRESS' : 'PENDING'
-                if (item.status === nextStatus) throw new ApiError(422, 'La unidad ya tiene ese estado')
-                if (activeBlock) {
-                  if (at < activeBlock.startedAt) throw new ApiError(422, 'La resolución no puede preceder al bloqueo')
-                  if (body.action === 'START' && !body.comment.trim()) throw new ApiError(422, 'Indicá cómo se resolvió el bloqueo')
-                  await tx.repairBlock.update({ where: { id: activeBlock.id }, data: { resolvedAt: at, durationDays: daysBetween(activeBlock.startedAt.toISOString(), body.date), resolvedBy: actor, comment: `${activeBlock.comment}\nResolución: ${body.comment || 'Vuelve a pendiente'}` } })
-                }
-                if (item.sentAt && at < item.sentAt) throw new ApiError(422, 'El inicio no puede ser anterior al envío')
-                if (item.blocks.some((b) => b.resolvedAt && at < b.resolvedAt)) throw new ApiError(422, 'La fecha no puede preceder al último bloqueo resuelto')
-                await tx.repairItem.update({ where: { id: item.id }, data: { status: nextStatus, startedAt: body.action === 'PEND' ? null : item.startedAt || at } })
-              } else if (body.action === 'SENT') {
-                if (item.sentAt) throw new ApiError(422, 'El envío ya está registrado')
-                if (item.startedAt && at > item.startedAt) throw new ApiError(422, 'El envío no puede ser posterior al inicio')
-                await tx.repairItem.update({ where: { id: item.id }, data: { sentAt: at } })
-              } else if (body.action === 'COMMIT') {
-                if (item.commitments.at(-1)?.date.getTime() === at.getTime()) throw new ApiError(422, 'La fecha comprometida no cambió')
-                await tx.repairCommitment.create({ data: { itemId: item.id, date: at, reason: body.comment, actor, sequence: item.commitments.length + 1 } })
-              } else if (body.action === 'BLOCK') {
-                if (activeBlock) throw new ApiError(422, 'La unidad ya tiene un bloqueo abierto')
-                if (item.startedAt && at < item.startedAt || item.blocks.some((block) => block.resolvedAt && at < block.resolvedAt)) throw new ApiError(422, 'El bloqueo no puede preceder al último avance registrado')
-                const categories = config.blockCategories as { owner: string; name: string }[]
-                if (!categories.some((category) => category.owner === body.owner && category.name === body.category)) throw new ApiError(422, 'Categoría de bloqueo no configurada para ese responsable')
-                await tx.repairBlock.create({ data: { itemId: item.id, startedAt: at, owner: body.owner, category: body.category, description: body.description, comment: body.comment, actor, previousStatus: item.status } })
-                await tx.repairItem.update({ where: { id: item.id }, data: { status: 'BLOCKED' } })
-              } else if (body.action === 'RESOLVE') {
-                if (!activeBlock || at < activeBlock.startedAt) throw new ApiError(422, 'No hay bloqueo abierto o la resolución precede al bloqueo')
-                await tx.repairBlock.update({ where: { id: activeBlock.id }, data: { resolvedAt: at, durationDays: daysBetween(activeBlock.startedAt.toISOString(), body.date), resolvedBy: actor, comment: `${activeBlock.comment}\nResolución: ${body.comment}` } })
-                await tx.repairItem.update({ where: { id: item.id }, data: { status: activeBlock.previousStatus } })
-              } else if (body.action === 'DELIVER') {
-                if (activeBlock) throw new ApiError(422, 'Resolvé primero el bloqueo para registrar la entrega')
-                if (item.startedAt && at < item.startedAt || item.blocks.some((block) => block.resolvedAt && at < block.resolvedAt)) throw new ApiError(422, 'La entrega no puede ser anterior al trabajo registrado')
-                await tx.repairDelivery.create({ data: { itemId: item.id, deliveredAt: at, actor, comment: body.comment } })
-                await tx.repairItem.update({ where: { id: item.id }, data: { status: 'DELIVERED' } })
-              } else if (body.action === 'CANCEL') {
-                if (item.startedAt && at < item.startedAt || item.blocks.some((block) => block.resolvedAt && at < block.resolvedAt)) throw new ApiError(422, 'Cancelación anterior al trabajo registrado')
-                if (activeBlock) {
-                  if (at < activeBlock.startedAt) throw new ApiError(422, 'Cancelación anterior al bloqueo')
-                  await tx.repairBlock.update({ where: { id: activeBlock.id }, data: { resolvedAt: at, durationDays: daysBetween(activeBlock.startedAt.toISOString(), body.date), resolvedBy: actor, comment: `${activeBlock.comment}\nCancelación: ${body.comment}` } })
-                }
-                await tx.repairItem.update({ where: { id: item.id }, data: { status: 'CANCELLED' } })
-              }
+          const { reason, quantity, operations = [], ...values } = body
+          if (quantity !== undefined && quantity !== request.quantity) {
+            if (quantity > request.quantity) {
+              await tx.repairItem.createMany({ data: Array.from({ length: quantity - request.quantity }, (_, index) => ({ requestId: id!, ordinal: request.quantity + index + 1 })) })
+            } else {
+              const removed = request.items.filter((item) => item.ordinal > quantity)
+              if (removed.some((item) => item.status !== 'PENDING' || item.startedAt || item.sentAt || item.delivery || item.commitments.length || item.blocks.length)) throw new ApiError(422, 'Solo se pueden quitar las últimas unidades pendientes sin actividad. No se pueden eliminar unidades entregadas, cerradas o con historial operativo.')
+              await tx.repairItem.deleteMany({ where: { id: { in: removed.map((item) => item.id) } } })
             }
           }
+          await tx.repairRequest.update({ where: { id }, data: { ...values, ...(quantity === undefined ? {} : { quantity }), targetMonth: date(values.targetMonth), requiredDate: optional(values.requiredDate), criticalDueDate: optional(values.criticalDueDate), responsibleId: values.responsibleId || null } })
+          for (const operation of operations) {
+            const current = await tx.repairRequest.findUniqueOrThrow({ where: { id }, include: includeRequest })
+            const target = ({ START: 'IN_PROGRESS', PEND: 'PENDING', BLOCK: 'BLOCKED', DELIVER: 'DELIVERED', CANCEL: 'CANCELLED' } as Record<string, string>)[String(operation.action)]
+            const eligible = current.items.filter((item) => !['DELIVERED', 'CANCELLED'].includes(item.status) && item.status !== target && (operation.action !== 'RESOLVE' || item.status === 'BLOCKED') && (operation.action !== 'COMMIT' || item.commitments.at(-1)?.date.toISOString().slice(0, 10) !== operation.date))
+            // Resolving a block may already restore the requested state.
+            if (operation.itemIds === undefined && target && !eligible.length && current.items.some((item) => item.status === target && !['DELIVERED', 'CANCELLED'].includes(item.status))) continue
+            const action = actionSchema.parse({ ...operation, ...(operation.action === 'COMMENT' ? {} : { itemIds: operation.itemIds ?? eligible.map((item) => item.id) }) })
+            await applyRepairAction(tx, current, config, action, actor)
+          }
+          const updated = await tx.repairRequest.findUniqueOrThrow({ where: { id }, include: includeRequest })
+          const changes: { field: string; previousValue: unknown; newValue: unknown }[] = []
+          const addChange = (field: string, previousValue: unknown, newValue: unknown) => { if (JSON.stringify(previousValue) !== JSON.stringify(newValue)) changes.push({ field, previousValue, newValue }) }
+          for (const field of ['targetMonth', 'requiredDate', 'quantity', 'criticality', 'criticalReason', 'fixedDeadline', 'criticalDueDate', 'responsibleId', 'workshop', 'notes'] as const) addChange(field, request[field], updated[field])
+          for (const item of updated.items) {
+            const before = request.items.find((entry) => entry.id === item.id)
+            if (!before) { addChange(`items.${item.ordinal}`, null, item); continue }
+            for (const field of ['status', 'startedAt', 'sentAt', 'commitments', 'blocks', 'delivery'] as const) addChange(`items.${item.ordinal}.${field}`, before[field], item[field])
+          }
+          for (const item of request.items.filter((entry) => !updated.items.some((next) => next.id === entry.id))) addChange(`items.${item.ordinal}`, item, null)
+          if (!changes.length) throw new ApiError(422, 'No hay cambios para guardar')
+          await event(tx, id, 'EDIT', actor, revision, { reason, changes, operations, before: json(request) })
+        } else if (route[2] && req.method === 'POST') {
+          const body = actionSchema.parse(req.body)
+          await applyRepairAction(tx, request, config, body, actor)
           const after = await tx.repairItem.findMany({ where: { requestId: id } })
           const changes = request.items.flatMap((item) => {
             const next = after.find((i) => i.id === item.id)!

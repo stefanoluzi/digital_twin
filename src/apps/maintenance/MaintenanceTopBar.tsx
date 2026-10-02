@@ -17,7 +17,7 @@ export function MaintenanceTopBar({ query, onQueryChange }: { query: string; onQ
     <AppNavigation active="MAINTENANCE" />
     <header className="maintenance-topbar">
       <div className="maintenance-title">
-        <strong>LACO 1 Maintenance</strong>
+        <strong>Planta Maintenance</strong>
         <small>{project.hasActiveProject ? `${project.metadata.name}${project.isDirty ? ' *' : ''}` : 'Sin proyecto'}</small>
       </div>
       <nav className="maintenance-module-nav" aria-label="Módulos de Maintenance">

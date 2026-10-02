@@ -1,0 +1,94 @@
+{
+  "date": "2026-10-01T02:28:00.526Z",
+  "project": "lc1c-offline-audit",
+  "checks": [
+    {
+      "name": "internal-network",
+      "status": "PASS"
+    },
+    {
+      "name": "postgres-not-published",
+      "status": "PASS"
+    },
+    {
+      "name": "scoped-egress-firewall-lc1c-audit-e",
+      "status": "PASS",
+      "value": "Egress policy applied only to lc1c-audit-e (IPv4 and IPv6)."
+    },
+    {
+      "name": "scoped-egress-firewall-lc1c-audit-f",
+      "status": "PASS",
+      "value": "Egress policy applied only to lc1c-audit-f (IPv4 and IPv6)."
+    },
+    {
+      "name": "scoped-egress-firewall-lc1c-audit-r",
+      "status": "PASS",
+      "value": "Egress policy applied only to lc1c-audit-r (IPv4 and IPv6)."
+    },
+    {
+      "name": "gateway-port-published",
+      "status": "PASS",
+      "value": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "18080"
+        }
+      ]
+    },
+    {
+      "name": "startup-with-internal-network-and-no-pull",
+      "status": "PASS"
+    },
+    {
+      "name": "app-network-membership",
+      "status": "PASS",
+      "value": [
+        "lc1c-offline-audit_frontend",
+        "lc1c-offline-audit_runtime"
+      ]
+    },
+    {
+      "name": "postgres-network-membership",
+      "status": "PASS",
+      "value": [
+        "lc1c-offline-audit_runtime"
+      ]
+    },
+    {
+      "name": "gateway-network-membership",
+      "status": "PASS",
+      "value": [
+        "lc1c-offline-audit_edge",
+        "lc1c-offline-audit_frontend"
+      ]
+    },
+    {
+      "name": "app-external-tcp-blocked",
+      "status": "PASS",
+      "value": "blocked/error"
+    },
+    {
+      "name": "gateway-external-tcp-blocked",
+      "status": "PASS",
+      "value": "blocked"
+    },
+    {
+      "name": "html-entry-assets",
+      "status": "PASS",
+      "count": 3
+    },
+    {
+      "name": "postgres-direct-persistence",
+      "status": "PASS",
+      "value": "1"
+    },
+    {
+      "name": "restart-read-persistence",
+      "status": "PASS"
+    }
+  ],
+  "limitations": [
+    "No browser automation; complete browser matrix and packet capture in OFFLINE_VERIFICATION.md.",
+    "TCP deny probes are not proof of absence of DNS/UDP traffic."
+  ]
+}

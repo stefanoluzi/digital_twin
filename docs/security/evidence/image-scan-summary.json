@@ -1,0 +1,3019 @@
+{
+  "generatedAt": "2026-10-01T02:31:33.099Z",
+  "scanner": "aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969",
+  "note": "Package/advisory occurrences, not proven remotely exploitable issues. Not an exploitability assessment. Full reports in ignored tmp/security.",
+  "images": [
+    {
+      "image": "app",
+      "createdAt": "2026-10-01T02:24:51.068243486Z",
+      "metadata": {
+        "Size": 958170112,
+        "OS": {
+          "Family": "debian",
+          "Name": "12.15"
+        },
+        "ImageID": "sha256:c15ad4f662086fb79c874a96263dfa2f87a46aa65bc58a26bf0a4084ef6eacc3",
+        "DiffIDs": [
+          "sha256:34467cc93912af891dfee8a3902adf9b4f355a9bca4eaa46f658d1181a21de0d",
+          "sha256:d4538219a5351d13fddbd63f69f91967df4615ce1920c8a0f981a6a1382e9c2b",
+          "sha256:be63ab2861093aeb3c3b7a85e837d5d562510736ba39c00c5ad6b9d5714c9035",
+          "sha256:429894d93c7696cccc056cc2caa20da017bbb4f604ad1226327aa060d78b3bd9",
+          "sha256:362feb000ea275c02b50abdf827ccf034ae1f7d50989852ea8fc3cd9b80fd7b3",
+          "sha256:7562503601356332cc5f91fae002de45cf60ceb305c65cdc107ee119ded6bfda",
+          "sha256:98240c70930e953ccba4164989bdaade42897072f0fef5818d1d7ff64c871cef",
+          "sha256:38dac94c3e4c658ccf486f6679b1ca473e433bfd5c8f4e4eb1d65eda4dfff7e6",
+          "sha256:f263f901b7b4128e4666066617c83aa6bc57caeed708a55ebe28325b73fcbc75",
+          "sha256:2685f13b1d9bf8cb7301aa200dc985f8a3e24c70752f180b1c45930ba63c910b",
+          "sha256:6acd4ede711b0f7f647fee865af3e75bb731bba7e26b4fc2fc9bcf3c22eed8d7",
+          "sha256:27b04b07356c3a0fcd79c3ab836e82d01b614066d53a21e531ed942cb58d0515",
+          "sha256:b90ab503ab1a8bf3f09dc19eac0dc42a4a7cf55d98a18617c53045648dfc3943",
+          "sha256:194df746036343eac2bec7c9bf41ae07231079d6ffaed930eab56b97456a99d7",
+          "sha256:4e8bb0fa2ca65fb5a9c8eb92fbf24280a922252fbfaf84d76936cbc23f0dfeed",
+          "sha256:69392690b904a2d069509d859bc11e811c2ae4669bc040d5b69a5bdf096637f0",
+          "sha256:073573b8d8a21e58ae18c816172f04785087515c33fb43ab4ea6b64dec999c9c",
+          "sha256:90272a5fbcbc808054392649c423f2640b85a2121dfe9833e76f531d8e7666f3",
+          "sha256:d4e4a98207113ed96166b1ad1baf4042084586e06fbbd8a9c43bfcbe427ffe56",
+          "sha256:968f87f4163a885388b7a661cd12e8e5ba3cb40133143bffd1600f1a172ba89d"
+        ],
+        "RepoTags": [
+          "maintenance-lc1c:local"
+        ],
+        "Reference": "maintenance-lc1c:local",
+        "ImageConfig": {
+          "architecture": "amd64",
+          "created": "2026-10-01T02:06:01.603024699Z",
+          "history": [
+            {
+              "created": "2026-09-18T00:00:00Z",
+              "created_by": "# debian.sh --arch 'amd64' out/ 'bookworm' '@1789689600'",
+              "comment": "debuerreotype 0.17"
+            },
+            {
+              "created": "2026-09-19T00:48:20.099999768Z",
+              "created_by": "RUN /bin/sh -c groupadd --gid 1000 node   && useradd --uid 1000 --gid node --shell /bin/bash --create-home node # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:48:40.711383806Z",
+              "created_by": "ENV NODE_VERSION=24.21.0",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:48:40.711383806Z",
+              "created_by": "RUN /bin/sh -c ARCH= OPENSSL_ARCH= && dpkgArch=\"$(dpkg --print-architecture)\"     && case \"${dpkgArch##*-}\" in       amd64) ARCH='x64' OPENSSL_ARCH='linux-x86_64';;       ppc64el) ARCH='ppc64le' OPENSSL_ARCH='linux-ppc64le';;       arm64) ARCH='arm64' OPENSSL_ARCH='linux-aarch64';;       *) echo \"unsupported architecture\"; exit 1 ;;     esac     && set -ex     && apt-get update && apt-get install -y ca-certificates curl wget gnupg dirmngr xz-utils libatomic1 --no-install-recommends     && rm -rf /var/lib/apt/lists/*     && export GNUPGHOME=\"$(mktemp -d)\"     && for key in       5BE8A3F6C8A5C01D106C0AD820B1A390B168D356       DD792F5973C6DE52C432CBDAC77ABFA00DDBF2B7       CC68F5A3106FF448322E48ED27F5E38D5B0A215F       890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4       C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C       108F52B48DB57BB0CC439B2997B01419BD92F80A       655F3B5C1FB3FA8D1A0CA6BDE4A7D232B936D2FD       A363A499291CBBC940DD62E41F10027AF002F8B0     ; do       { gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys \"$key\" && gpg --batch --fingerprint \"$key\"; } ||       { gpg --batch --keyserver keyserver.ubuntu.com --recv-keys \"$key\" && gpg --batch --fingerprint \"$key\"; } ;     done     && curl -fsSLO --compressed \"https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH.tar.xz\"     && curl -fsSLO --compressed \"https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc\"     && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc     && gpgconf --kill all     && rm -rf \"$GNUPGHOME\"     && grep \" node-v$NODE_VERSION-linux-$ARCH.tar.xz\\$\" SHASUMS256.txt | sha256sum -c -     && tar -xJf \"node-v$NODE_VERSION-linux-$ARCH.tar.xz\" -C /usr/local --strip-components=1 --no-same-owner     && rm \"node-v$NODE_VERSION-linux-$ARCH.tar.xz\" SHASUMS256.txt.asc SHASUMS256.txt     && find /usr/local/include/node/openssl/archs -mindepth 1 -maxdepth 1 ! -name \"$OPENSSL_ARCH\" -exec rm -rf {} \\;     && apt-mark auto '.*' > /dev/null     && find /usr/local -type f -executable -exec ldd '{}' ';'       | awk '/=>/ { so = $(NF-1); if (index(so, \"/usr/local/\") == 1) { next }; gsub(\"^/(usr/)?\", \"\", so); print so }'       | sort -u       | xargs -r dpkg-query --search       | cut -d: -f1       | sort -u       | xargs -r apt-mark manual     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false     && ln -s /usr/local/bin/node /usr/local/bin/nodejs     && node --version     && npm --version     && rm -rf /tmp/* # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:48:40.711383806Z",
+              "created_by": "ENV YARN_VERSION=1.22.22",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:48:53.384922732Z",
+              "created_by": "RUN /bin/sh -c set -ex   && savedAptMark=\"$(apt-mark showmanual)\"   && apt-get update && apt-get install -y ca-certificates curl wget gnupg dirmngr --no-install-recommends   && rm -rf /var/lib/apt/lists/*   && export GNUPGHOME=\"$(mktemp -d)\"   && for key in     6A010C5166006599AA17F08146C2130DFD2497F5   ; do     { gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys \"$key\" && gpg --batch --fingerprint \"$key\"; } ||     { gpg --batch --keyserver keyserver.ubuntu.com --recv-keys \"$key\" && gpg --batch --fingerprint \"$key\"; } ;   done   && curl -fsSLO --compressed \"https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz\"   && curl -fsSLO --compressed \"https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz.asc\"   && gpg --batch --verify yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz   && gpgconf --kill all   && rm -rf \"$GNUPGHOME\"   && mkdir -p /opt   && tar -xzf yarn-v$YARN_VERSION.tar.gz -C /opt/   && ln -s /opt/yarn-v$YARN_VERSION/bin/yarn /usr/local/bin/yarn   && ln -s /opt/yarn-v$YARN_VERSION/bin/yarnpkg /usr/local/bin/yarnpkg   && rm yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz   && apt-mark auto '.*' > /dev/null   && { [ -z \"$savedAptMark\" ] || apt-mark manual $savedAptMark > /dev/null; }   && find /usr/local -type f -executable -exec ldd '{}' ';'     | awk '/=>/ { so = $(NF-1); if (index(so, \"/usr/local/\") == 1) { next }; gsub(\"^/(usr/)?\", \"\", so); print so }'     | sort -u     | xargs -r dpkg-query --search     | cut -d: -f1     | sort -u     | xargs -r apt-mark manual   && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false   && yarn --version   && rm -rf /tmp/* # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:48:53.412726145Z",
+              "created_by": "COPY docker-entrypoint.sh /usr/local/bin/ # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:48:53.412726145Z",
+              "created_by": "ENTRYPOINT [\"docker-entrypoint.sh\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:48:53.412726145Z",
+              "created_by": "CMD [\"node\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-10-01T02:04:28.166030783Z",
+              "created_by": "WORKDIR /app",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:04:33.649188131Z",
+              "created_by": "ENV CHECKPOINT_DISABLE=1 PRISMA_HIDE_UPDATE_MESSAGE=1",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-10-01T02:04:33.649188131Z",
+              "created_by": "RUN /bin/sh -c apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/* # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:05:59.938188511Z",
+              "created_by": "COPY --chown=node:node /app/node_modules ./node_modules # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:00.453379774Z",
+              "created_by": "COPY --chown=node:node /app/dist-spares ./dist-spares # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:00.567698077Z",
+              "created_by": "COPY --chown=node:node /app/package.json ./package.json # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:00.667069718Z",
+              "created_by": "COPY --chown=node:node /app/server ./server # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:00.776834746Z",
+              "created_by": "COPY --chown=node:node /app/src/spares ./src/spares # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:00.885281922Z",
+              "created_by": "COPY --chown=node:node /app/src/repairs ./src/repairs # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:00.984974165Z",
+              "created_by": "COPY --chown=node:node /app/src/rex ./src/rex # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:01.091867602Z",
+              "created_by": "COPY --chown=node:node /app/src/config ./src/config # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:01.185978268Z",
+              "created_by": "COPY --chown=node:node /app/src/utils ./src/utils # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:01.286692758Z",
+              "created_by": "COPY --chown=node:node /app/src/maintenance/domain ./src/maintenance/domain # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:01.391267091Z",
+              "created_by": "COPY --chown=node:node /app/src/maintenance/data ./src/maintenance/data # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:01.499307426Z",
+              "created_by": "COPY --chown=node:node /app/prisma ./prisma # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:01.603024699Z",
+              "created_by": "COPY --chown=node:node /app/scripts/start-container.mjs ./scripts/start-container.mjs # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-10-01T02:06:01.603024699Z",
+              "created_by": "USER node",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-10-01T02:06:01.603024699Z",
+              "created_by": "EXPOSE [3001/tcp]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-10-01T02:06:01.603024699Z",
+              "created_by": "CMD [\"node\" \"scripts/start-container.mjs\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            }
+          ],
+          "os": "linux",
+          "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+              "sha256:34467cc93912af891dfee8a3902adf9b4f355a9bca4eaa46f658d1181a21de0d",
+              "sha256:d4538219a5351d13fddbd63f69f91967df4615ce1920c8a0f981a6a1382e9c2b",
+              "sha256:be63ab2861093aeb3c3b7a85e837d5d562510736ba39c00c5ad6b9d5714c9035",
+              "sha256:429894d93c7696cccc056cc2caa20da017bbb4f604ad1226327aa060d78b3bd9",
+              "sha256:362feb000ea275c02b50abdf827ccf034ae1f7d50989852ea8fc3cd9b80fd7b3",
+              "sha256:7562503601356332cc5f91fae002de45cf60ceb305c65cdc107ee119ded6bfda",
+              "sha256:98240c70930e953ccba4164989bdaade42897072f0fef5818d1d7ff64c871cef",
+              "sha256:38dac94c3e4c658ccf486f6679b1ca473e433bfd5c8f4e4eb1d65eda4dfff7e6",
+              "sha256:f263f901b7b4128e4666066617c83aa6bc57caeed708a55ebe28325b73fcbc75",
+              "sha256:2685f13b1d9bf8cb7301aa200dc985f8a3e24c70752f180b1c45930ba63c910b",
+              "sha256:6acd4ede711b0f7f647fee865af3e75bb731bba7e26b4fc2fc9bcf3c22eed8d7",
+              "sha256:27b04b07356c3a0fcd79c3ab836e82d01b614066d53a21e531ed942cb58d0515",
+              "sha256:b90ab503ab1a8bf3f09dc19eac0dc42a4a7cf55d98a18617c53045648dfc3943",
+              "sha256:194df746036343eac2bec7c9bf41ae07231079d6ffaed930eab56b97456a99d7",
+              "sha256:4e8bb0fa2ca65fb5a9c8eb92fbf24280a922252fbfaf84d76936cbc23f0dfeed",
+              "sha256:69392690b904a2d069509d859bc11e811c2ae4669bc040d5b69a5bdf096637f0",
+              "sha256:073573b8d8a21e58ae18c816172f04785087515c33fb43ab4ea6b64dec999c9c",
+              "sha256:90272a5fbcbc808054392649c423f2640b85a2121dfe9833e76f531d8e7666f3",
+              "sha256:d4e4a98207113ed96166b1ad1baf4042084586e06fbbd8a9c43bfcbe427ffe56",
+              "sha256:968f87f4163a885388b7a661cd12e8e5ba3cb40133143bffd1600f1a172ba89d"
+            ]
+          },
+          "config": {
+            "Cmd": [
+              "node",
+              "scripts/start-container.mjs"
+            ],
+            "Entrypoint": [
+              "docker-entrypoint.sh"
+            ],
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "NODE_VERSION=24.21.0",
+              "YARN_VERSION=1.22.22",
+              "CHECKPOINT_DISABLE=1",
+              "PRISMA_HIDE_UPDATE_MESSAGE=1"
+            ],
+            "Labels": {
+              "com.docker.compose.project": "critical-spares",
+              "com.docker.compose.service": "app",
+              "com.docker.compose.version": "5.5.1"
+            },
+            "User": "node",
+            "WorkingDir": "/app",
+            "ExposedPorts": {
+              "3001/tcp": {}
+            },
+            "ArgsEscaped": true
+          }
+        },
+        "Layers": [
+          {
+            "Size": 77905920,
+            "Digest": "sha256:774043ccc8ccd0d0833a9ee0792142ab7ad93df971e59dd248fbf82db16d0150",
+            "DiffID": "sha256:34467cc93912af891dfee8a3902adf9b4f355a9bca4eaa46f658d1181a21de0d"
+          },
+          {
+            "Size": 21504,
+            "Digest": "sha256:eab09f3e3981ba4ceab089988dd081db334f2221594d7873f6b9e123f32d2105",
+            "DiffID": "sha256:d4538219a5351d13fddbd63f69f91967df4615ce1920c8a0f981a6a1382e9c2b"
+          },
+          {
+            "Size": 150128640,
+            "Digest": "sha256:1c473ca5523b8180b93f87dd2961339837b4d84db4d4998197a64984462b5164",
+            "DiffID": "sha256:be63ab2861093aeb3c3b7a85e837d5d562510736ba39c00c5ad6b9d5714c9035"
+          },
+          {
+            "Size": 7217664,
+            "Digest": "sha256:2a11efab31915186066efa212f7ba10e7ff63c5d49d21d07c4a8377a2993e70b",
+            "DiffID": "sha256:429894d93c7696cccc056cc2caa20da017bbb4f604ad1226327aa060d78b3bd9"
+          },
+          {
+            "Size": 3584,
+            "Digest": "sha256:a0498254f698ab1b2c7d0d1ce51ebdea22c1f01e620433118a5c764fab93a3dc",
+            "DiffID": "sha256:362feb000ea275c02b50abdf827ccf034ae1f7d50989852ea8fc3cd9b80fd7b3"
+          },
+          {
+            "Size": 1536,
+            "Digest": "sha256:6e9c55b57570d9d8a6bb1dda05c8e64037b293e7dcd9b73c668433a6b7a818ac",
+            "DiffID": "sha256:7562503601356332cc5f91fae002de45cf60ceb305c65cdc107ee119ded6bfda"
+          },
+          {
+            "Size": 7289856,
+            "Digest": "sha256:1a746bf69de3007746379e5f1399251c3d515b799c7a2a5ad73c2c113c947cc0",
+            "DiffID": "sha256:98240c70930e953ccba4164989bdaade42897072f0fef5818d1d7ff64c871cef"
+          },
+          {
+            "Size": 711952384,
+            "Digest": "sha256:053c388a95ad1f1245ae69909c1c14d01f836dc4cbf3e6ae77e0c2fe69894747",
+            "DiffID": "sha256:38dac94c3e4c658ccf486f6679b1ca473e433bfd5c8f4e4eb1d65eda4dfff7e6"
+          },
+          {
+            "Size": 2534400,
+            "Digest": "sha256:5cbc331d6aa23470ca99bbde834017e6fcad70825b4563e7ac210dee48be9ae1",
+            "DiffID": "sha256:f263f901b7b4128e4666066617c83aa6bc57caeed708a55ebe28325b73fcbc75"
+          },
+          {
+            "Size": 4608,
+            "Digest": "sha256:3be95e7cd81e0e0cc3f4ac4ba0286ff34c337e30017f9d87b07af4da286fb512",
+            "DiffID": "sha256:2685f13b1d9bf8cb7301aa200dc985f8a3e24c70752f180b1c45930ba63c910b"
+          },
+          {
+            "Size": 91136,
+            "Digest": "sha256:73244658c3ca5dac0895c635e28bd65626a80d243cedca729dc30a1c474dbf44",
+            "DiffID": "sha256:6acd4ede711b0f7f647fee865af3e75bb731bba7e26b4fc2fc9bcf3c22eed8d7"
+          },
+          {
+            "Size": 312832,
+            "Digest": "sha256:9db90e4acd914f213ef21b49ed60e988c258f9353957364a6ea367eaafbd3984",
+            "DiffID": "sha256:27b04b07356c3a0fcd79c3ab836e82d01b614066d53a21e531ed942cb58d0515"
+          },
+          {
+            "Size": 112128,
+            "Digest": "sha256:b8e276328b9552a32fcd89d08d01fd8acc88ec0b3767243462e0b645a1ba935e",
+            "DiffID": "sha256:b90ab503ab1a8bf3f09dc19eac0dc42a4a7cf55d98a18617c53045648dfc3943"
+          },
+          {
+            "Size": 74240,
+            "Digest": "sha256:9569605cfff5fbea0e265a7b7f1be8580c349ffe962d6bc03cde19a6ac94a66e",
+            "DiffID": "sha256:194df746036343eac2bec7c9bf41ae07231079d6ffaed930eab56b97456a99d7"
+          },
+          {
+            "Size": 12800,
+            "Digest": "sha256:3ceeaacb1296677f7eac46dbe98869e6686e88b4f13c2f80e72c177a9744046d",
+            "DiffID": "sha256:4e8bb0fa2ca65fb5a9c8eb92fbf24280a922252fbfaf84d76936cbc23f0dfeed"
+          },
+          {
+            "Size": 54272,
+            "Digest": "sha256:5fca7d8d323036860d7ada7042e809fead90e297542183a1d7c574885eb32930",
+            "DiffID": "sha256:69392690b904a2d069509d859bc11e811c2ae4669bc040d5b69a5bdf096637f0"
+          },
+          {
+            "Size": 57856,
+            "Digest": "sha256:b11144c050850dad718bd1dd4a49cbca6f5c9b802248690c56eb55e9c1aedd66",
+            "DiffID": "sha256:073573b8d8a21e58ae18c816172f04785087515c33fb43ab4ea6b64dec999c9c"
+          },
+          {
+            "Size": 328704,
+            "Digest": "sha256:42064fff70f0b75b56d87c3a84aad2a4722452ded0de381441830c18e45d6057",
+            "DiffID": "sha256:90272a5fbcbc808054392649c423f2640b85a2121dfe9833e76f531d8e7666f3"
+          },
+          {
+            "Size": 62464,
+            "Digest": "sha256:fd743a01679994eb39316236e6261257d46a5817c8543ed753080dd2cd810b7c",
+            "DiffID": "sha256:d4e4a98207113ed96166b1ad1baf4042084586e06fbbd8a9c43bfcbe427ffe56"
+          },
+          {
+            "Size": 3584,
+            "Digest": "sha256:26c5727def68ded44f72fa16524ceb1baf345319a321b2b6fdc58bdf07da595d",
+            "DiffID": "sha256:968f87f4163a885388b7a661cd12e8e5ba3cb40133143bffd1600f1a172ba89d"
+          }
+        ]
+      },
+      "reportSha256": "b8a97636031fd59ac459f6fcb0bd3a492d6c4ba0e542aee37544c95b87bcbb45",
+      "counts": {
+        "CRITICAL": 5,
+        "HIGH": 83,
+        "MEDIUM": 139,
+        "LOW": 82,
+        "UNKNOWN": 3
+      },
+      "uniqueVulnerabilityIds": 178,
+      "highAndCritical": [
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-41992",
+          "package": "gzip",
+          "version": "1.12-1",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-41992"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-54369",
+          "package": "libacl1",
+          "version": "2.3.1-3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-54369"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-103111",
+          "package": "libpcre2-8-0",
+          "version": "10.42-1+deb12u1",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-103111"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-84782",
+          "package": "libssl3",
+          "version": "3.0.22-1~deb12u1",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-84782"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-16742",
+          "package": "libsystemd0",
+          "version": "252.39-1~deb12u2",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-16742"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2025-69720",
+          "package": "libtinfo6",
+          "version": "6.4-4",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-69720"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-16742",
+          "package": "libudev1",
+          "version": "252.39-1~deb12u2",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-16742"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2025-69720",
+          "package": "ncurses-base",
+          "version": "6.4-4",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-69720"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2025-69720",
+          "package": "ncurses-bin",
+          "version": "6.4-4",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-69720"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-84782",
+          "package": "openssl",
+          "version": "3.0.22-1~deb12u1",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-84782"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-13221",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-13221"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-42496",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42496"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-8376",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-8376"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-42497",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42497"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-48962",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-48962"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-57432",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57432"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-57433",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57433"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-9538",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-9538"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "/scan/image.tar (debian 12.15)",
+          "id": "CVE-2023-45853",
+          "package": "zlib1g",
+          "version": "1:1.2.13.dfsg-1",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "will_not_fix",
+          "url": "https://avd.aquasec.com/nvd/cve-2023-45853"
+        },
+        {
+          "target": "Node.js",
+          "id": "CVE-2026-102276",
+          "package": "brace-expansion",
+          "version": "5.0.7",
+          "fixed": "5.0.10, 3.0.7, 2.1.5, 1.1.19",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-102276"
+        },
+        {
+          "target": "Node.js",
+          "id": "CVE-2026-102278",
+          "package": "brace-expansion",
+          "version": "5.0.7",
+          "fixed": "5.0.11, 3.0.8, 2.1.6, 1.1.20",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-102278"
+        },
+        {
+          "target": "Node.js",
+          "id": "CVE-2026-14257",
+          "package": "brace-expansion",
+          "version": "5.0.7",
+          "fixed": "5.0.8, 3.0.3, 2.1.3, 1.1.17",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-14257"
+        },
+        {
+          "target": "Node.js",
+          "id": "CVE-2026-69152",
+          "package": "brace-expansion",
+          "version": "5.0.7",
+          "fixed": "1.1.18, 2.1.4, 3.0.6, 5.0.9",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-69152"
+        },
+        {
+          "target": "Node.js",
+          "id": "CVE-2026-69192",
+          "package": "ip-address",
+          "version": "10.2.0",
+          "fixed": "10.3.1",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-69192"
+        },
+        {
+          "target": "Node.js",
+          "id": "CVE-2026-73566",
+          "package": "tar",
+          "version": "7.5.19",
+          "fixed": "7.5.21",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-73566"
+        },
+        {
+          "target": "Node.js",
+          "id": "CVE-2026-19534",
+          "package": "undici",
+          "version": "6.27.0",
+          "fixed": "6.28.1, 7.29.1, 8.10.2",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-19534"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2025-68121",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.24.13, 1.25.7, 1.26.0-rc.3",
+          "severity": "CRITICAL",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-68121"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2025-61726",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.24.12, 1.25.6",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-61726"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2025-61729",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.24.11, 1.25.5",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-61729"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-25679",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.8, 1.26.1",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-25679"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-27145",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.11, 1.26.4",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-27145"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-32280",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.9, 1.26.2",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-32280"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-32281",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.9, 1.26.2",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-32281"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-32283",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.9, 1.26.2",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-32283"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-33811",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-33811"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-33814",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-33814"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-33818",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-33818"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-39820",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-39820"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-39821",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-39821"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-39822",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.12, 1.26.5, 1.27.0-rc.2",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-39822"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-39836",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-39836"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-42499",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42499"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-42504",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.11, 1.26.4",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42504"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-56853",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56853"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-56858",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56858"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-56859",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56859"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-56860",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56860"
+        },
+        {
+          "target": "app/node_modules/@esbuild/linux-x64/bin/esbuild",
+          "id": "CVE-2026-56862",
+          "package": "stdlib",
+          "version": "v1.23.12",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56862"
+        }
+      ]
+    },
+    {
+      "image": "postgres",
+      "createdAt": "2026-10-01T02:26:57.281386219Z",
+      "metadata": {
+        "Size": 442976768,
+        "OS": {
+          "Family": "debian",
+          "Name": "12.15"
+        },
+        "ImageID": "sha256:345c8087a592c68bc6b1c347bb865b43e14cdefec77d741f85195588028f57a4",
+        "DiffIDs": [
+          "sha256:34467cc93912af891dfee8a3902adf9b4f355a9bca4eaa46f658d1181a21de0d",
+          "sha256:51c53d132ec91bca06119134bacca423827e8a612e4f5689523c0e72142eec6d",
+          "sha256:0d46a783183d47b4fe14de6325eecc4cfcf733da8260524e66079634f386f90d",
+          "sha256:614662ec165c571c14bdfe132aadba28282faeff7ecaa6e587e965675b5a3331",
+          "sha256:49add01d02178d409635ff6801af0bc71ec564da0a88b868702785505aae51d0",
+          "sha256:6c8655cb8ee48c4cdd2f32b8ee3f5ff69271a75c79d40c9d626793073d507156",
+          "sha256:8d23d1f472139beea8667baba04b669b04bf814b4c373ea9df1cb5c011f9fa30",
+          "sha256:018e47810eb267ca1aa09b987a7ab88b58fdfa39e55abf3900bb81775a095907",
+          "sha256:a8f20ac35cdc3218b93c3564a82d956f2d67e95f577207ca2c00ab5be0e487e4",
+          "sha256:db135c7e48584074bd6cb98d00e80a4fa4d7b1000a4a67c741d4d29e9474d7a3",
+          "sha256:7cd3b8c945cf47c596b441691be4fcf043b44fa3de16c5600f1fa0ec4faf7a08",
+          "sha256:e86169dbea66cd9c54ac296b84c76506f1d4e29c1d1d2fe0bf76064010fff70a",
+          "sha256:0c345ffeb5125c804c24ea97186b3ac3e37cf5c28b55bf0352724daab7d482e6",
+          "sha256:09ca402f2e8923a3f4d8b0e08445885b91b2657cc61e5eb342cf2554f24b8985"
+        ],
+        "RepoDigests": [
+          "postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67"
+        ],
+        "Reference": "postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67",
+        "ImageConfig": {
+          "architecture": "amd64",
+          "created": "2026-09-19T00:36:41.950723877Z",
+          "history": [
+            {
+              "created": "2026-09-18T00:00:00Z",
+              "created_by": "# debian.sh --arch 'amd64' out/ 'bookworm' '@1789689600'",
+              "comment": "debuerreotype 0.17"
+            },
+            {
+              "created": "2026-09-19T00:35:31.850382722Z",
+              "created_by": "RUN /bin/sh -c set -eux; \tgroupadd -r postgres --gid=999; \tuseradd -r -g postgres --uid=999 --home-dir=/var/lib/postgresql --shell=/bin/bash postgres; \tinstall --verbose --directory --owner postgres --group postgres --mode 1777 /var/lib/postgresql # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:35:35.382695942Z",
+              "created_by": "RUN /bin/sh -c set -ex; \tapt-get update; \tapt-get install -y --no-install-recommends \t\tgnupg \t\tless \t; \trm -rf /var/lib/apt/lists/* # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:35:41.474934105Z",
+              "created_by": "ENV GOSU_VERSION=1.19",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:35:41.474934105Z",
+              "created_by": "RUN /bin/sh -c set -eux; \tsavedAptMark=\"$(apt-mark showmanual)\"; \tapt-get update; \tapt-get install -y --no-install-recommends ca-certificates wget; \trm -rf /var/lib/apt/lists/*; \tdpkgArch=\"$(dpkg --print-architecture | awk -F- '{ print $NF }')\"; \twget -O /usr/local/bin/gosu \"https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch\"; \twget -O /usr/local/bin/gosu.asc \"https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc\"; \texport GNUPGHOME=\"$(mktemp -d)\"; \tgpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \tgpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \tgpgconf --kill all; \trm -rf \"$GNUPGHOME\" /usr/local/bin/gosu.asc; \tapt-mark auto '.*' > /dev/null; \t[ -z \"$savedAptMark\" ] || apt-mark manual $savedAptMark > /dev/null; \tapt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \tchmod +x /usr/local/bin/gosu; \tgosu --version; \tgosu nobody true # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:35:45.277929555Z",
+              "created_by": "RUN /bin/sh -c set -eux; \tif [ -f /etc/dpkg/dpkg.cfg.d/docker ]; then \t\tgrep -q '/usr/share/locale' /etc/dpkg/dpkg.cfg.d/docker; \t\tsed -ri '/\\/usr\\/share\\/locale/d' /etc/dpkg/dpkg.cfg.d/docker; \t\t! grep -q '/usr/share/locale' /etc/dpkg/dpkg.cfg.d/docker; \tfi; \tapt-get update; apt-get install -y --no-install-recommends locales; rm -rf /var/lib/apt/lists/*; \techo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; \tlocale-gen; \tlocale -a | grep 'en_US.utf8' # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:35:45.277929555Z",
+              "created_by": "ENV LANG=en_US.utf8",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:35:47.657736945Z",
+              "created_by": "RUN /bin/sh -c set -eux; \tapt-get update; \tapt-get install -y --no-install-recommends \t\tlibnss-wrapper \t\txz-utils \t\tzstd \t; \trm -rf /var/lib/apt/lists/* # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:35:47.750381903Z",
+              "created_by": "RUN /bin/sh -c mkdir /docker-entrypoint-initdb.d # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:35:48.282520689Z",
+              "created_by": "RUN /bin/sh -c set -ex; \tkey='B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8'; \texport GNUPGHOME=\"$(mktemp -d)\"; \tmkdir -p /usr/local/share/keyrings/; \tgpg --batch --keyserver keyserver.ubuntu.com --recv-keys \"$key\"; \tgpg --batch --export --armor \"$key\" > /usr/local/share/keyrings/postgres.gpg.asc; \tgpgconf --kill all; \trm -rf \"$GNUPGHOME\" # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:35:48.282520689Z",
+              "created_by": "ENV PG_MAJOR=16",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:35:48.282520689Z",
+              "created_by": "ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/16/bin",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:35:48.282520689Z",
+              "created_by": "ENV PG_VERSION=16.15-1.pgdg12+2",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:36:41.562646793Z",
+              "created_by": "RUN /bin/sh -c set -ex; \t\texport PYTHONDONTWRITEBYTECODE=1; \t\tdpkgArch=\"$(dpkg --print-architecture)\"; \taptRepo=\"[ signed-by=/usr/local/share/keyrings/postgres.gpg.asc ] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main $PG_MAJOR\"; \tcase \"$dpkgArch\" in \t\tamd64 | arm64 | ppc64el) \t\t\techo \"deb $aptRepo\" > /etc/apt/sources.list.d/pgdg.list; \t\t\tapt-get update; \t\t\t;; \t\t*) \t\t\techo \"deb-src $aptRepo\" > /etc/apt/sources.list.d/pgdg.list; \t\t\t\t\t\tsavedAptMark=\"$(apt-mark showmanual)\"; \t\t\t\t\t\ttempDir=\"$(mktemp -d)\"; \t\t\tcd \"$tempDir\"; \t\t\t\t\t\tapt-get update; \t\t\tapt-get install -y --no-install-recommends dpkg-dev; \t\t\techo \"deb [ trusted=yes ] file://$tempDir ./\" > /etc/apt/sources.list.d/temp.list; \t\t\t_update_repo() { \t\t\t\tdpkg-scanpackages . > Packages; \t\t\t\tapt-get -o Acquire::GzipIndexes=false update; \t\t\t}; \t\t\t_update_repo; \t\t\t\t\t\tnproc=\"$(nproc)\"; \t\t\texport DEB_BUILD_OPTIONS=\"nocheck parallel=$nproc\"; \t\t\tapt-get build-dep -y postgresql-common-dev; \t\t\tapt-get source --compile postgresql-common-dev; \t\t\t_update_repo; \t\t\tapt-get build-dep -y \"postgresql-$PG_MAJOR=$PG_VERSION\"; \t\t\tapt-get source --compile \"postgresql-$PG_MAJOR=$PG_VERSION\"; \t\t\t\t\t\t\t\t\tapt-mark showmanual | xargs apt-mark auto > /dev/null; \t\t\tapt-mark manual $savedAptMark; \t\t\t\t\t\tls -lAFh; \t\t\t_update_repo; \t\t\tgrep '^Package: ' Packages; \t\t\tcd /; \t\t\t;; \tesac; \t\tapt-get install -y --no-install-recommends postgresql-common; \tsed -ri 's/#(create_main_cluster) .*$/\\1 = false/' /etc/postgresql-common/createcluster.conf; \tapt-get install -y --no-install-recommends \t\t\"postgresql-$PG_MAJOR=$PG_VERSION\" \t; \t\trm -rf /var/lib/apt/lists/*; \t\tif [ -n \"$tempDir\" ]; then \t\tapt-get purge -y --auto-remove; \t\trm -rf \"$tempDir\" /etc/apt/sources.list.d/temp.list; \tfi; \t\tfind /usr -name '*.pyc' -type f -exec bash -c 'for pyc; do dpkg -S \"$pyc\" &> /dev/null || rm -vf \"$pyc\"; done' -- '{}' +; \t\tpostgres --version # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:36:41.684373533Z",
+              "created_by": "RUN /bin/sh -c set -eux; \tdpkg-divert --add --rename --divert \"/usr/share/postgresql/postgresql.conf.sample.dpkg\" \"/usr/share/postgresql/$PG_MAJOR/postgresql.conf.sample\"; \tcp -v /usr/share/postgresql/postgresql.conf.sample.dpkg /usr/share/postgresql/postgresql.conf.sample; \tln -sv ../postgresql.conf.sample \"/usr/share/postgresql/$PG_MAJOR/\"; \tsed -ri \"s!^#?(listen_addresses)\\s*=\\s*\\S+.*!\\1 = '*'!\" /usr/share/postgresql/postgresql.conf.sample; \tgrep -F \"listen_addresses = '*'\" /usr/share/postgresql/postgresql.conf.sample # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:36:41.761469676Z",
+              "created_by": "RUN /bin/sh -c install --verbose --directory --owner postgres --group postgres --mode 3777 /var/run/postgresql # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:36:41.761469676Z",
+              "created_by": "ENV PGDATA=/var/lib/postgresql/data",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:36:41.842237145Z",
+              "created_by": "RUN /bin/sh -c install --verbose --directory --owner postgres --group postgres --mode 1777 \"$PGDATA\" # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:36:41.842237145Z",
+              "created_by": "VOLUME [/var/lib/postgresql/data]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:36:41.872343792Z",
+              "created_by": "COPY docker-entrypoint.sh docker-ensure-initdb.sh /usr/local/bin/ # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:36:41.950723877Z",
+              "created_by": "RUN /bin/sh -c ln -sT docker-ensure-initdb.sh /usr/local/bin/docker-enforce-initdb.sh # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-19T00:36:41.950723877Z",
+              "created_by": "ENTRYPOINT [\"docker-entrypoint.sh\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:36:41.950723877Z",
+              "created_by": "STOPSIGNAL SIGINT",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:36:41.950723877Z",
+              "created_by": "EXPOSE map[5432/tcp:{}]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-19T00:36:41.950723877Z",
+              "created_by": "CMD [\"postgres\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            }
+          ],
+          "os": "linux",
+          "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+              "sha256:34467cc93912af891dfee8a3902adf9b4f355a9bca4eaa46f658d1181a21de0d",
+              "sha256:51c53d132ec91bca06119134bacca423827e8a612e4f5689523c0e72142eec6d",
+              "sha256:0d46a783183d47b4fe14de6325eecc4cfcf733da8260524e66079634f386f90d",
+              "sha256:614662ec165c571c14bdfe132aadba28282faeff7ecaa6e587e965675b5a3331",
+              "sha256:49add01d02178d409635ff6801af0bc71ec564da0a88b868702785505aae51d0",
+              "sha256:6c8655cb8ee48c4cdd2f32b8ee3f5ff69271a75c79d40c9d626793073d507156",
+              "sha256:8d23d1f472139beea8667baba04b669b04bf814b4c373ea9df1cb5c011f9fa30",
+              "sha256:018e47810eb267ca1aa09b987a7ab88b58fdfa39e55abf3900bb81775a095907",
+              "sha256:a8f20ac35cdc3218b93c3564a82d956f2d67e95f577207ca2c00ab5be0e487e4",
+              "sha256:db135c7e48584074bd6cb98d00e80a4fa4d7b1000a4a67c741d4d29e9474d7a3",
+              "sha256:7cd3b8c945cf47c596b441691be4fcf043b44fa3de16c5600f1fa0ec4faf7a08",
+              "sha256:e86169dbea66cd9c54ac296b84c76506f1d4e29c1d1d2fe0bf76064010fff70a",
+              "sha256:0c345ffeb5125c804c24ea97186b3ac3e37cf5c28b55bf0352724daab7d482e6",
+              "sha256:09ca402f2e8923a3f4d8b0e08445885b91b2657cc61e5eb342cf2554f24b8985"
+            ]
+          },
+          "config": {
+            "Cmd": [
+              "postgres"
+            ],
+            "Entrypoint": [
+              "docker-entrypoint.sh"
+            ],
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/16/bin",
+              "GOSU_VERSION=1.19",
+              "LANG=en_US.utf8",
+              "PG_MAJOR=16",
+              "PG_VERSION=16.15-1.pgdg12+2",
+              "PGDATA=/var/lib/postgresql/data"
+            ],
+            "Volumes": {
+              "/var/lib/postgresql/data": {}
+            },
+            "ExposedPorts": {
+              "5432/tcp": {}
+            },
+            "StopSignal": "SIGINT"
+          }
+        },
+        "Layers": [
+          {
+            "Size": 77905920,
+            "Digest": "sha256:774043ccc8ccd0d0833a9ee0792142ab7ad93df971e59dd248fbf82db16d0150",
+            "DiffID": "sha256:34467cc93912af891dfee8a3902adf9b4f355a9bca4eaa46f658d1181a21de0d"
+          },
+          {
+            "Size": 12288,
+            "Digest": "sha256:f2455d5db1caf25a4259cab5677a3f68ab2aa83227d0711e18821d902c76b6be",
+            "DiffID": "sha256:51c53d132ec91bca06119134bacca423827e8a612e4f5689523c0e72142eec6d"
+          },
+          {
+            "Size": 10150400,
+            "Digest": "sha256:8445317dd84fa26748917bcb3765c81735e7b221a7c7baf1187cb0962b1d5b2e",
+            "DiffID": "sha256:0d46a783183d47b4fe14de6325eecc4cfcf733da8260524e66079634f386f90d"
+          },
+          {
+            "Size": 3599360,
+            "Digest": "sha256:2dd9b1a67dcf8d470e8cd3a908a7305bd5b125f281d3a4b68a74a097b90bc664",
+            "DiffID": "sha256:614662ec165c571c14bdfe132aadba28282faeff7ecaa6e587e965675b5a3331"
+          },
+          {
+            "Size": 25775616,
+            "Digest": "sha256:e0d7eb46537458061dc4234d043b17ff72cca13f76afda5fd87e038a4efc7fae",
+            "DiffID": "sha256:49add01d02178d409635ff6801af0bc71ec564da0a88b868702785505aae51d0"
+          },
+          {
+            "Size": 3286016,
+            "Digest": "sha256:1a60cdc4b8b6487b29467fc639e75738233c4e7d1c9a94e74e817f3d3cdb6acd",
+            "DiffID": "sha256:6c8655cb8ee48c4cdd2f32b8ee3f5ff69271a75c79d40c9d626793073d507156"
+          },
+          {
+            "Size": 1536,
+            "Digest": "sha256:00ea30b13a586a07cd168dee52d927884b09db454f9ba98e87712d9bf9212d89",
+            "DiffID": "sha256:8d23d1f472139beea8667baba04b669b04bf814b4c373ea9df1cb5c011f9fa30"
+          },
+          {
+            "Size": 7680,
+            "Digest": "sha256:7086798276475b840c4ab90fd03fe1f86e7ba996db748989cd6390f5f4d73fd4",
+            "DiffID": "sha256:018e47810eb267ca1aa09b987a7ab88b58fdfa39e55abf3900bb81775a095907"
+          },
+          {
+            "Size": 322140160,
+            "Digest": "sha256:3e13d544cd355a55b950e459f551e83e5ebca49b7d972ecc298e8ca28f5d28de",
+            "DiffID": "sha256:a8f20ac35cdc3218b93c3564a82d956f2d67e95f577207ca2c00ab5be0e487e4"
+          },
+          {
+            "Size": 68608,
+            "Digest": "sha256:639aa37fe54949f4e0169a556cfb019d41faf185973e3dd3eec82cd7372203c6",
+            "DiffID": "sha256:db135c7e48584074bd6cb98d00e80a4fa4d7b1000a4a67c741d4d29e9474d7a3"
+          },
+          {
+            "Size": 2048,
+            "Digest": "sha256:b3e09271b7213599bbf0d8ede6a4c8a5b00b4ea7272a1550860d7197214d6de3",
+            "DiffID": "sha256:7cd3b8c945cf47c596b441691be4fcf043b44fa3de16c5600f1fa0ec4faf7a08"
+          },
+          {
+            "Size": 3072,
+            "Digest": "sha256:aae3fa55f3774eb1f7337f6c96b9938f0638875d95321cdcaea66cb760d4e037",
+            "DiffID": "sha256:e86169dbea66cd9c54ac296b84c76506f1d4e29c1d1d2fe0bf76064010fff70a"
+          },
+          {
+            "Size": 20992,
+            "Digest": "sha256:50a212ffc5a15fb63469bd815ac362ee8cd283350b9570dd1f5f440f7faca60e",
+            "DiffID": "sha256:0c345ffeb5125c804c24ea97186b3ac3e37cf5c28b55bf0352724daab7d482e6"
+          },
+          {
+            "Size": 3072,
+            "Digest": "sha256:e9cc823db10fce950aba8d9074277064381982b125fa4eb3d7c89833cce5d90b",
+            "DiffID": "sha256:09ca402f2e8923a3f4d8b0e08445885b91b2657cc61e5eb342cf2554f24b8985"
+          }
+        ]
+      },
+      "reportSha256": "20937857cfd61f41a049f06aeb546c0eecf64b47588b45d5be1e918d1d9db1d5",
+      "counts": {
+        "CRITICAL": 16,
+        "HIGH": 102,
+        "MEDIUM": 210,
+        "LOW": 163,
+        "UNKNOWN": 6
+      },
+      "uniqueVulnerabilityIds": 202,
+      "highAndCritical": [
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "bsdutils",
+          "version": "1:2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-41992",
+          "package": "gzip",
+          "version": "1.12-1",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-41992"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-54369",
+          "package": "libacl1",
+          "version": "2.3.1-3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-54369"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "libblkid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2023-2953",
+          "package": "libldap-2.5-0",
+          "version": "2.5.13+dfsg-5",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2023-2953"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "libmount1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2025-69720",
+          "package": "libncursesw6",
+          "version": "6.4-4",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-69720"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-103111",
+          "package": "libpcre2-8-0",
+          "version": "10.42-1+deb12u1",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-103111"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-13221",
+          "package": "libperl5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-13221"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-42496",
+          "package": "libperl5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42496"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-8376",
+          "package": "libperl5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-8376"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-42497",
+          "package": "libperl5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42497"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-48962",
+          "package": "libperl5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-48962"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-57432",
+          "package": "libperl5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57432"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-57433",
+          "package": "libperl5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57433"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-9538",
+          "package": "libperl5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-9538"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "libsmartcols1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2025-7458",
+          "package": "libsqlite3-0",
+          "version": "3.40.1-2+deb12u2",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-7458"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-11822",
+          "package": "libsqlite3-0",
+          "version": "3.40.1-2+deb12u2",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-11822"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-11824",
+          "package": "libsqlite3-0",
+          "version": "3.40.1-2+deb12u2",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-11824"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-84782",
+          "package": "libssl3",
+          "version": "3.0.20-1~deb12u2",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-84782"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-16742",
+          "package": "libsystemd0",
+          "version": "252.39-1~deb12u2",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-16742"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2025-69720",
+          "package": "libtinfo6",
+          "version": "6.4-4",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-69720"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-16742",
+          "package": "libudev1",
+          "version": "252.39-1~deb12u2",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-16742"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "libuuid1",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-6653",
+          "package": "libxml2",
+          "version": "2.9.14+dfsg-1.3~deb12u6",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-6653"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-74860",
+          "package": "libxml2",
+          "version": "2.9.14+dfsg-1.3~deb12u6",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-74860"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-86138",
+          "package": "libxml2",
+          "version": "2.9.14+dfsg-1.3~deb12u6",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-86138"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-86139",
+          "package": "libxml2",
+          "version": "2.9.14+dfsg-1.3~deb12u6",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-86139"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-86140",
+          "package": "libxml2",
+          "version": "2.9.14+dfsg-1.3~deb12u6",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-86140"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-86142",
+          "package": "libxml2",
+          "version": "2.9.14+dfsg-1.3~deb12u6",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-86142"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-86143",
+          "package": "libxml2",
+          "version": "2.9.14+dfsg-1.3~deb12u6",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-86143"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-86144",
+          "package": "libxml2",
+          "version": "2.9.14+dfsg-1.3~deb12u6",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-86144"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "mount",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2025-69720",
+          "package": "ncurses-base",
+          "version": "6.4-4",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-69720"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2025-69720",
+          "package": "ncurses-bin",
+          "version": "6.4-4",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-69720"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-84782",
+          "package": "openssl",
+          "version": "3.0.20-1~deb12u2",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-84782"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-13221",
+          "package": "perl",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-13221"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-42496",
+          "package": "perl",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42496"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-8376",
+          "package": "perl",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-8376"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-42497",
+          "package": "perl",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42497"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-48962",
+          "package": "perl",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-48962"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-57432",
+          "package": "perl",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57432"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-57433",
+          "package": "perl",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57433"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-9538",
+          "package": "perl",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-9538"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-13221",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-13221"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-42496",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42496"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-8376",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-8376"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-42497",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42497"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-48962",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-48962"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-57432",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57432"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-57433",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57433"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-9538",
+          "package": "perl-base",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-9538"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-13221",
+          "package": "perl-modules-5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-13221"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-42496",
+          "package": "perl-modules-5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42496"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-8376",
+          "package": "perl-modules-5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-8376"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-42497",
+          "package": "perl-modules-5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42497"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-48962",
+          "package": "perl-modules-5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-48962"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-57432",
+          "package": "perl-modules-5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57432"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-57433",
+          "package": "perl-modules-5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-57433"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-9538",
+          "package": "perl-modules-5.36",
+          "version": "5.36.0-7+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "fix_deferred",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-9538"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "util-linux",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-53613",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-53613"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-76642",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-76642"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78408",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78408"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78409",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78409"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2026-78410",
+          "package": "util-linux-extra",
+          "version": "2.38.1-5+deb12u3",
+          "fixed": null,
+          "severity": "HIGH",
+          "status": "affected",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-78410"
+        },
+        {
+          "target": "docker.io/library/postgres@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67 (debian 12.15)",
+          "id": "CVE-2023-45853",
+          "package": "zlib1g",
+          "version": "1:1.2.13.dfsg-1",
+          "fixed": null,
+          "severity": "CRITICAL",
+          "status": "will_not_fix",
+          "url": "https://avd.aquasec.com/nvd/cve-2023-45853"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2025-68121",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.24.13, 1.25.7, 1.26.0-rc.3",
+          "severity": "CRITICAL",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-68121"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2025-61726",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.24.12, 1.25.6",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-61726"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2025-61729",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.24.11, 1.25.5",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2025-61729"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-25679",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.8, 1.26.1",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-25679"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-27145",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.11, 1.26.4",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-27145"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-32280",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.9, 1.26.2",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-32280"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-32281",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.9, 1.26.2",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-32281"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-32283",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.9, 1.26.2",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-32283"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-33811",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-33811"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-33814",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-33814"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-33818",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-33818"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-39820",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-39820"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-39821",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-39821"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-39822",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.12, 1.26.5, 1.27.0-rc.2",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-39822"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-39836",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-39836"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-42499",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.10, 1.26.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42499"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-42504",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.11, 1.26.4",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-42504"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-56853",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56853"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-56858",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56858"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-56859",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56859"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-56860",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56860"
+        },
+        {
+          "target": "usr/local/bin/gosu",
+          "id": "CVE-2026-56862",
+          "package": "stdlib",
+          "version": "v1.24.6",
+          "fixed": "1.25.13, 1.26.6, 1.27.0-rc.3",
+          "severity": "HIGH",
+          "status": "fixed",
+          "url": "https://avd.aquasec.com/nvd/cve-2026-56862"
+        }
+      ]
+    },
+    {
+      "image": "gateway",
+      "createdAt": "2026-10-01T02:27:26.870243581Z",
+      "metadata": {
+        "Size": 55399424,
+        "OS": {
+          "Family": "alpine",
+          "Name": "3.24.2"
+        },
+        "ImageID": "sha256:61640a44f99dcfd7f1af9f144f023195e82fdefd2f5aba7f917548867d4f3a6f",
+        "DiffIDs": [
+          "sha256:74d97c428c51a828f9051a7a40a53ff1fc99e54fc30323ce36760701b0b7f711",
+          "sha256:a446adf7260dd667eb1094752dbeadb7944718dd35a8dd393286c775d13c2007",
+          "sha256:2ddeabe38f3155782af47a7e09a10c6b56a9e553b6e3e624eba3380f05980df4",
+          "sha256:fccded9b40a7ddd0c6ccfa8c76ef7a5275ced902215d8b81fa1ffedff47e6da8",
+          "sha256:cc0892d7111638a404334137981df8b95066263b1fff4ab71502c011e7501b46",
+          "sha256:aec29ad142c83ba721f13c34df90cdd43de92da43d2e0aa9311fc13cb5e3f812",
+          "sha256:0e6cb1238016cfdd9f7e9cf551133de7575070f342dd27d41f806d75884714f7",
+          "sha256:036006073c9df4e0e4c674e0ac4a6688484f842b5953088c7a8fcea848eb1b11",
+          "sha256:5355ba3b186abd45ef965bc3c7ca97cd6815bb415c7b3f2daa4ea17491efc5b4"
+        ],
+        "RepoDigests": [
+          "nginxinc/nginx-unprivileged@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e"
+        ],
+        "Reference": "nginxinc/nginx-unprivileged@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e",
+        "ImageConfig": {
+          "architecture": "amd64",
+          "created": "2026-09-28T01:38:30.676995023Z",
+          "history": [
+            {
+              "created": "2026-09-17T20:37:20.889221879Z",
+              "created_by": "ADD alpine-minirootfs-3.24.2-x86_64.tar.gz / # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-17T20:37:20.889221879Z",
+              "created_by": "CMD [\"/bin/sh\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:08.867632583Z",
+              "created_by": "LABEL maintainer=NGINX Docker Maintainers <docker-maint@nginx.com>",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:08.867632583Z",
+              "created_by": "ENV NGINX_VERSION=1.30.5",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:08.867632583Z",
+              "created_by": "ENV PKG_RELEASE=1",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:08.867632583Z",
+              "created_by": "ENV DYNPKG_RELEASE=1",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:08.867632583Z",
+              "created_by": "ARG UID=101",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:08.867632583Z",
+              "created_by": "ARG GID=101",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:08.867632583Z",
+              "created_by": "RUN |2 UID=101 GID=101 /bin/sh -c set -x     && addgroup -g $GID -S nginx || true     && adduser -S -D -H -u $UID -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx || true     && apkArch=\"$(cat /etc/apk/arch)\"     && nginxPackages=\"         nginx=${NGINX_VERSION}-r${PKG_RELEASE}     \"     && apk add --no-cache --virtual .checksum-deps         openssl     && case \"$apkArch\" in         x86_64|aarch64)             set -x             && KEY_SHA512=\"e09fa32f0a0eab2b879ccbbc4d0e4fb9751486eedda75e35fac65802cc9faa266425edf83e261137a2f4d16281ce2c1a5f4502930fe75154723da014214f0655\"             && wget -O /tmp/nginx_signing.rsa.pub https://nginx.org/keys/nginx_signing.rsa.pub             && if echo \"$KEY_SHA512 */tmp/nginx_signing.rsa.pub\" | sha512sum -c -; then                 echo \"key verification succeeded!\";                 mv /tmp/nginx_signing.rsa.pub /etc/apk/keys/;             else                 echo \"key verification failed!\";                 exit 1;             fi             && DEPS=$(apk query --summarize depends --recursive --no-cache                        --repository \"@nginxorg https://nginx.org/packages/alpine/v$(egrep -o '^[0-9]+\\.[0-9]+' /etc/alpine-release)/main\"                        ${nginxPackages/=/@nginxorg=})             && apk add --no-cache $DEPS             && apk add --repositories-file /dev/null -X \"https://nginx.org/packages/alpine/v$(egrep -o '^[0-9]+\\.[0-9]+' /etc/alpine-release)/main\" --no-cache $nginxPackages             ;;         *)             set -x             && tempDir=\"$(mktemp -d)\"             && chown nobody:nobody $tempDir             && apk add --no-cache --virtual .build-deps                 gcc                 libc-dev                 make                 openssl-dev                 pcre2-dev                 zlib-dev                 linux-headers                 bash                 alpine-sdk                 findutils                 curl             && su nobody -s /bin/sh -c \"                 export HOME=${tempDir}                 && cd ${tempDir}                 && curl -f -L -O https://github.com/nginx/pkg-oss/archive/${NGINX_VERSION}-${PKG_RELEASE}.tar.gz                 && PKGOSSCHECKSUM=\\\"feaa7c9e587e59a01e229c2396433a9f0bccd6ce381afae9311b7496d1c2b53f93b2b0b2adece8f76fa06b92ca6b6a706103ef2c0a26e00afe82dfcdf8135a23 *${NGINX_VERSION}-${PKG_RELEASE}.tar.gz\\\"                 && if [ \\\"\\$(openssl sha512 -r ${NGINX_VERSION}-${PKG_RELEASE}.tar.gz)\\\" = \\\"\\$PKGOSSCHECKSUM\\\" ]; then                     echo \\\"pkg-oss tarball checksum verification succeeded!\\\";                 else                     echo \\\"pkg-oss tarball checksum verification failed!\\\";                     exit 1;                 fi                 && tar xzvf ${NGINX_VERSION}-${PKG_RELEASE}.tar.gz                 && cd pkg-oss-${NGINX_VERSION}-${PKG_RELEASE}                 && cd alpine                 && make base                 && apk index --allow-untrusted -o ${tempDir}/packages/alpine/${apkArch}/APKINDEX.tar.gz ${tempDir}/packages/alpine/${apkArch}/*.apk                 && abuild-sign -k ${tempDir}/.abuild/abuild-key.rsa ${tempDir}/packages/alpine/${apkArch}/APKINDEX.tar.gz                 \"             && cp ${tempDir}/.abuild/abuild-key.rsa.pub /etc/apk/keys/             && apk del --no-network .build-deps             && DEPS=$(apk query --summarize depends --recursive --no-cache                        --repository \"@nginxorg ${tempDir}/packages/alpine/\"                        ${nginxPackages/=/@nginxorg=})             && apk add --no-cache $DEPS             && apk add --repositories-file /dev/null -X ${tempDir}/packages/alpine/ --no-cache $nginxPackages             ;;     esac     && apk del --no-network .checksum-deps     && if [ -n \"$tempDir\" ]; then rm -rf \"$tempDir\"; fi     && if [ -f \"/etc/apk/keys/abuild-key.rsa.pub\" ]; then rm -f /etc/apk/keys/abuild-key.rsa.pub; fi     && apk add --no-cache gettext-envsubst     && apk add --no-cache tzdata     && ln -sf /dev/stdout /var/log/nginx/access.log     && ln -sf /dev/stderr /var/log/nginx/error.log     && mkdir /docker-entrypoint.d # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-28T00:07:09.199292643Z",
+              "created_by": "RUN |2 UID=101 GID=101 /bin/sh -c sed -i 's,listen       80;,listen       8080;,' /etc/nginx/conf.d/default.conf     && sed -i '/user  nginx;/d' /etc/nginx/nginx.conf     && sed -i 's,\\(/var\\)\\{0\\,1\\}/run/nginx.pid,/tmp/nginx.pid,' /etc/nginx/nginx.conf     && sed -i \"/^http {/a \\    proxy_temp_path /tmp/proxy_temp;\\n    client_body_temp_path /tmp/client_temp;\\n    fastcgi_temp_path /tmp/fastcgi_temp;\\n    uwsgi_temp_path /tmp/uwsgi_temp;\\n    scgi_temp_path /tmp/scgi_temp;\\n\" /etc/nginx/nginx.conf     && chown -R $UID:0 /var/cache/nginx     && chmod -R g+w /var/cache/nginx     && chown -R $UID:0 /etc/nginx     && chmod -R g+w /etc/nginx # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-28T00:07:09.222569164Z",
+              "created_by": "COPY docker-entrypoint.sh / # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-28T00:07:09.235985821Z",
+              "created_by": "COPY 10-listen-on-ipv6-by-default.sh /docker-entrypoint.d # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-28T00:07:09.259858291Z",
+              "created_by": "COPY 15-local-resolvers.envsh /docker-entrypoint.d # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-28T00:07:09.275023983Z",
+              "created_by": "COPY 20-envsubst-on-templates.sh /docker-entrypoint.d # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-28T00:07:09.294912897Z",
+              "created_by": "COPY 30-tune-worker-processes.sh /docker-entrypoint.d # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-28T00:07:09.294912897Z",
+              "created_by": "ENTRYPOINT [\"/docker-entrypoint.sh\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:09.294912897Z",
+              "created_by": "EXPOSE [8080/tcp]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:09.294912897Z",
+              "created_by": "STOPSIGNAL SIGQUIT",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:09.294912897Z",
+              "created_by": "USER 101",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T00:07:09.294912897Z",
+              "created_by": "CMD [\"nginx\" \"-g\" \"daemon off;\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T01:38:30.676995023Z",
+              "created_by": "ENV NJS_VERSION=1.0.1",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T01:38:30.676995023Z",
+              "created_by": "ENV NJS_RELEASE=1",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T01:38:30.676995023Z",
+              "created_by": "ARG UID=101",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T01:38:30.676995023Z",
+              "created_by": "ARG GID=101",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T01:38:30.676995023Z",
+              "created_by": "USER root",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-09-28T01:38:30.676995023Z",
+              "created_by": "RUN |2 UID=101 GID=101 /bin/sh -c set -x     && apkArch=\"$(cat /etc/apk/arch)\"     && nginxPackages=\"         nginx=${NGINX_VERSION}-r${PKG_RELEASE}         nginx-module-xslt=${NGINX_VERSION}-r${DYNPKG_RELEASE}         nginx-module-geoip=${NGINX_VERSION}-r${DYNPKG_RELEASE}         nginx-module-image-filter=${NGINX_VERSION}-r${DYNPKG_RELEASE}         nginx-module-njs=${NGINX_VERSION}.${NJS_VERSION}-r${NJS_RELEASE}     \"     && apk add --no-cache --virtual .checksum-deps         openssl     && case \"$apkArch\" in         x86_64|aarch64)             apk add -X \"https://nginx.org/packages/alpine/v$(egrep -o '^[0-9]+\\.[0-9]+' /etc/alpine-release)/main\" --no-cache $nginxPackages             ;;         *)             set -x             && tempDir=\"$(mktemp -d)\"             && chown nobody:nobody $tempDir             && apk add --no-cache --virtual .build-deps                 gcc                 libc-dev                 make                 openssl-dev                 pcre2-dev                 zlib-dev                 linux-headers                 libxslt-dev                 gd-dev                 geoip-dev                 libedit-dev                 bash                 alpine-sdk                 findutils                 curl             && su nobody -s /bin/sh -c \"                 export HOME=${tempDir}                 && cd ${tempDir}                 && curl -f -L -O https://github.com/nginx/pkg-oss/archive/${NGINX_VERSION}-${PKG_RELEASE}.tar.gz                 && PKGOSSCHECKSUM=\\\"feaa7c9e587e59a01e229c2396433a9f0bccd6ce381afae9311b7496d1c2b53f93b2b0b2adece8f76fa06b92ca6b6a706103ef2c0a26e00afe82dfcdf8135a23 *${NGINX_VERSION}-${PKG_RELEASE}.tar.gz\\\"                 && if [ \\\"\\$(openssl sha512 -r ${NGINX_VERSION}-${PKG_RELEASE}.tar.gz)\\\" = \\\"\\$PKGOSSCHECKSUM\\\" ]; then                     echo \\\"pkg-oss tarball checksum verification succeeded!\\\";                 else                     echo \\\"pkg-oss tarball checksum verification failed!\\\";                     exit 1;                 fi                 && tar xzvf ${NGINX_VERSION}-${PKG_RELEASE}.tar.gz                 && cd pkg-oss-${NGINX_VERSION}-${PKG_RELEASE}                 && cd alpine                 && make module-geoip module-image-filter module-njs module-xslt                 && apk index --allow-untrusted -o ${tempDir}/packages/alpine/${apkArch}/APKINDEX.tar.gz ${tempDir}/packages/alpine/${apkArch}/*.apk                 && abuild-sign -k ${tempDir}/.abuild/abuild-key.rsa ${tempDir}/packages/alpine/${apkArch}/APKINDEX.tar.gz                 \"             && cp ${tempDir}/.abuild/abuild-key.rsa.pub /etc/apk/keys/             && apk del --no-network .build-deps             && apk add -X ${tempDir}/packages/alpine/ --no-cache $nginxPackages             ;;     esac     && apk del --no-network .checksum-deps     && if [ -n \"$tempDir\" ]; then rm -rf \"$tempDir\"; fi     && if [ -f \"/etc/apk/keys/abuild-key.rsa.pub\" ]; then rm -f /etc/apk/keys/abuild-key.rsa.pub; fi     && apk add --no-cache curl ca-certificates # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-09-28T01:38:30.676995023Z",
+              "created_by": "USER 101",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            }
+          ],
+          "os": "linux",
+          "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+              "sha256:74d97c428c51a828f9051a7a40a53ff1fc99e54fc30323ce36760701b0b7f711",
+              "sha256:a446adf7260dd667eb1094752dbeadb7944718dd35a8dd393286c775d13c2007",
+              "sha256:2ddeabe38f3155782af47a7e09a10c6b56a9e553b6e3e624eba3380f05980df4",
+              "sha256:fccded9b40a7ddd0c6ccfa8c76ef7a5275ced902215d8b81fa1ffedff47e6da8",
+              "sha256:cc0892d7111638a404334137981df8b95066263b1fff4ab71502c011e7501b46",
+              "sha256:aec29ad142c83ba721f13c34df90cdd43de92da43d2e0aa9311fc13cb5e3f812",
+              "sha256:0e6cb1238016cfdd9f7e9cf551133de7575070f342dd27d41f806d75884714f7",
+              "sha256:036006073c9df4e0e4c674e0ac4a6688484f842b5953088c7a8fcea848eb1b11",
+              "sha256:5355ba3b186abd45ef965bc3c7ca97cd6815bb415c7b3f2daa4ea17491efc5b4"
+            ]
+          },
+          "config": {
+            "Cmd": [
+              "nginx",
+              "-g",
+              "daemon off;"
+            ],
+            "Entrypoint": [
+              "/docker-entrypoint.sh"
+            ],
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "NGINX_VERSION=1.30.5",
+              "PKG_RELEASE=1",
+              "DYNPKG_RELEASE=1",
+              "NJS_VERSION=1.0.1",
+              "NJS_RELEASE=1"
+            ],
+            "Labels": {
+              "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>",
+              "org.opencontainers.image.created": "2026-09-28T01:38:21.026Z",
+              "org.opencontainers.image.description": "Unprivileged NGINX Dockerfiles",
+              "org.opencontainers.image.licenses": "Apache-2.0",
+              "org.opencontainers.image.revision": "588b4cbc88065a313909f47a02510639e01cc508",
+              "org.opencontainers.image.source": "https://github.com/nginx/docker-nginx-unprivileged",
+              "org.opencontainers.image.title": "docker-nginx-unprivileged",
+              "org.opencontainers.image.url": "https://github.com/nginx/docker-nginx-unprivileged",
+              "org.opencontainers.image.version": "1.30.5-alpine"
+            },
+            "User": "101",
+            "WorkingDir": "/",
+            "ExposedPorts": {
+              "8080/tcp": {}
+            },
+            "ArgsEscaped": true,
+            "StopSignal": "SIGQUIT"
+          }
+        },
+        "Layers": [
+          {
+            "Size": 8704000,
+            "Digest": "sha256:e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5",
+            "DiffID": "sha256:74d97c428c51a828f9051a7a40a53ff1fc99e54fc30323ce36760701b0b7f711"
+          },
+          {
+            "Size": 4761088,
+            "Digest": "sha256:ed0b1af5d9312f8ab2024bb1464021296651539d9bac6f362f26fd1ae59d47a3",
+            "DiffID": "sha256:a446adf7260dd667eb1094752dbeadb7944718dd35a8dd393286c775d13c2007"
+          },
+          {
+            "Size": 20992,
+            "Digest": "sha256:7c6d6d466e6a9981743118c4335a8a8708b87cbb79ab373a4572ab5a64b76ab2",
+            "DiffID": "sha256:2ddeabe38f3155782af47a7e09a10c6b56a9e553b6e3e624eba3380f05980df4"
+          },
+          {
+            "Size": 3584,
+            "Digest": "sha256:f7c5d86527246d95eaa5f248a68e2db1ca1c45ed1fba6af4717f2db52201ff9e",
+            "DiffID": "sha256:fccded9b40a7ddd0c6ccfa8c76ef7a5275ced902215d8b81fa1ffedff47e6da8"
+          },
+          {
+            "Size": 4608,
+            "Digest": "sha256:8fb7bbcab893bf5c512342e36df99004d46586961b1dd0137128258420b1f3ad",
+            "DiffID": "sha256:cc0892d7111638a404334137981df8b95066263b1fff4ab71502c011e7501b46"
+          },
+          {
+            "Size": 2560,
+            "Digest": "sha256:5b2b641f9e3884a4b5eb1edce0290bff1b93e60a55671799bc7e8098a318e964",
+            "DiffID": "sha256:aec29ad142c83ba721f13c34df90cdd43de92da43d2e0aa9311fc13cb5e3f812"
+          },
+          {
+            "Size": 5120,
+            "Digest": "sha256:b8a85f59d3e5aa0cdf5a8ddbea4307cac0ab04787922a343f5dc477f7a349e78",
+            "DiffID": "sha256:0e6cb1238016cfdd9f7e9cf551133de7575070f342dd27d41f806d75884714f7"
+          },
+          {
+            "Size": 7168,
+            "Digest": "sha256:271864eba7915a55a7d1af39ff183c0913ca4a8f1220d422fe2a15270ce96b3c",
+            "DiffID": "sha256:036006073c9df4e0e4c674e0ac4a6688484f842b5953088c7a8fcea848eb1b11"
+          },
+          {
+            "Size": 41890304,
+            "Digest": "sha256:e0e3c441a630e0818bfb45d04cf5c73aad856343ee25492de39cccf6a96586d2",
+            "DiffID": "sha256:5355ba3b186abd45ef965bc3c7ca97cd6815bb415c7b3f2daa4ea17491efc5b4"
+          }
+        ]
+      },
+      "reportSha256": "37d600f792c9285394ce0fa95dd6e1de9040d4cd43cb81261ebd1a9a76a18116",
+      "counts": {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+        "UNKNOWN": 1
+      },
+      "uniqueVulnerabilityIds": 1,
+      "highAndCritical": []
+    }
+  ]
+}

@@ -12,6 +12,6 @@ export default function App() {
   const pathname = location.split('?')[0]
   if (pathname === '/lco-couplings') return <StandaloneLcoCouplingsApp />
   if (pathname === '/planner') return <Suspense fallback={<ModuleLoading title="Planner" />}><PlannerApp /></Suspense>
-  if (pathname === '/critical-spares') return <Suspense fallback={<ModuleLoading title="Repuestos Críticos - LC1C" />}><CriticalSparesApp /></Suspense>
+  if (pathname === '/critical-spares') return <Suspense fallback={<ModuleLoading title="Repuestos Críticos - Planta" />}><CriticalSparesApp /></Suspense>
   return <Suspense fallback={<ModuleLoading />}><PlatformApp location={location} /></Suspense>
 }

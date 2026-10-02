@@ -2,18 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Loader2, AlertCircle } from 'lucide-react';
 
-// Configure PDF.js worker in Vite
-try {
-  // @ts-ignore
-  import('pdfjs-dist/build/pdf.worker.min.mjs?url').then(workerModule => {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
-  }).catch(() => {
-    // Fallback CDN if dynamic import fails
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-  });
-} catch {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-}
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+// Stable filenames required by PDF.js (not hashed Vite imports).
+const resourceBase = (folder: string) => `${import.meta.env.BASE_URL}pdfjs/${folder}/`;
 
 interface PdfPageCanvasProps {
   pdfDoc: pdfjsLib.PDFDocumentProxy;
@@ -133,7 +125,9 @@ export const PdfJsPreview: React.FC<PdfJsPreviewProps> = ({
 
         const loadingTask = pdfjsLib.getDocument({
           data: arrayBuffer,
-          cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+          cMapUrl: resourceBase('cmaps'),
+          standardFontDataUrl: resourceBase('standard_fonts'),
+          wasmUrl: resourceBase('wasm'),
           cMapPacked: true,
         });
 

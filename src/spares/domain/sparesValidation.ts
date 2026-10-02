@@ -103,7 +103,7 @@ export function validateSparesData(input: unknown): CriticalSparesData {
 }
 
 export function parseBackup(input: unknown): CriticalSparesData {
-  const envelope = z.object({ format: z.literal('LACO1_CRITICAL_SPARES'), version: z.union([z.literal(1), z.literal(2)]), exportedAt: date.optional(), data: z.unknown() }).strict().parse(input)
+  const envelope = z.object({ format: z.enum(['PLANTA_CRITICAL_SPARES', 'LACO1_CRITICAL_SPARES']), version: z.union([z.literal(1), z.literal(2)]), exportedAt: date.optional(), data: z.unknown() }).strict().parse(input)
   if (envelope.version === 2) return validateSparesData(envelope.data)
   // Validate the legacy shape BEFORE invoking the permissive historical normalizer.
   const legacySpare = spareDraftSchema.extend({ id, createdAt: date, updatedAt: date, uncoveredAt: date.nullable().optional(), responsibleId: id.optional(), gmbId: id.optional(), gmbResponsable: id.optional(), responsableGmb: id.optional() })

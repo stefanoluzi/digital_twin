@@ -6,6 +6,7 @@ import { initializeRex } from '../../server/rex/router'
 import { RexRepository } from '../../src/rex/repository'
 import { taskMetrics } from '../../src/rex/domain'
 import type { RexState } from '../../src/rex/types'
+import { HttpCriticalSparesRepository } from '../../src/spares/repositories/HttpCriticalSparesRepository'
 
 describe.skipIf(process.env.RUN_POSTGRES_TESTS !== '1')('REX API + PostgreSQL real', () => {
   let db: PrismaClient; let server: Server; let base: string; let repo: RexRepository; let state: RexState
@@ -23,6 +24,21 @@ describe.skipIf(process.env.RUN_POSTGRES_TESTS !== '1')('REX API + PostgreSQL re
   const draft = () => ({ name: 'Cambio conjunto transferidor', areaId: 'LCO', specialty: 'MEC', criticality: 'HIGH', frequencyType: 'PERIODIC', intervalMonths: 24, scope: ['Estructura', 'Reductor', 'Acoplamiento', 'Cilindro hidráulico'].map((description) => ({ description, quantity: 1, unit: 'unidad', required: true })) })
   const save = async (path: string, body: unknown, method = 'POST') => { const next = await repo.save(path, body, state.revision, method); state = next; return next.id }
   const createTask = () => save('/tasks', draft())
+  it('protege GMB con intervenciones REX y permite borrar inactivos sin vínculos', async () => {
+    await db.responsible.create({ data: { id: 'rex-linked-gmb', name: 'GMB histórico REX', active: true } })
+    const taskId = await createTask()
+    await save('/executions', { taskId, mode: 'PLAN', items: [], responsibleId: 'rex-linked-gmb' })
+    await db.responsible.update({ where: { id: 'rex-linked-gmb' }, data: { active: false } })
+    const spares = new HttpCriticalSparesRepository(base.replace(/\/rex$/, ''))
+    const before = await spares.load()
+    await expect(spares.updateConfig({ ...before.data.config, responsibles: before.data.config.responsibles.filter(p => p.id !== 'rex-linked-gmb') }, before.revision)).rejects.toMatchObject({ status: 422, message: expect.stringContaining('1 intervenciones de Tareas Globales REX') })
+    expect(await spares.load()).toEqual(before)
+    await db.responsible.create({ data: { id: 'unused-gmb', name: 'Sin vínculos', active: false } })
+    const current = await spares.load()
+    const after = await spares.updateConfig({ ...current.data.config, responsibles: current.data.config.responsibles.filter(p => p.id !== 'unused-gmb') }, current.revision)
+    expect(after.revision).toBe(current.revision + 1)
+    expect(await db.responsible.findUnique({ where: { id: 'unused-gmb' } })).toBeNull()
+  })
   const estimate = { durationDays: '3', mechanical: '12', electrical: '1', mro: '30000', services: '5000', ownLabor: '1500' }
   it('estimaciones persistidas, configuración compartida y snapshots históricos inmutables', async () => {
     await save('/config', { hoursPerDay: '9', hourlyRate: '25', currency: 'USD' }, 'PUT')

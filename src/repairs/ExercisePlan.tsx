@@ -1,5 +1,6 @@
 import { BusyButton } from '../shared/ux/LoadingFeedback'
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { meetingFilters, meetingSelection, toggleMeetingFilter, type StateFilter, type MeetingFilter } from './meetingFilters'
 import { RepairPlanLegend } from './RepairPlanLegend'
 import { dateInMonth, fiscalLabel, fiscalMonths, formatRepairDate, monthEnd, monthLabel, monthPhase } from './calendar'
 import { exerciseMetrics, itemMetrics, requestMetrics } from './domain'
@@ -8,16 +9,21 @@ import { OWNER_LABELS, STATUS_LABELS, type RepairEquipment, type RepairRequest, 
 
 export interface RepairSeed { equipmentId: string; month: string; quantity: number; requiredDate: string; criticality: string; criticalReason: string }
 export type QuickAction = 'START' | 'DELIVER' | 'BLOCK' | 'RESOLVE'
-export function ExercisePlan({ state, requests, equipment, year, today, busy, onYear, onSave, onDetail, onDetailedNew, onAction, onConfigure }: {
+export function ExercisePlan({ state, requests: inputRequests, equipment: inputEquipment, filters, selectedStates = [], onStatesChange, year, today, busy, onYear, onSave, onDetail, onDetailedNew, onAction, onConfigure }: {
+  filters?: ReactNode | ((quick: MeetingFilter[], setQuick: (filter: MeetingFilter[]) => void) => ReactNode);
+  selectedStates?: StateFilter[]; onStatesChange?: (selected: StateFilter[]) => void;
   state: RepairState; requests: RepairRequest[]; equipment: RepairEquipment[]; year: number; today: string; busy: boolean;
   onYear: (year: number) => void; onSave: (path: string, body: unknown) => Promise<boolean>;
   onDetail: (id: string) => void; onDetailedNew: (seed: RepairSeed) => void; onAction: (id: string, action: QuickAction) => void; onConfigure: () => void;
 }) {
   const months = fiscalMonths(year)
+  const [quick, setQuick] = useState<MeetingFilter[]>([])
+  const { visible: requests, counts } = meetingSelection(inputRequests, year, today, quick)
+  const equipment = !quick.length ? inputEquipment : inputEquipment.filter((eq) => requests.some((r) => r.equipmentId === eq.id)).sort((a, b) => requests.findIndex((r) => r.equipmentId === a.id) - requests.findIndex((r) => r.equipmentId === b.id))
   const [cell, setCell] = useState<{ equipment: RepairEquipment; month: string; quantity: number; typed?: boolean } | null>(null)
   const [focus, setFocus] = useState('0:0')
   const table = useRef<HTMLDivElement>(null)
-  const kpis = exerciseMetrics(requests, year, today)
+  const kpis = exerciseMetrics(inputRequests, year, today)
   const rowIds = equipment.map((e) => e.id).join('|')
   useEffect(() => setFocus('0:0'), [rowIds, year])
   const keydown = (e: KeyboardEvent<HTMLButtonElement>, row: number, col: number, eq: RepairEquipment, month: string) => {
@@ -33,9 +39,13 @@ export function ExercisePlan({ state, requests, equipment, year, today, busy, on
     e.preventDefault(); const key = `${nextRow}:${nextCol}`; setFocus(key); table.current?.querySelector<HTMLButtonElement>(`[data-cell="${key}"]`)?.focus()
   }
   return <section className="spares-panel exercise-plan"><header><div><h2>Plan de reparaciones</h2><span>{fiscalLabel(year)}</span></div><ExerciseSelector year={year} onChange={onYear} today={today} /></header>
-    <div className="coverage-kpis exercise-kpis">{[['PLAN DEL EJERCICIO', kpis.planned], ['ENTREGADAS', kpis.delivered], ['CUMPLIMIENTO A FECHA', kpis.percent === null ? '—' : `${kpis.percent}%`], ['VENCIDAS', kpis.overdue], ['BLOQUEADAS', kpis.blocked], ['CRÍTICAS ABIERTAS', kpis.critical]].map(([label, value]) => <article className="coverage-kpi" key={label}><span>{label}</span><strong>{value}</strong></article>)}</div>
-    <p className="repairs-note">{kpis.fulfilled} de {kpis.due} unidades exigibles entregadas a hoy ({formatRepairDate(today)}). Sin día exacto, se exige al cierre del mes. Las necesidades futuras no reducen el cumplimiento. Indicadores según los filtros actuales.</p>
-    <RepairPlanLegend />
+    <div className="coverage-kpis exercise-kpis">{[['NECESIDADES DEL EJERCICIO', counts.ALL], ['UNIDADES ENTREGADAS', kpis.delivered], ['CUMPLIMIENTO A FECHA', kpis.percent === null ? '—' : `${kpis.percent}%`], ['VENCIDAS', counts.OVERDUE], ['UNIDADES BLOQUEADAS', kpis.blocked], ['CRÍTICAS ABIERTAS', counts.CRITICAL]].map(([label, value]) => <article className="coverage-kpi" key={label}><span>{label}</span><strong>{value}</strong></article>)}</div>
+    <RepairPlanLegend selected={selectedStates} onChange={onStatesChange} />
+    <div className="repair-operational-bar">
+      <div className="repair-meeting-filters" role="group" aria-label="Filtros de reunión">{meetingFilters.filter(([key]) => key !== 'NEXT').map(([key, label]) => <button key={key} type="button" aria-pressed={(key === 'ALL' ? !quick.length : quick.includes(key))} className={(key === 'ALL' ? !quick.length : quick.includes(key)) ? 'active' : ''} onClick={(event) => setQuick((current) => toggleMeetingFilter(current, key, event))}>{label}<span>{counts[key]}</span></button>)}</div>
+      {typeof filters === 'function' ? filters(quick, setQuick) : filters}
+      <p className="repair-result-count" role="status">Mostrando {requests.length} necesidades</p>
+    </div>
     <div className="table-scroll exercise-grid" ref={table}><table><thead><tr><th>IDREP</th><th>Descripción</th><th>Área</th><th>Rubro</th>{months.map((month) => <th key={month} className={monthPhase(month, today) === 'current' ? 'current-month' : ''}>{monthLabel(month)}{monthPhase(month, today) === 'current' && <small>HOY</small>}</th>)}</tr></thead><tbody>{equipment.map((eq, row) => <tr key={eq.id}><th>{eq.repairProfile?.idrep || 'Sin IDREP'}</th><th>{eq.name}{!eq.repairProfile && <small>Vincular a taller</small>}</th><td>{eq.area}</td><td>{eq.repairProfile?.trade || '—'}</td>{months.map((month, col) => {
       const group = requests.filter((r) => r.equipmentId === eq.id && r.targetMonth.startsWith(month))
       const total = group.reduce((n, r) => n + r.quantity, 0), delivered = group.reduce((n, r) => n + requestMetrics(r, today).delivered, 0)

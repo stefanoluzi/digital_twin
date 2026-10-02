@@ -4,6 +4,10 @@ import { parseBackup, validateSparesData } from '../src/spares/domain/sparesVali
 
 const backup = () => ({ format: 'LACO1_CRITICAL_SPARES', version: 2, data: createDemoSparesData() })
 describe('Validación de migración centralizada', () => {
+  it('acepta respaldos genéricos y conserva compatibilidad con el formato anterior', () => {
+    const value = backup()
+    expect(parseBackup({ ...value, format: 'PLANTA_CRITICAL_SPARES' })).toEqual(parseBackup(value))
+  })
   it('preserva IDs, unidades, historial y todos los campos de v2', () => {
     const value = backup()
     value.data.spareTypes[0].drawingPdf = 'data:application/pdf;base64,JVBERg=='

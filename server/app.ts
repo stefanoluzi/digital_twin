@@ -13,15 +13,17 @@ import { createLcoRouter } from './lco/router'
 import { coverageHistoryRouter } from './coverageHistory'
 import { createRepairsRouter } from './repairs/router'
 import { createRexRouter } from './rex/router'
+import { securityHeaders, sameOriginWrites } from './security'
 
 export function createApp(db: PrismaClient, staticDirectory?: string) {
   const app = express()
   app.disable('x-powered-by')
+  app.use(securityHeaders)
+  app.use('/api', sameOriginWrites)
   app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store')
     res.set('X-Content-Type-Options', 'nosniff')
     // No CORS: only this origin may mutate. Local Vite uses its server proxy.
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return next(new ApiError(403, 'Origen no permitido'))
     next()
   })
   app.use(express.json({ limit: '100mb' }))
@@ -33,7 +35,7 @@ export function createApp(db: PrismaClient, staticDirectory?: string) {
   app.get('/api/state', async (_req, res) => res.json(await readState(db)))
   app.get('/api/backup', async (_req, res) => {
     const state = await readState(db)
-    res.json({ format: 'LACO1_CRITICAL_SPARES', version: 2, exportedAt: new Date().toISOString(), data: state.data })
+    res.json({ format: 'PLANTA_CRITICAL_SPARES', version: 2, exportedAt: new Date().toISOString(), data: state.data })
   })
   for (const collection of ['spares', 'units', 'areas', 'responsibles', 'equipment'] as const) {
     app.get(`/api/${collection}`, async (_req, res) => {

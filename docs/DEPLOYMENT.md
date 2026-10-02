@@ -1,7 +1,27 @@
 # Despliegue único: Mantenimiento LC1C
 
+> **Validación 30/09/2026:** gateway HTTP, app y DB funcionan en Docker. El aislamiento
+> de salida requiere las reglas Linux indicadas abajo. No es aprobación de seguridad:
+> faltan auth/TLS/mínimo privilegio DB y resolver hallazgos del escaneo de imágenes.
+> Ver [validación real](security/DOCKER_LOCAL_VALIDATION.md). No exponer a Internet.
+
 Requiere Git y Docker Engine + Compose v2 ya instalados. No necesita Node en el host.
 No detener servicios ajenos ni usar un puerto ocupado.
+
+Seguridad/offline: ver `security/SECURITY_AUDIT.md` y `security/OFFLINE_VERIFICATION.md`.
+Las imágenes están fijadas por digest y `pull_policy: never`. En la PRIMERA instalación
+conectada, antes de `up`, aprovisionar explícitamente PostgreSQL y gateway:
+
+```sh
+docker pull postgres:16-bookworm@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67
+docker pull nginxinc/nginx-unprivileged:stable-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e
+```
+
+Construir app con conexión una vez. Para reinicios offline usar `docker compose up -d`
+sin --build, con las tres imágenes presentes. Si se actualiza el digest de PostgreSQL en
+una instalación existente, predescargar esa referencia ANTES de la ventana offline.
+Las redes internas/capabilities/root read-only fueron probadas en WSL2. IT debe
+validar la VM destino, firewall entrante y riesgos antes de aplicar a producción.
 
 ```sh
 git clone --branch codex/editor-upgrades --single-branch https://github.com/stefanoluzi/digital_twin.git
@@ -19,6 +39,19 @@ Completar `.env`:
   0.0.0.0 publica en todas las interfaces y exige firewall LAN.
 - DATABASE_URL, PORT y HOST del ejemplo son para desarrollo nativo; Compose construye
   DATABASE_URL internamente con las credenciales anteriores y host `postgres`.
+
+Antes del primer arranque en **host Docker Linux con systemd y backend iptables**:
+
+```sh
+sudo bash scripts/install-egress-policy.sh
+```
+
+Esto agrega reglas solo para lc1c-edge/lc1c-front/lc1c-runtime (IPv4 e IPv6), sin
+flush ni cambios de políticas globales. Instala dependencias systemd previas a Docker;
+no reinicia otros servicios. Con nombres de bridge personalizados, adaptar también
+las instancias systemd antes de arrancar. No aplicarlo a Docker Desktop ni a un
+host con backend nftables nativo sin revisión IT. Compose por sí solo NO bloquea
+salida del gateway. No retirar estas reglas para resolver un error de conexión.
 
 ```sh
 docker compose config --quiet
@@ -58,7 +91,8 @@ SELECT count(*) FROM "Spare";
 
 Salir con `\q`. Verificar persistencia después de `docker compose restart app`,
 después de `docker compose restart postgres app` y después de reiniciar la VM.
-Estas últimas pruebas de contenedores están pendientes en una máquina con Docker.
+Pruebas de contenedores y daemon aprobadas en WSL2; reinicio completo de VM destino
+y segunda PC física deben validarse allí.
 
 ## Desarrollo nativo
 
@@ -110,5 +144,5 @@ con Git: un clon en un servidor nuevo inicia una base vacía, salvo restauració
 
 No hay autenticación real: restringir el acceso a la red interna/firewall. No publicar
 esta instalación directamente a Internet. Esta versión fue validada con PostgreSQL
-real y builds locales; ejecutar contenedores requiere Docker Engine, no disponible en
-la PC de desarrollo usada para esta entrega.
+real, builds y contenedores Docker en WSL2. Consultar los hallazgos de seguridad antes
+de habilitar usuarios de la red de planta.

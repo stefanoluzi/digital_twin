@@ -30,6 +30,22 @@ export async function readState(db: PrismaClient) {
 // Only changed records are upserted. Import deletes missing rows in FK-safe order.
 export async function writeData(tx: Tx, before: CriticalSparesData, after: CriticalSparesData) {
   const removed = (oldRows: { id: string }[], rows: { id: string }[]) => oldRows.filter((old) => !rows.some((row) => row.id === old.id)).map((row) => row.id)
+  // GMB is a shared catalog: absence of area assignments does not mean it is unused.
+  // Keep historical ownership intact and report the referencing modules explicitly.
+  const removedResponsibles = removed(before.config.responsibles, after.config.responsibles)
+  if (removedResponsibles.length) {
+    const referenced = await tx.responsible.findMany({
+      where: { id: { in: removedResponsibles } },
+      select: { name: true, _count: { select: { repairRequests: true, rexExecutions: true } } },
+    })
+    for (const person of referenced) {
+      const links = [
+        person._count.repairRequests ? `${person._count.repairRequests} necesidades de Reparaciones Taller` : '',
+        person._count.rexExecutions ? `${person._count.rexExecutions} intervenciones de Tareas Globales REX` : '',
+      ].filter(Boolean)
+      if (links.length) throw new ApiError(422, `No se puede eliminar a «${person.name}»: está vinculado a ${links.join(' y ')}. Conservá el GMB inactivo para mantener la trazabilidad; no aparecerá en la cobertura por responsable. Solo se pueden eliminar responsables sin registros vinculados.`)
+    }
+  }
   await tx.history.deleteMany({ where: { id: { in: removed(before.history, after.history) } } })
   await tx.unit.deleteMany({ where: { id: { in: removed(before.units, after.units) } } })
   // Relationship replacement is small and transactional; no operational row is reset.

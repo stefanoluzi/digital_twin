@@ -5,7 +5,7 @@ import { AlertTriangle, Boxes, ClipboardList, Download, LayoutDashboard, Package
 import { PLANT_AREAS, OPERATIONAL_PLANT_AREAS, type PlantAreaCode } from '../config/areas'
 import { createDemoSparesData } from './data/demoSpares'
 import { coverageSummary, daysSince, formatDate, recoveryDetails, trackingSituations, getSpareAlerts, spareCoverage, STATUS_LABELS, uncoveredStatusCounts, unitsForSpare } from './domain/spareSelectors'
-import { exportCentralSparesBackup, exportLegacyIndexedDbBackup, initializeCriticalSparesPersistence, parseCriticalSparesBackup, replaceCriticalSparesData, sparesActions } from './services/criticalSparesPersistenceService'
+import { exportCentralSparesBackup, initializeCriticalSparesPersistence, parseCriticalSparesBackup, replaceCriticalSparesData, sparesActions } from './services/criticalSparesPersistenceService'
 import { useCriticalSparesStore } from './store/criticalSparesStore'
 import type { CriticalSparesConfig, CriticalSparesData, PhysicalSpareUnit, SpareType, SpareUnitStatus, SparesView } from './types'
 import './criticalSpares.css'
@@ -13,7 +13,7 @@ import { CoverageByAreaCards, CoverageByGmbChart } from './components/CoverageCh
 import { CoverageHistoryView } from './components/CoverageHistoryView'
 import { PlantCoverageLayout } from './components/PlantCoverageLayout'
 import { coverageByArea } from './domain/dashboardSelectors'
-import { areaResponsibleName, responsibleAreas, responsibleDisplayName } from './domain/areaResponsibility'
+import { areaResponsibleName, responsibleDisplayName } from './domain/areaResponsibility'
 import { ActiveFilterChips } from './components/ActiveFilterChips'
 import { useDashboardFilters } from './components/useDashboardFilters'
 import { dashboardSelections } from './domain/dashboardFilters'
@@ -60,12 +60,12 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
   const [importBusy, setImportBusy] = useState(false)
   const importBackup = async (file?: File) => { if (!file || importing.current) return; importing.current = true; setImportBusy(true); try { const imported = await parseCriticalSparesBackup(file); if (!confirm(`Importar ${imported.spareTypes.length} repuestos y ${imported.units.length} unidades a PostgreSQL? Reemplazará los datos compartidos para TODOS los usuarios. Exportá antes un respaldo central.`)) return; await replaceCriticalSparesData(imported) } catch (error) { alert(error instanceof Error ? error.message : 'No se pudo importar el respaldo.') } finally { importing.current = false; setImportBusy(false) } }
 
-  if (!ready && !data.storageError) return <div className={`spares-app theme-${theme} text-large`}><ModuleLoading title="Repuestos Críticos - LC1C" /></div>
-  if (!ready) return <div className={`spares-app theme-${theme} text-large`}><section className="spares-panel"><header><h1>Repuestos Críticos - LC1C</h1></header><p role="status">{data.storageError || 'Conectando con PostgreSQL a través del servidor…'}</p><button onClick={() => void refresh()}>Reintentar conexión</button><button onClick={() => run(exportLegacyIndexedDbBackup)}>Descargar respaldo local anterior</button><p>Los datos locales anteriores no se modifican. Iniciá el backend para acceder a los datos compartidos.</p></section></div>
+  if (!ready && !data.storageError) return <div className={`spares-app theme-${theme} text-large`}><ModuleLoading title="Repuestos Críticos - Planta" /></div>
+  if (!ready) return <div className={`spares-app theme-${theme} text-large`}><section className="spares-panel"><header><h1>Repuestos Críticos - Planta</h1></header><p role="status">{data.storageError || 'Conectando con PostgreSQL a través del servidor…'}</p><button onClick={() => void refresh()}>Reintentar conexión</button><p>Verificá la conexión con el servidor para acceder a los datos compartidos.</p></section></div>
 
   return <div className={`spares-app theme-${theme} text-large ${view === 'DASHBOARD' ? 'dashboard-view' : ''} ${embedded ? 'embedded' : ''}`}>
     <header className="spares-header">
-      <div className="spares-brand"><span>RC</span><h1>Repuestos Críticos - LC1C</h1></div>
+      <div className="spares-brand"><span>RC</span><h1>Repuestos Críticos - Planta</h1></div>
       <nav aria-label="Navegación Repuestos Críticos">
         <NavButton active={view === 'DASHBOARD'} onClick={() => setView('DASHBOARD')} icon={<LayoutDashboard />}>Dashboard</NavButton>
         <NavButton active={view === 'SPARES'} onClick={() => setView('SPARES')} icon={<Boxes />}>Repuestos</NavButton>
@@ -100,7 +100,7 @@ export default function CriticalSparesApp({ embedded = false }: { embedded?: boo
       {view === 'SPARES' && <SparesList data={snapshot} items={filtered} equipment={equipment} setEquipment={(value) => setFilter('equipment', value)} onOpen={setSelectedSpareId} onEdit={(item) => setEditingSpare(item)} />}
       {view === 'TRACKING' && <TrackingView data={dashboardData} unitState={unitState} onOpen={setSelectedSpareId} />}
       {view === 'HISTORY' && <CoverageHistoryView refreshKey={data.storageStatus} />}
-      {view === 'CONFIG' && <><Configuration importBusy={importBusy} data={snapshot} isAdmin={currentUser?.role === 'ADMIN'} onChange={saveConfig} onExport={() => run(exportCentralSparesBackup)} onImport={() => importRef.current?.click()} onDemo={() => { if (confirm('¿Reemplazar TODOS los datos compartidos de PostgreSQL por la demostración? Esta acción afecta a todos los usuarios. Exportá primero un respaldo.')) run(() => replaceCriticalSparesData(createDemoSparesData())) }} /><AsyncButton className="ghost" busyLabel="Exportando…" onAction={() => run(exportLegacyIndexedDbBackup)}>Descargar respaldo local anterior (IndexedDB)</AsyncButton></>}
+      {view === 'CONFIG' && <><Configuration importBusy={importBusy} data={snapshot} isAdmin={currentUser?.role === 'ADMIN'} onChange={saveConfig} onExport={() => run(exportCentralSparesBackup)} onImport={() => importRef.current?.click()} onDemo={() => { if (confirm('¿Reemplazar TODOS los datos compartidos de PostgreSQL por la demostración? Esta acción afecta a todos los usuarios. Exportá primero un respaldo.')) run(() => replaceCriticalSparesData(createDemoSparesData())) }} /></>}
       </PageTransition>
     </main>
 
@@ -169,44 +169,46 @@ function UnitEditor({ data, spareId, unit, onClose, onSave, onDelete }: { data: 
 
 function Configuration({ data, isAdmin, onChange, onExport, onImport, onDemo, importBusy }: { importBusy: boolean; data: CriticalSparesData; isAdmin: boolean; onChange: (config: CriticalSparesConfig) => void; onExport: () => Promise<unknown>; onImport: () => void; onDemo: () => void }) {
   const configBusy = useCriticalSparesStore((state) => state.storageStatus === 'SAVING' || state.storageStatus === 'LOADING')
-  const [category, setCategory] = useState(''); const [responsible, setResponsible] = useState(''); const [equipmentName, setEquipmentName] = useState(''); const [equipmentArea, setEquipmentArea] = useState<PlantAreaCode>('LCO')
-  const add = (kind: 'category' | 'responsible' | 'equipment') => run(async () => {
+  const [category, setCategory] = useState(''); const [equipmentName, setEquipmentName] = useState(''); const [equipmentArea, setEquipmentArea] = useState<PlantAreaCode>('LCO')
+  const [query, setQuery] = useState('')
+  const equipment = data.config.equipment.filter((item) => `${item.name} ${item.area}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+  const add = (kind: 'category' | 'equipment') => run(async () => {
     if (!isAdmin) throw new Error('Seleccioná un usuario administrador para editar la configuración.')
-    const name = (kind === 'category' ? category : kind === 'responsible' ? responsible : equipmentName).trim()
+    const name = (kind === 'category' ? category : equipmentName).trim()
     if (!name) throw new Error('Escribí un nombre antes de agregar el registro.')
     const id = `${kind}-${createUuid()}`
     const config = { ...data.config }
     if (kind === 'category') config.categories = [...config.categories, { id, name }]
-    if (kind === 'responsible') config.responsibles = [...config.responsibles, { id, name, active: true }]
     if (kind === 'equipment') config.equipment = [...config.equipment, { id, name, area: equipmentArea }]
     // Preserve the draft on failure (including 409/422/428). Only the confirmed
     // response hydrates the store and advances its revision in the service.
     await sparesActions.updateConfig(config)
     if (kind === 'category') setCategory((value) => value.trim() === name ? '' : value)
-    if (kind === 'responsible') setResponsible((value) => value.trim() === name ? '' : value)
     if (kind === 'equipment') setEquipmentName((value) => value.trim() === name ? '' : value)
   })
-  return <div className="config-page"><header><div><small>ADMINISTRACIÓN DEL MÓDULO</small><h2>Configuración</h2><p>Categorías, equipos y responsables reutilizados por los repuestos.</p></div><span className={isAdmin ? 'admin-role' : 'supervisor-role'}>{isAdmin ? 'ADMIN · edición habilitada' : 'SUPERVISOR · solo lectura'}</span></header><fieldset disabled={configBusy} className="ux-fieldset"><AreaResponsibilitySettings data={data} isAdmin={isAdmin} onChange={onChange} /><section className="config-grid"><ConfigList title="Categorías" values={data.config.categories} value={category} setValue={setCategory} onAdd={() => add('category')} disabled={!isAdmin} /><ResponsibleConfigCard data={data} isAdmin={isAdmin} value={responsible} setValue={setResponsible} onAdd={() => add('responsible')} onChange={onChange} /><article className="config-card"><header><h3>Equipos</h3><span>{data.config.equipment.length}</span></header><div className="config-list">{data.config.equipment.map((item) => <div key={item.id}><AreaTag code={item.area} /><span>{item.name}</span>{isAdmin && <button onClick={() => onChange({ ...data.config, equipment: data.config.equipment.filter((entry) => entry.id !== item.id) })}>×</button>}</div>)}</div><footer><select value={equipmentArea} onChange={(event) => setEquipmentArea(event.target.value as PlantAreaCode)} disabled={!isAdmin}>{CORE_AREAS.map((item) => <option key={item.code}>{item.code}</option>)}</select><input value={equipmentName} onChange={(event) => setEquipmentName(event.target.value)} placeholder="Nuevo equipo" disabled={!isAdmin} /><SparesActionButton aria-label="Agregar equipo" busyLabel="" onClick={() => add('equipment')} disabled={!isAdmin}><Plus /></SparesActionButton></footer></article></section></fieldset><section className="backup-card"><div><Download /><span><strong>Respaldo portable</strong><small>Los datos operativos son compartidos y viven en PostgreSQL. Exportá un JSON para recuperación o traslado.</small></span></div><div><BusyButton busy={importBusy} busyLabel="Importando…" className="ghost" disabled={configBusy} onClick={onImport}><Upload /> Importar</BusyButton><AsyncButton className="primary" disabled={configBusy || importBusy} busyLabel="Exportando…" onAction={onExport}><Download /> Exportar respaldo</AsyncButton><SparesActionButton className="danger-button" onClick={onDemo} disabled={!isAdmin || importBusy}>Restablecer demo</SparesActionButton></div></section></div>
+  return <div className="config-page config-modern">
+    <header><div><small>REPUESTOS CRÍTICOS</small><h2>Configuración del módulo</h2><p>Organizá las categorías y los equipos del catálogo.</p></div>{!isAdmin && <span className="supervisor-role">Solo lectura</span>}</header>
+    <a className="config-global-link" href="/configuracion"><Settings size={22} /><span><strong>Responsables GMB y áreas</strong><small>Administrá las asignaciones comunes a todos los módulos.</small></span><span aria-hidden="true">Ir a configuración general →</span></a>
+    <fieldset disabled={configBusy} className="ux-fieldset"><section className="config-grid">
+      <article className="config-card">
+        <header><div><Boxes size={20} /><h3>Categorías</h3></div><span className="config-count">{data.config.categories.length}</span></header>
+        <p className="config-description">Clasificación de los repuestos por tipo.</p>
+        <form className="config-add-form" onSubmit={(event) => { event.preventDefault(); void add('category') }}><label>Nombre de la categoría<input required value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Ej.: Rodamiento" disabled={!isAdmin} /></label><SparesActionButton aria-label="Agregar categoría" busyLabel="Agregando…" onClick={() => add('category')} disabled={!isAdmin}><Plus size={16} /> Agregar</SparesActionButton></form>
+        <div className="config-list">{data.config.categories.map((item) => <div key={item.id}><span>{item.name}</span>{isAdmin && <button type="button" aria-label={`Eliminar categoría ${item.name}`} title="Eliminar categoría" onClick={() => { if (confirm(`¿Eliminar la categoría «${item.name}»?`)) onChange({ ...data.config, categories: data.config.categories.filter((entry) => entry.id !== item.id) }) }}><Trash2 size={16} /></button>}</div>)}{!data.config.categories.length && <p className="config-empty">Todavía no hay categorías. Agregá la primera arriba.</p>}</div>
+      </article>
+      <article className="config-card">
+        <header><div><Settings size={20} /><h3>Equipos</h3></div><span className="config-count">{data.config.equipment.length}</span></header>
+        <p className="config-description">Equipos disponibles para asociar a los repuestos.</p>
+        <form className="config-add-form config-equipment-form" onSubmit={(event) => { event.preventDefault(); void add('equipment') }}><label>Área<select value={equipmentArea} onChange={(event) => setEquipmentArea(event.target.value as PlantAreaCode)} disabled={!isAdmin}>{CORE_AREAS.map((item) => <option key={item.code}>{item.code}</option>)}</select></label><label>Nombre del equipo<input required value={equipmentName} onChange={(event) => setEquipmentName(event.target.value)} placeholder="Ej.: Perforador" disabled={!isAdmin} /></label><SparesActionButton aria-label="Agregar equipo" busyLabel="Agregando…" onClick={() => add('equipment')} disabled={!isAdmin}><Plus size={16} /> Agregar</SparesActionButton></form>
+        <label className="config-search"><Search size={17} /><input aria-label="Buscar equipos por nombre o área" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar equipo o área…" /></label>
+        <div className="config-list">{equipment.map((item) => <div key={item.id}><AreaTag code={item.area} /><span>{item.name}</span>{isAdmin && <button type="button" aria-label={`Eliminar equipo ${item.name}`} title="Eliminar equipo" onClick={() => { if (confirm(`¿Eliminar el equipo «${item.name}»?`)) onChange({ ...data.config, equipment: data.config.equipment.filter((entry) => entry.id !== item.id) }) }}><Trash2 size={16} /></button>}</div>)}{!equipment.length && <p className="config-empty">{query ? 'No se encontraron equipos con esa búsqueda.' : 'Todavía no hay equipos. Agregá el primero arriba.'}</p>}</div>
+      </article>
+    </section></fieldset>
+    <section className="config-backup"><div className="config-backup-heading"><Download size={24} /><div><h3>Respaldo de Repuestos</h3><p>Descargá una copia del módulo en formato JSON para recuperación o traslado.</p><small>No reemplaza el backup completo de la base de datos del servidor.</small></div></div><AsyncButton className="primary" disabled={configBusy || importBusy} busyLabel="Exportando…" onAction={onExport}><Download size={17} /> Descargar respaldo</AsyncButton>
+      {isAdmin && <details className="config-advanced"><summary>Restauración y opciones avanzadas</summary><div><span><strong>Importar respaldo</strong><p>Reemplaza los datos compartidos de Repuestos. Guardá una copia antes de continuar.</p></span><BusyButton busy={importBusy} busyLabel="Importando…" className="ghost" disabled={configBusy} onClick={onImport}><Upload size={17} /> Importar archivo JSON</BusyButton></div><div><span><strong>Restablecer datos de demostración</strong><p>Reemplaza el contenido actual del módulo. Usar únicamente en entornos de prueba.</p></span><SparesActionButton className="danger-button" onClick={onDemo} disabled={configBusy || importBusy}>Restablecer demo</SparesActionButton></div></details>}
+    </section>
+  </div>
 }
-
-function ResponsibleConfigCard({ data, isAdmin, value, setValue, onAdd, onChange }: { data: CriticalSparesData; isAdmin: boolean; value: string; setValue: (value: string) => void; onAdd: () => void; onChange: (config: CriticalSparesConfig) => void }) {
-  const toggle = (person: CriticalSparesData['config']['responsibles'][number]) => {
-    const areas = responsibleAreas(data, person.id)
-    if (person.active && areas.length) { alert(`Reasigná primero las áreas ${areas.map((area) => area.code).join(', ')} antes de inactivar este GMB.`); return }
-    onChange({ ...data.config, responsibles: data.config.responsibles.map((item) => item.id === person.id ? { ...item, active: !item.active } : item) })
-  }
-  const remove = (id: string, name: string) => {
-    if (responsibleAreas(data, id).length || !confirm(`¿Eliminar definitivamente a ${name}?`)) return
-    onChange({ ...data.config, responsibles: data.config.responsibles.filter((item) => item.id !== id) })
-  }
-  return <article className="config-card"><header><h3>Responsables GMB</h3><span>{data.config.responsibles.filter((person) => person.active).length} activos</span></header><div className="config-list">{data.config.responsibles.map((person) => { const areas = responsibleAreas(data, person.id); return <div key={person.id}><span>{responsibleDisplayName(person)}<small>{areas.map((area) => area.code).join(' · ') || 'Disponible para asignar'}</small></span><span className="responsible-actions"><button disabled={!isAdmin} onClick={() => toggle(person)}>{person.active ? 'Activo' : 'Inactivo'}</button>{isAdmin && !person.active && !areas.length && <button className="delete-responsible" onClick={() => remove(person.id, person.name)} aria-label={`Eliminar ${person.name}`} title="Eliminar responsable inactivo"><Trash2 /></button>}</span></div> })}</div><footer><input value={value} onChange={(event) => setValue(event.target.value)} placeholder="Nombre del técnico" disabled={!isAdmin} /><SparesActionButton aria-label="Agregar responsable" busyLabel="" onClick={onAdd} disabled={!isAdmin}><Plus /></SparesActionButton></footer></article>
-}
-
-function AreaResponsibilitySettings({ data, isAdmin, onChange }: { data: CriticalSparesData; isAdmin: boolean; onChange: (config: CriticalSparesConfig) => void }) {
-  return <section className="spares-panel area-responsibility-settings"><header><div><small>ORGANIZACIÓN ACTUAL</small><h2>Áreas y responsables</h2></div><span>Cada área con repuestos debe tener un GMB activo</span></header><div className="table-scroll"><table><thead><tr><th>Área</th><th>Nombre</th><th>Responsable GMB</th></tr></thead><tbody>{data.config.areas.map((area) => <tr key={area.id}><td><AreaTag code={area.code} /></td><td>{area.name}</td><td><select aria-label={`Responsable de ${area.code}`} disabled={!isAdmin} required value={area.responsibleGmbId || ''} onChange={(event) => { if (!event.target.value) return; onChange({ ...data.config, areas: data.config.areas.map((item) => item.id === area.id ? { ...item, responsibleGmbId: event.target.value, migrationCandidateIds: undefined } : item) }) }}><option value="" disabled>Seleccionar responsable GMB…</option>{data.config.responsibles.filter((person) => person.active || person.id === area.responsibleGmbId || area.migrationCandidateIds?.includes(person.id)).map((person) => <option key={person.id} value={person.id}>{responsibleDisplayName(person)}</option>)}</select>{Boolean(area.migrationCandidateIds?.length) && <p className="responsibility-conflict">Asignación pendiente: los datos anteriores tenían varios responsables ({area.migrationCandidateIds!.map((id) => responsibleDisplayName(data.config.responsibles.find((person) => person.id === id))).join(', ')}). Seleccioná el responsable actual.</p>}</td></tr>)}</tbody></table></div></section>
-}
-
-function ConfigList({ title, values, value, setValue, onAdd, disabled }: { title: string; values: { id: string; name: string }[]; value: string; setValue: (value: string) => void; onAdd: () => void; disabled: boolean }) { const data = useCriticalSparesStore(); return <article className="config-card"><header><h3>{title}</h3><span>{values.length}</span></header><div className="config-list">{values.map((item) => <div key={item.id}><span>{item.name}</span>{!disabled && <button onClick={() => title === 'Categorías' ? saveConfig({ ...data.config, categories: data.config.categories.filter((entry) => entry.id !== item.id) }) : saveConfig({ ...data.config, responsibles: data.config.responsibles.filter((entry) => entry.id !== item.id) })}>×</button>}</div>)}</div><footer><input value={value} onChange={(event) => setValue(event.target.value)} placeholder={`Nueva ${title.toLowerCase()}`} disabled={disabled} /><SparesActionButton aria-label={`Agregar ${title.toLowerCase()}`} busyLabel="" onClick={onAdd} disabled={disabled}><Plus /></SparesActionButton></footer></article> }
 
 function FormModal({ title, subtitle, children, footer, onClose }: { title: string; subtitle: string; children: React.ReactNode; footer: React.ReactNode; onClose: () => void }) { return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="form-modal"><header><div><small>{subtitle}</small><h2>{title}</h2></div><button className="icon" onClick={onClose}><X /></button></header><div className="modal-form-scroll">{children}</div><footer>{footer}</footer></section></div> }
 function Field({ label, wide, children }: { label: string; wide?: boolean; children: React.ReactNode }) { return <label className={wide ? 'wide' : ''}><span>{label}</span>{children}</label> }

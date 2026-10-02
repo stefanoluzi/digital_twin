@@ -47,5 +47,5 @@ export class HttpCriticalSparesRepository implements CentralCriticalSparesReposi
   updateUnit(id: string, draft: UnitDraft, revision: number) { return this.request<CentralSparesState>(`/units/${encodeURIComponent(id)}`, 'PUT', draft, revision) }
   removeUnit(id: string, revision: number) { return this.request<CentralSparesState>(`/units/${encodeURIComponent(id)}`, 'DELETE', undefined, revision) }
   updateConfig(config: CriticalSparesConfig, revision: number) { return this.request<CentralSparesState>('/config', 'PUT', config, revision) }
-  importBackup(data: CriticalSparesData, revision: number) { return this.request<CentralSparesState>('/import', 'POST', { format: 'LACO1_CRITICAL_SPARES', version: 2, exportedAt: new Date().toISOString(), data }, revision) }
+  importBackup(data: CriticalSparesData, revision: number) { return this.request<CentralSparesState>('/import', 'POST', { format: 'PLANTA_CRITICAL_SPARES', version: 2, exportedAt: new Date().toISOString(), data }, revision) }
 }

@@ -8,7 +8,10 @@ describe('shared industrial app shell', () => {
   it('renders one global header with informational identity, not authentication', () => {
     const html = renderToStaticMarkup(<AppShell><Module /></AppShell>)
     expect(html.match(/<header/g)).toHaveLength(1)
-    expect(html).toContain('LACO 1')
+    expect(html).toContain('Planta')
+    expect(html).toContain('href="/configuracion"')
+    expect(html).toContain('Configuración general')
+    expect(html).not.toMatch(/LACO\s*1|LC1C/i)
     expect(html).toContain('Usuario local · ADMIN')
     expect(html).toContain('Sin autenticación ni control de acceso')
     expect(html).not.toContain('<select')
@@ -22,6 +25,12 @@ describe('shared industrial app shell', () => {
     expect(html).toContain('global-app-shell theme-dark')
     expect(html).toContain('data-theme="dark"')
     expect(html).toContain('Activar modo claro')
+  })
+  it('opens shared configuration instead of any module on its global route', () => {
+    vi.stubGlobal('window', { location: { pathname: '/configuracion/' } })
+    const html = renderToStaticMarkup(<AppShell><Module /></AppShell>)
+    expect(html).not.toContain('Contenido del módulo')
+    expect(html).toContain('Configuración general')
   })
   it('respects the new preference over legacy per-module preferences', () => {
     vi.stubGlobal('localStorage', { getItem: (key: string) => key === 'maintenance-app-theme' ? 'light' : 'dark' })

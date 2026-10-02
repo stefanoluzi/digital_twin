@@ -15,7 +15,7 @@ export function RexModal({ title, busy, error, onClose, children }: { title: str
 export const criticalities: Record<string, string> = { LOW: 'Baja', NORMAL: 'Normal', HIGH: 'Alta', CRITICAL: 'Crítica' }
 export const eventTypes: Record<string, string> = { REX: 'REX', BO: 'BO', SCHEDULED: 'Parada programada', EXTRAORDINARY: 'Extraordinaria', OTHER: 'Otra ventana' }
 export const eventStatuses: Record<string, string> = { PLANNED: 'Programado', OPEN: 'En curso', CLOSED: 'Cerrado', CANCELLED: 'Cancelado' }
-const emptyTask = { code: '', line: 'LC1C', areaId: '', equipmentId: null, name: '', description: '', specialty: 'MEC', impact: '', criticality: 'NORMAL', active: true, frequencyType: 'PERIODIC', intervalMonths: 24, frequencyCriteria: '', referenceOt: '', technicalPlan: '', controlData: '', justification: '', interventionTime: '', resources: {}, scope: [], documents: [] } as Omit<RexTask, 'id' | 'estimates'>
+const emptyTask = { code: '', line: 'Planta', areaId: '', equipmentId: null, name: '', description: '', specialty: 'MEC', impact: '', criticality: 'NORMAL', active: true, frequencyType: 'PERIODIC', intervalMonths: 24, frequencyCriteria: '', referenceOt: '', technicalPlan: '', controlData: '', justification: '', interventionTime: '', resources: {}, scope: [], documents: [] } as Omit<RexTask, 'id' | 'estimates'>
 export function TaskForm({ state, task, busy, save }: { state: RexState; task?: RexTask; busy: boolean; save: Save }) {
   const savedEstimate = task?.estimates?.[0]
   const [estimate, setEstimate] = useState<EstimateInputs>(() => savedEstimate ? estimateInputs(savedEstimate) : { ...blankEstimate })

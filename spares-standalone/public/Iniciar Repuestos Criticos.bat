@@ -10,5 +10,5 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Iniciando Repuestos Criticos LC1C...
+echo Iniciando Repuestos Criticos Planta...
 node servidor-repuestos.mjs

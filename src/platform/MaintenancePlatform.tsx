@@ -18,9 +18,9 @@ export default function MaintenancePlatform() {
   const home = path === '/'
   return <div className="maintenance-platform ux-enter">
     {(controls || control) && <nav className="module-breadcrumb" aria-label="Contexto del módulo"><a href="/">Inicio</a>{control && <><span> / </span><a href="/controles-criticos">Controles Críticos</a></>}</nav>}
-    <Suspense fallback={<ModuleLoading title={rex ? 'Tareas Globales REX' : spares ? 'Repuestos Críticos - LC1C' : repairs ? 'Reparaciones Taller' : control ? 'Acoplamientos LCO' : undefined} />}>
+    <Suspense fallback={<ModuleLoading title={rex ? 'Tareas Globales REX' : spares ? 'Repuestos Críticos - Planta' : repairs ? 'Reparaciones Taller' : control ? 'Acoplamientos LCO' : undefined} />}>
       {rex ? <Rex /> : spares ? <Spares /> : repairs ? <Repairs /> : control ? <control.Component /> : home || controls ? <main className="platform-home">
-        <small>LC1C · MANTENIMIENTO</small><h1>{home ? 'Mantenimiento LC1C' : 'Controles Críticos'}</h1><p>{home ? 'Gestión de activos y controles críticos' : 'Seleccioná el tipo de control'}</p>
+        <small>Planta · MANTENIMIENTO</small><h1>{home ? 'Mantenimiento Planta' : 'Controles Críticos'}</h1><p>{home ? 'Gestión de activos y controles críticos' : 'Seleccioná el tipo de control'}</p>
         <div className="platform-cards">{(home ? [
           { path: '/repuestos', title: 'Repuestos Críticos', description: 'Gestión de cobertura de repuestos críticos.' },
           { path: '/reparaciones-taller', title: 'Reparaciones Taller', description: 'Plan mensual, entregas, compromisos y bloqueos de equipos en taller.' },

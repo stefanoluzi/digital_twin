@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { RepairDetail } from '../src/repairs/RepairDetail'
+import { RepairTimeline, timelineEntries } from '../src/repairs/RepairTimeline'
+import { RepairNeedForm } from '../src/repairs/RepairNeedForm'
+import { needDraft, needIsDirty, needPayload } from '../src/repairs/needDraft'
 import { eligibleStatusItems } from '../src/repairs/RepairStatusControl'
 import { complianceLabel, eventPresentation } from '../src/repairs/presentation'
 import type { RepairState } from '../src/repairs/types'
@@ -12,6 +15,74 @@ const request = (quantity = 1): RepairRequest => ({ id: 'r1', equipmentId: 'e1',
 const promise = (date: string, sequence = 1) => ({ id: String(sequence), date, sequence, reason: 'Motivo', recordedAt: '2026-09-01T00:00:00Z', actor: 'u' })
 const block = (owner: RepairBlock['owner'] = 'PLANT'): RepairBlock => ({ id: 'b', startedAt: '2026-09-02', resolvedAt: null, durationDays: null, owner, category: 'Falta repuesto', description: 'Rodamiento', comment: '', actor: 'u' })
 describe('Dominio Reparaciones Taller', () => {
+  it('ficha carga valores, no guarda sin cambios y Cancelar restaura el borrador inicial', () => {
+    const r = request(2), initial = needDraft(r)
+    let draft = { ...initial, quantity: 3, criticality: 'HIGH' as const }
+    expect(needIsDirty(draft, initial)).toBe(true)
+    expect(needIsDirty(initial, initial)).toBe(false)
+    expect(needIsDirty({ ...initial, reason: 'Comentario aislado' }, initial)).toBe(false)
+    const restored = { ...initial }
+    expect(needIsDirty(restored, initial)).toBe(false)
+    expect(restored.quantity).toBe(2)
+    const state = { config: { workshops: ['Taller'], blockCategories: [] }, responsibles: [] } as unknown as RepairState
+    const html = renderToStaticMarkup(createElement(RepairNeedForm, { request: r, state, busy: false, onSave: async () => true }))
+    expect(html).toContain('Cantidad necesaria'); expect(html).toContain('value="2"')
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>[\s\S]*?Guardar cambios/)
+    expect(html).not.toContain('Cambiar compromiso')
+  })
+  it('ficha compone cambios y conserva la carga mensual y transiciones validadas por API', () => {
+    const initial = needDraft(request())
+    const body = needPayload({ ...initial, quantity: 3, targetMonth: '2027-03', requiredDate: '', status: 'IN_PROGRESS', commitment: '2027-03-05', reason: 'Prueba' }, initial)
+    expect(body.targetMonth).toBe('2027-03-01'); expect(body.requiredDate).toBeNull()
+    expect(body.operations.map((op) => op.action)).toEqual(['COMMIT', 'START'])
+    expect(() => needPayload({ ...initial, commitment: '' }, { ...initial, commitment: '2027-01-01' })).toThrow('no se puede borrar')
+  })
+  it('evento agrupado presenta valores anteriores/nuevos sin incluir campos no modificados', () => {
+    const e: RepairEvent = { id: 1, requestId: 'r1', revision: 1, actor: 'u', recordedAt: '2026-10-02T12:00:00Z', action: 'EDIT', snapshot: request(), detail: { changes: [{ field: 'quantity', previousValue: 1, newValue: 2 }, { field: 'items.1.status', previousValue: 'PENDING', newValue: 'IN_PROGRESS' }], reason: 'Prueba' } }
+    const p = eventPresentation(e)
+    expect(p.lines).toContain('Cantidad: 1 → 2')
+    expect(p.lines).toContain('Unidad #1 · Estado: Pendiente → En curso')
+    expect(p.lines.join()).not.toContain('Criticidad:')
+    expect(timelineEntries([e])[0].summary).toBe('2 cambios')
+  })
+  it('timeline descendente conserva la secuencia causal y no modifica los eventos', () => {
+    const first = request(); const started = structuredClone(first); started.items[0].status = 'IN_PROGRESS'
+    const blocked = structuredClone(started); blocked.items[0].status = 'BLOCKED'
+    const events: RepairEvent[] = [
+      { id: 1, requestId: first.id, action: 'CREATE', actor: 'u', recordedAt: '2026-10-01T15:20:39Z', revision: 1, detail: {}, snapshot: first },
+      { id: 2, requestId: first.id, action: 'START', actor: 'u', recordedAt: '2026-10-01T14:54:48Z', revision: 2, detail: { itemIds: ['item-1'], date: '2026-10-01' }, snapshot: started },
+      { id: 3, requestId: first.id, action: 'BLOCK', actor: 'u', recordedAt: '2026-10-01T14:55:13Z', revision: 3, detail: { itemIds: ['item-1'], owner: 'PLANT', category: 'Repuesto no enviado', description: 'Observación completa' }, snapshot: blocked },
+    ]
+    const original = structuredClone(events)
+    const result = timelineEntries([events[2], events[0], events[1]])
+    expect(result.map((entry) => entry.event.id)).toEqual([1, 3, 2])
+    expect(result[1].summary).toContain('En curso → Bloqueada')
+    expect(result[1].summary).toContain('Responsable: Planta')
+    expect(result[2].summary).toContain('Pendiente → En curso')
+    expect(events).toEqual(original)
+  })
+  it('timeline ofrece detalles cerrados, autores, timestamps y datos completos para cada tipo', () => {
+    const events: RepairEvent[] = ['CREATE', 'START', 'BLOCK', 'SENT', 'DELIVER', 'RESOLVE', 'CANCEL', 'COMMENT', 'UNKNOWN'].map((action, index) => ({ id: index + 1, requestId: 'r1', action, actor: index ? 'u' : 'unmapped', revision: index + 1, recordedAt: '2026-10-01T15:20:39Z', detail: { itemIds: ['item-1'], date: '2026-10-01', customField: 'dato adicional preservado', comment: 'Texto completo de la observación' }, snapshot: request() }))
+    const html = renderToStaticMarkup(createElement(RepairTimeline, { events, users: [{ id: 'u', name: 'Técnico de prueba', role: 'ADMIN' }] }))
+    expect(html.match(/<li /g)).toHaveLength(9)
+    expect(html.match(/class="repair-event-details"/g)).toHaveLength(9)
+    expect(html).not.toContain(' open=')
+    expect(html).toContain('Ver detalle'); expect(html).toContain('Ocultar detalle')
+    expect(html).toContain('Técnico de prueba'); expect(html).toContain('Usuario registrado')
+    expect(html).toContain('dateTime="2026-10-01T15:20:39Z"')
+    expect(html).toContain('Fecha envío: 01/10/2026')
+    expect(html).toContain('dato adicional preservado')
+    for (const tone of ['created', 'progress', 'blocked', 'delivered', 'late', 'neutral']) expect(html).toContain(`repair-event-${tone}`)
+    expect(html.indexOf('Actualización registrada')).toBeLessThan(html.indexOf('Necesidad creada'))
+  })
+  it('timeline admite eventos sin detalle y no inventa transiciones', () => {
+    const event: RepairEvent = { id: 1, requestId: 'r1', action: 'COMMENT', actor: 'local-user', revision: 1, recordedAt: '2026-10-01T15:00:00Z', detail: {}, snapshot: request() }
+    expect(timelineEntries([event])[0].summary).toBe('')
+    const html = renderToStaticMarkup(createElement(RepairTimeline, { events: [event], users: [] }))
+    expect(html).toContain('Usuario local'); expect(html).toContain('Comentario agregado')
+    expect(html).toContain('Datos completos del registro')
+    expect(renderToStaticMarkup(createElement(RepairTimeline, { events: [], users: [] }))).not.toContain('<li')
+  })
   it('selección masiva excluye entregadas/canceladas y entrega excluye bloqueadas', () => {
     const r = request(4); r.items[0].status = 'DELIVERED'; r.items[1].status = 'CANCELLED'; r.items[2].status = 'BLOCKED'
     expect(eligibleStatusItems(r.items, 'IN_PROGRESS').map((i) => i.ordinal)).toEqual([3, 4])
@@ -30,15 +101,16 @@ describe('Dominio Reparaciones Taller', () => {
     expect(stateAt([e], '2026-09-02T00:00:00Z')[0].items[0].status).toBe('PENDING')
     expect(e.snapshot.items[0].status).toBe('PLANNED')
   })
-  it('detalle y timeline legibles no exponen JSON, UUID ni nombres de propiedades', () => {
+  it('vista sintética no expone JSON, UUID ni nombres de propiedades fuera del detalle expandible', () => {
     const r = request(); const original = structuredClone(r); r.items[0].status = 'IN_PROGRESS'
     const created: RepairEvent = { id: 1, requestId: r.id, action: 'CREATE', actor: 'private-user-id', recordedAt: '2026-09-01T15:00:00Z', revision: 1, detail: { equipmentId: 'private-equipment-id', requiredDate: r.requiredDate }, snapshot: original }
     const started: RepairEvent = { ...created, id: 2, action: 'START', detail: { itemIds: [r.items[0].id], date: '2026-09-02' }, snapshot: r }
     expect(eventPresentation(started, created).lines).toContain('Unidad #1: Pendiente → En curso')
-    const state = { users: [{ id: 'private-user-id', name: 'Juan Perez' }], config: { blockCategories: [] } } as unknown as RepairState
+    const state = { users: [{ id: 'private-user-id', name: 'Juan Perez' }], responsibles: [], config: { blockCategories: [], workshops: ['Taller'] } } as unknown as RepairState
     const html = renderToStaticMarkup(createElement(RepairDetail, { request: r, state, events: [created, started], eventError: '', busy: false, onSave: async () => true, onAction: () => {} }))
-    for (const value of ['equipmentId', 'requiredDate', 'itemIds', 'private-user-id', 'private-equipment-id', '<pre', '<table']) expect(html).not.toContain(value)
-    expect(html).toContain('Juan Perez'); expect(html).toContain('Estado actual'); expect(html).toContain('Planificación')
+    const collapsed = html.replace(/<details class="repair-event-details">[\s\S]*?<\/article>/g, '</article>')
+    for (const value of ['equipmentId', 'requiredDate', 'itemIds', 'private-user-id', 'private-equipment-id', '<pre', '<table']) expect(collapsed).not.toContain(value)
+    expect(html).toContain('Juan Perez'); expect(html).toContain('Estado actual'); expect(html).toContain('Guardar cambios')
   })
   it('cumplimiento a fecha ignora necesidades futuras y toma fin de mes sin día exacto', () => {
     const due = request(2); due.items[0].status = 'DELIVERED'; due.items[0].delivery = { deliveredAt: '2026-09-16', actor: 'u', comment: '' }

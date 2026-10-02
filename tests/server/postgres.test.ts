@@ -57,6 +57,21 @@ describe.skipIf(process.env.RUN_POSTGRES_TESTS !== '1')('PostgreSQL real + API +
     expect((await db.revision.findUniqueOrThrow({ where: { id: 1 } })).version).toBe(4)
   })
 
+  it('configuración general: renombra, asigna varias áreas, reasigna e inactiva sin perder repuestos', async () => {
+    let state = await a.load()
+    const originalSpares = state.data.spareTypes
+    const id = `responsible-${createUuid()}`
+    state = await a.updateConfig({ ...state.data.config, responsibles: [...state.data.config.responsibles, { id, name: 'Nuevo GMB', active: true }] }, state.revision)
+    state = await a.updateConfig({ ...state.data.config, responsibles: state.data.config.responsibles.map((p) => p.id === id ? { ...p, name: 'GMB Renombrado' } : p), areas: state.data.config.areas.map((area) => ['LCO', 'LP'].includes(area.code) ? { ...area, responsibleGmbId: id } : area) }, state.revision)
+    expect((await b.load()).data.config.areas.filter((area) => area.responsibleGmbId === id)).toHaveLength(2)
+    expect((await db.responsible.findUniqueOrThrow({ where: { id } })).name).toBe('GMB Renombrado')
+    state = await a.updateConfig({ ...state.data.config, areas: state.data.config.areas.map((area) => area.responsibleGmbId === id ? { ...area, responsibleGmbId: 'gmb-hidraulica' } : area), responsibles: state.data.config.responsibles.map((p) => p.id === id ? { ...p, active: false } : p) }, state.revision)
+    expect((await b.load()).data.config.responsibles.find((p) => p.id === id)?.active).toBe(false)
+    state = await a.updateConfig({ ...state.data.config, responsibles: state.data.config.responsibles.filter((p) => p.id !== id) }, state.revision)
+    expect(await db.responsible.findUnique({ where: { id } })).toBeNull()
+    expect(state.data.spareTypes).toEqual(originalSpares)
+  })
+
   it('PUT config rechaza 428/409/422 sin alterar datos ni revisión', async () => {
     const state = await a.load()
     const options = { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.data.config) }

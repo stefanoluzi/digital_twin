@@ -1,0 +1,16 @@
+.general-configuration{max-width:1400px;margin:auto;padding:24px;color:var(--text,#243d50)}
+.general-configuration a{color:var(--accent,#007b9a)}
+.general-configuration h1{margin:12px 0;font-size:28px}.general-configuration h2{font-size:20px;margin:0 0 12px}
+.general-configuration header{margin:24px 0}.general-configuration p{color:var(--text-muted,#5a6f80);line-height:1.6}
+.general-configuration fieldset{border:0;padding:0;margin:12px 0;min-width:0}
+.general-configuration section{background:var(--panel-bg,#fff);border:1px solid var(--border,#c6d2dc);padding:22px;margin-bottom:24px}
+.general-config-table{overflow-x:auto}.general-configuration table{width:100%;border-collapse:collapse;text-align:left}
+.general-configuration th,.general-configuration td{padding:12px;border-bottom:1px solid var(--border,#c6d2dc);vertical-align:middle}
+.general-configuration th{font-size:13px;color:var(--text-muted,#5a6f80)}
+.general-configuration button,.general-configuration input,.general-configuration select{font:inherit;color:inherit;background:var(--panel-bg,#fff);border:1px solid var(--border,#c6d2dc);border-radius:3px;padding:9px 12px;max-width:100%;box-sizing:border-box}
+.general-configuration button{cursor:pointer}.general-configuration button:hover{border-color:#007b9a}.general-configuration button:disabled{opacity:.5;cursor:not-allowed}
+.general-config-add{display:flex;gap:12px;align-items:end;margin:20px 0;flex-wrap:wrap}.general-config-add label{display:grid;gap:8px}.general-config-add button{background:#006c88;color:white}
+.general-config-actions{display:flex;gap:8px;flex-wrap:wrap}.general-area-chip{display:inline-block;padding:4px 8px;margin:3px;border:1px solid var(--border,#c6d2dc);font-size:13px}
+.general-config-error{padding:16px;border:1px solid #bd4237;white-space:pre-line}.general-config-error button{margin-left:16px}
+.global-topbar-controls a{text-decoration:none}.global-topbar-controls a:hover{background:#ffffff18}.global-topbar-controls a:focus-visible{outline:2px solid white;outline-offset:3px}
+@media(max-width:700px){.general-configuration{padding:12px}.general-configuration section{padding:12px}}

@@ -37,3 +37,10 @@ export function taskMetrics(task: RexTask, state: RexState, today = systemDay())
   const open = state.pending.filter((p) => p.taskId === task.id && Number(p.remaining) > 0)
   return { lastComplete, lastIntervention, due, cycle, open, partial: history.some((e) => e.status === 'PARTIAL'), status: open.length ? 'PARTIAL_PENDING' : cycle }
 }
+
+/** Chronological due dates put the oldest overdue tasks first. Unknown dates come last. */
+export function compareTaskDueRows(a: { task: RexTask; metrics: { due: string | null } }, b: { task: RexTask; metrics: { due: string | null } }) {
+  const dates = a.metrics.due && b.metrics.due ? a.metrics.due.localeCompare(b.metrics.due)
+    : a.metrics.due ? -1 : b.metrics.due ? 1 : 0
+  return dates || a.task.name.localeCompare(b.task.name, 'es') || a.task.id.localeCompare(b.task.id)
+}

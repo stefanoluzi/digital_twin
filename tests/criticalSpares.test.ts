@@ -19,14 +19,14 @@ describe('Repuestos Críticos', () => {
 
   it('distingue 70 días de reparación de 15 días sin cobertura y conserva el período al cambiar reparación por compra', () => {
     const data = createDemoSparesData()
-    data.units.find((unit) => unit.id === 'LC1C-RED-0002')!.statusSince = '2026-07-08'
+    data.units.find((unit) => unit.id === 'Planta-RED-0002')!.statusSince = '2026-07-08'
     useCriticalSparesStore.getState().hydrate(data)
-    const available = useCriticalSparesStore.getState().units.find((unit) => unit.id === 'LC1C-RED-0003')!
+    const available = useCriticalSparesStore.getState().units.find((unit) => unit.id === 'Planta-RED-0003')!
     useCriticalSparesStore.getState().updateUnit(available.id, { ...available, status: 'INSTALLED', statusSince: '2026-09-01' })
     const now = new Date('2026-09-16T12:00:00')
     expect(spareCoverage(useCriticalSparesStore.getState(), 'sp-red-transfer', now).uncoveredSince).toBe(15)
     expect(daysSince('2026-07-08', now)).toBe(70)
-    const repair = useCriticalSparesStore.getState().units.find((unit) => unit.id === 'LC1C-RED-0002')!
+    const repair = useCriticalSparesStore.getState().units.find((unit) => unit.id === 'Planta-RED-0002')!
     useCriticalSparesStore.getState().updateUnit(repair.id, { ...repair, status: 'ON_ORDER', statusSince: '2026-09-14' })
     expect(spareCoverage(useCriticalSparesStore.getState(), 'sp-red-transfer', now).uncoveredSince).toBe(15)
     useCriticalSparesStore.getState().updateUnit(available.id, { ...available, status: 'WAREHOUSE', statusSince: '2026-09-15' })
@@ -37,7 +37,7 @@ describe('Repuestos Críticos', () => {
 
   it('reconstruye un quiebre anterior desde el historial al migrar y conserva nombres personalizados', () => {
     const data = createDemoSparesData()
-    const unit = data.units.find((item) => item.id === 'LC1C-RED-0003')!
+    const unit = data.units.find((item) => item.id === 'Planta-RED-0003')!
     unit.status = 'INSTALLED'; unit.statusSince = '2026-09-01'
     data.history.push({ id: 'loss', unitId: unit.id, spareTypeId: unit.spareTypeId, timestamp: '2026-09-02T10:00:00Z', user: 'Demo', previousStatus: 'WAREHOUSE', nextStatus: 'INSTALLED', comment: '', snapshot: { ...unit } })
     data.config.responsibles[0].name = 'GMB Mecánica'
@@ -91,7 +91,7 @@ describe('Repuestos Críticos', () => {
     const initial = createDemoSparesData()
     useCriticalSparesStore.getState().hydrate(initial)
     const id = useCriticalSparesStore.getState().addUnit('sp-red-transfer', { status: 'MACHINE_SIDE', statusSince: '2026-09-10', comment: 'Lista para uso', location: 'Estantería demo' })
-    expect(id).toMatch(/^LC1C-RED-\d{4}$/)
+    expect(id).toMatch(/^Planta-RED-\d{4}$/)
     useCriticalSparesStore.getState().updateUnit(id, { status: 'INSTALLED', statusSince: '2026-09-16', comment: 'Cambio demo', location: '', installedEquipmentId: 'eq-transfer-6', installationDate: '2026-09-16' })
     const events = useCriticalSparesStore.getState().history.filter((event) => event.unitId === id)
     expect(events).toHaveLength(2)

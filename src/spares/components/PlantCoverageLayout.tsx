@@ -79,7 +79,7 @@ export function PlantCoverageLayout({ data, plantData, totalData, selectedArea, 
         {PLANT_LAYOUT_AREAS.map((area) => <AreaOverlay key={area.id} area={area} row={rowById.get(area.id)!} hasPlantData={Boolean(plantRowById.get(area.id)?.total)} selected={(editingAreas ? editingAreaId : selectedArea) === area.id} adjustment={adjustments[area.id] ?? DEFAULT_PLANT_LAYOUT_ADJUSTMENT} onOpen={() => editingAreas ? setEditingAreaId(area.id) : onOpenArea(area.id)} />)}
       </div></div>
       {editingAreas && <LayoutAreaEditor areaId={editingAreaId} value={adjustments[editingAreaId] ?? DEFAULT_PLANT_LAYOUT_ADJUSTMENT} onSelect={setEditingAreaId} onChange={(value) => setAdjustments((current) => ({ ...current, [editingAreaId]: value }))} onReset={() => setAdjustments((current) => { const next = { ...current }; delete next[editingAreaId]; return next })} />}
-      <div className="plant-map-footer"><span>PLANO ORIGINAL · LC1C</span><span>Seleccioná un área para ver sus repuestos</span></div>
+      <div className="plant-map-footer"><span>PLANO ORIGINAL · Planta</span><span>Seleccioná un área para ver sus repuestos</span></div>
     </section>
     {showSummary && <section className="spares-panel plant-summary-panel" aria-label="Resumen de cobertura por área">
       <header><div><small>INDICADORES DE COBERTURA</small><h2>Cobertura de repuestos por área</h2></div><div className="plant-coverage-legend"><span className="tone-high">● Alta ≥ {COVERAGE_TARGET_PERCENT}%</span><span className="tone-medium">● Media 50–{COVERAGE_TARGET_PERCENT - 1}%</span><span className="tone-low">● Baja &lt; 50%</span><span className="tone-no-data">● Sin datos</span></div></header>

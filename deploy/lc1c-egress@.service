@@ -1,0 +1,12 @@
+[Unit]
+Description=LC1C scoped Docker egress policy for %i
+Before=docker.service
+After=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/lc1c-docker-egress-policy %i
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -33,15 +33,15 @@ export function MaintenanceApp() {
 function MaintenanceCriticalSparesShell() {
   return <div className="planner-platform-shell">
     <AppNavigation active="MAINTENANCE" />
-    <header className="planner-module-strip"><strong>LACO 1 Maintenance</strong><nav aria-label="Módulos de Maintenance">{MAINTENANCE_MODULES.map((module) => <button key={module.id} className={module.id === 'CRITICAL_SPARES' ? 'active' : ''} onClick={() => navigate(module.path)}>{module.label}</button>)}</nav></header>
-    <Suspense fallback={<ModuleLoading title="Repuestos Críticos - LC1C" />}><CriticalSparesApp embedded /></Suspense>
+    <header className="planner-module-strip"><strong>Planta Maintenance</strong><nav aria-label="Módulos de Maintenance">{MAINTENANCE_MODULES.map((module) => <button key={module.id} className={module.id === 'CRITICAL_SPARES' ? 'active' : ''} onClick={() => navigate(module.path)}>{module.label}</button>)}</nav></header>
+    <Suspense fallback={<ModuleLoading title="Repuestos Críticos - Planta" />}><CriticalSparesApp embedded /></Suspense>
   </div>
 }
 
 function MaintenancePlannerShell() {
   return <div className="planner-platform-shell">
     <AppNavigation active="MAINTENANCE" />
-    <header className="planner-module-strip"><strong>LACO 1 Maintenance</strong><nav aria-label="Módulos de Maintenance">{MAINTENANCE_MODULES.map((module) => <button key={module.id} className={module.id === 'PLANNER' ? 'active' : ''} onClick={() => navigate(module.path)}>{module.label}</button>)}</nav></header>
+    <header className="planner-module-strip"><strong>Planta Maintenance</strong><nav aria-label="Módulos de Maintenance">{MAINTENANCE_MODULES.map((module) => <button key={module.id} className={module.id === 'PLANNER' ? 'active' : ''} onClick={() => navigate(module.path)}>{module.label}</button>)}</nav></header>
     <Suspense fallback={<ModuleLoading title="Planner" />}><PlannerApp embedded /></Suspense>
   </div>
 }

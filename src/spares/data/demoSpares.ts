@@ -18,15 +18,15 @@ export function createDemoSparesData(): CriticalSparesData {
     spare({ id: 'sp-gato-sha', sapNumber: 'SAP-DEMO-1006', name: 'Gato mecánico Sierra de Haces', categoryId: 'gato-mecanico', area: 'SHA', compatibleEquipmentIds: ['eq-sierra-haces'] }),
   ]
   const units = [
-    unit('LC1C-RED-0001', 'sp-red-transfer', 'INSTALLED', 330, { installedEquipmentId: 'eq-transfer-6', installationDate: dateAgo(330) }),
-    unit('LC1C-RED-0002', 'sp-red-transfer', 'IN_REPAIR', 73, { sapNotice: '400123-DEMO', repairStartDate: dateAgo(73) }),
-    unit('LC1C-RED-0003', 'sp-red-transfer', 'WAREHOUSE', 142, { location: 'Almacén central · posición DEMO A-14' }),
-    unit('LC1C-CIL-0001', 'sp-cil-piercer', 'INSTALLED', 180, { installedEquipmentId: 'eq-piercer', installationDate: dateAgo(180) }),
-    unit('LC1C-CIL-0002', 'sp-cil-piercer', 'ON_ORDER', 45, { solp: '12345-DEMO', eta: dateAgo(5) }),
-    unit('LC1C-BOM-0001', 'sp-bomba-hg', 'IN_REPAIR', 84, { sapNotice: '400987-DEMO', repairStartDate: dateAgo(84) }),
-    unit('LC1C-ACO-0001', 'sp-acople-lco', 'MACHINE_SIDE', 28, { location: 'Estantería norte junto a jaula J4' }),
-    unit('LC1C-ROD-0001', 'sp-rod-penf', 'WAREHOUSE', 12, { location: 'Almacén de rodamientos · DEMO R-02' }),
-    unit('LC1C-GAT-0001', 'sp-gato-sha', 'ON_ORDER', 21, { solp: '88991-DEMO', purchaseOrder: '450-DEMO', eta: dateAgo(-18) }),
+    unit('Planta-RED-0001', 'sp-red-transfer', 'INSTALLED', 330, { installedEquipmentId: 'eq-transfer-6', installationDate: dateAgo(330) }),
+    unit('Planta-RED-0002', 'sp-red-transfer', 'IN_REPAIR', 73, { sapNotice: '400123-DEMO', repairStartDate: dateAgo(73) }),
+    unit('Planta-RED-0003', 'sp-red-transfer', 'WAREHOUSE', 142, { location: 'Almacén central · posición DEMO A-14' }),
+    unit('Planta-CIL-0001', 'sp-cil-piercer', 'INSTALLED', 180, { installedEquipmentId: 'eq-piercer', installationDate: dateAgo(180) }),
+    unit('Planta-CIL-0002', 'sp-cil-piercer', 'ON_ORDER', 45, { solp: '12345-DEMO', eta: dateAgo(5) }),
+    unit('Planta-BOM-0001', 'sp-bomba-hg', 'IN_REPAIR', 84, { sapNotice: '400987-DEMO', repairStartDate: dateAgo(84) }),
+    unit('Planta-ACO-0001', 'sp-acople-lco', 'MACHINE_SIDE', 28, { location: 'Estantería norte junto a jaula J4' }),
+    unit('Planta-ROD-0001', 'sp-rod-penf', 'WAREHOUSE', 12, { location: 'Almacén de rodamientos · DEMO R-02' }),
+    unit('Planta-GAT-0001', 'sp-gato-sha', 'ON_ORDER', 21, { solp: '88991-DEMO', purchaseOrder: '450-DEMO', eta: dateAgo(-18) }),
   ]
   const history: SpareHistoryEvent[] = units.map((item, index) => ({ id: `hist-demo-${index + 1}`, unitId: item.id, spareTypeId: item.spareTypeId, timestamp: `${item.statusSince}T09:30:00.000Z`, user: 'Administrador Demo', nextStatus: item.status, equipmentId: item.installedEquipmentId, comment: item.comment, snapshot: { ...item } }))
   return {

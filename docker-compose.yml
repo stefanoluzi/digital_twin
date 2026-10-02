@@ -1,7 +1,9 @@
 name: critical-spares
 services:
   postgres:
-    image: postgres:16-bookworm
+    image: postgres:16-bookworm@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67
+    pull_policy: never
+    networks: [runtime]
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-critical_spares}
@@ -16,7 +18,15 @@ services:
       retries: 20
     # No ports: PostgreSQL is only reachable inside the Compose network.
   app:
+    image: maintenance-lc1c:local
+    pull_policy: never
     build: .
+    networks: [runtime, frontend]
+    dns: [127.0.0.1]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
     restart: unless-stopped
     depends_on:
       postgres:
@@ -29,13 +39,49 @@ services:
       PORT: 3001
       NODE_ENV: production
       STATIC_DIR: dist-spares
-    ports:
-      - "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-8080}:3001"
+      CHECKPOINT_DISABLE: '1'
+      PRISMA_HIDE_UPDATE_MESSAGE: '1'
     command: ["node", "scripts/start-container.mjs"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       start_period: 30s
+  gateway:
+    image: nginxinc/nginx-unprivileged:stable-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e
+    pull_policy: never
+    networks: [frontend, edge]
+    dns: [127.0.0.1]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp]
+    entrypoint: [nginx]
+    command: [-g, 'daemon off;']
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/api/health]
+      interval: 10s
+      timeout: 5s
+      retries: 6
 volumes:
   postgres_data:
+networks:
+  runtime:
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.name: "${RUNTIME_BRIDGE_NAME:-lc1c-runtime}"
+  frontend:
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.name: "${FRONTEND_BRIDGE_NAME:-lc1c-front}"
+  edge:
+    driver_opts:
+      com.docker.network.bridge.name: "${EDGE_BRIDGE_NAME:-lc1c-edge}"

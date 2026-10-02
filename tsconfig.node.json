@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "target": "ES2022",
     "composite": true,
     "skipLibCheck": true,
     "module": "ESNext",
@@ -8,5 +9,5 @@
     "strict": true,
     "noEmit": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite*.config.ts", "scripts/pdf-assets.ts"]
 }

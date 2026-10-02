@@ -10,6 +10,7 @@ import { today } from '../../src/repairs/domain'
 import { requestMetrics } from '../../src/repairs/domain'
 import { fiscalYear, systemDay } from '../../src/repairs/calendar'
 import type { RepairState } from '../../src/repairs/types'
+import { needDraft, needPayload } from '../../src/repairs/needDraft'
 
 describe.skipIf(process.env.RUN_POSTGRES_TESTS !== '1')('Reparaciones: API + PostgreSQL', () => {
   let db: PrismaClient; let server: Server; let base: string; let repository: RepairsRepository; let state: RepairState
@@ -29,6 +30,70 @@ describe.skipIf(process.env.RUN_POSTGRES_TESTS !== '1')('Reparaciones: API + Pos
     return state.requests[0]
   }
   const act = async (id: string, action: string, itemIds?: string[], extra: Record<string, unknown> = {}) => { state = await repository.save(`/requests/${id}/actions`, { action, ...(action === 'COMMENT' ? {} : { itemIds, date: today() }), comment: 'Prueba', ...extra }, state.revision, 'admin-demo') }
+  it('ficha: cambios múltiples son atómicos, un evento con valores antes/después y persistencia real', async () => {
+    const r = await create()
+    const initial = needDraft(r)
+    const draft = { ...initial, quantity: 2, targetMonth: '2027-02', requiredDate: '2027-02-15', criticality: 'HIGH' as const, criticalReason: 'Reserva', status: 'IN_PROGRESS' as const, commitment: '2027-02-10', reason: 'Replanificación' }
+    state = await repository.save(`/requests/${r.id}`, needPayload(draft, initial), state.revision, 'admin-demo', 'PUT')
+    const after = state.requests[0]
+    expect(after.quantity).toBe(2); expect(after.items.every((i) => i.status === 'IN_PROGRESS')).toBe(true)
+    expect(after.items.every((i) => i.commitments.length === 1)).toBe(true)
+    const events = await repository.events(r.id)
+    expect(events).toHaveLength(2)
+    expect(events[1]).toMatchObject({ action: 'EDIT', actor: 'admin-demo' })
+    expect(events[1].detail.changes).toEqual(expect.arrayContaining([{ field: 'quantity', previousValue: 1, newValue: 2 }, { field: 'criticality', previousValue: 'NORMAL', newValue: 'HIGH' }]))
+    expect((await db.repairRequest.findUniqueOrThrow({ where: { id: r.id } })).quantity).toBe(2)
+    expect((await repository.load()).requests[0]).toEqual(after)
+    const beforeFailure = await repository.load()
+    const invalid = { ...needDraft(after), quantity: 1, notes: 'No debe persistir', reason: 'Intento' }
+    await expect(repository.save(`/requests/${r.id}`, needPayload(invalid, needDraft(after)), state.revision, 'admin-demo', 'PUT')).rejects.toThrow('pendientes sin actividad')
+    expect(await repository.load()).toEqual(beforeFailure)
+    expect(await repository.events(r.id)).toHaveLength(2)
+  })
+  it('ficha: bloqueo, desbloqueo, compromiso original y eventos separados de envío/entrega', async () => {
+    const r = await create(2)
+    let initial = needDraft(r)
+    let draft = { ...initial, blocked: true, status: 'BLOCKED' as const, category: 'Repuesto no enviado', description: 'Falta pieza', reason: 'Esperar' }
+    state = await repository.save(`/requests/${r.id}`, needPayload(draft, initial), state.revision, 'admin-demo', 'PUT')
+    expect(state.requests[0].items.every((i) => i.status === 'BLOCKED')).toBe(true)
+    initial = needDraft(state.requests[0])
+    state = await repository.save(`/requests/${r.id}`, needPayload({ ...initial, blocked: false, status: 'PENDING', commitment: '2027-02-10', reason: 'Pieza recibida' }, initial), state.revision, 'admin-demo', 'PUT')
+    expect(state.requests[0].items.every((i) => i.status === 'PENDING' && i.blocks[0].resolvedAt)).toBe(true)
+    initial = needDraft(state.requests[0])
+    state = await repository.save(`/requests/${r.id}`, needPayload({ ...initial, commitment: '2027-02-20', reason: 'Nuevo compromiso' }, initial), state.revision, 'admin-demo', 'PUT')
+    expect(state.requests[0].items[0].commitments.map((c) => c.date.slice(0, 10))).toEqual(['2027-02-10', '2027-02-20'])
+    await act(r.id, 'SENT', [r.items[0].id]); await act(r.id, 'DELIVER', [r.items[0].id])
+    const events = await repository.events(r.id)
+    expect(events.map((e) => e.action)).toEqual(['CREATE', 'EDIT', 'EDIT', 'EDIT', 'SENT', 'DELIVER'])
+    expect((await repository.load()).requests[0].items[0].status).toBe('DELIVERED')
+    expect(await db.repairDelivery.count({ where: { itemId: r.items[0].id } })).toBe(1)
+  })
+  it('ficha: reduce solo unidades sin actividad, rechaza no-op y revierte estado ante acción inválida', async () => {
+    const r = await create(3); let initial = needDraft(r)
+    state = await repository.save(`/requests/${r.id}`, needPayload({ ...initial, quantity: 2, reason: 'Ajuste' }, initial), state.revision, 'admin-demo', 'PUT')
+    expect(state.requests[0].items).toHaveLength(2)
+    initial = needDraft(state.requests[0]); const before = await repository.load()
+    await expect(repository.save(`/requests/${r.id}`, needPayload({ ...initial, reason: 'Sin cambios' }, initial), state.revision, 'admin-demo', 'PUT')).rejects.toThrow('No hay cambios')
+    const body = needPayload({ ...initial, status: 'IN_PROGRESS', reason: 'Prueba' }, initial)
+    body.operations.push({ action: 'BLOCK', date: today(), category: 'Inválida', owner: 'PLANT', description: 'x', comment: 'x' })
+    await expect(repository.save(`/requests/${r.id}`, body, state.revision, 'admin-demo', 'PUT')).rejects.toThrow('Categoría')
+    expect(await repository.load()).toEqual(before)
+    expect(await repository.events(r.id)).toHaveLength(2)
+    await act(r.id, 'DELIVER', [state.requests[0].items[1].id])
+    const delivered = needDraft(state.requests[0])
+    await expect(repository.save(`/requests/${r.id}`, needPayload({ ...delivered, quantity: 1, reason: 'No permitido' }, delivered), state.revision, 'admin-demo', 'PUT')).rejects.toThrow('No se pueden eliminar')
+    expect(await db.repairDelivery.count()).toBe(1)
+  })
+  it('explica por qué un GMB inactivo con reparaciones no puede borrarse y conserva revisión e historial', async () => {
+    const r = await create()
+    await db.responsible.create({ data: { id: 'inactive-linked', name: 'Responsable histórico', active: false } })
+    await db.repairRequest.update({ where: { id: r.id }, data: { responsibleId: 'inactive-linked' } })
+    const spares = new HttpCriticalSparesRepository(base)
+    const before = await spares.load()
+    await expect(spares.updateConfig({ ...before.data.config, responsibles: before.data.config.responsibles.filter(p => p.id !== 'inactive-linked') }, before.revision)).rejects.toMatchObject({ status: 422, message: expect.stringContaining('1 necesidades de Reparaciones Taller') })
+    expect(await spares.load()).toEqual(before)
+    expect((await db.repairRequest.findUniqueOrThrow({ where: { id: r.id } })).responsibleId).toBe('inactive-linked')
+  })
   it('selector conserva transiciones y colores con estados por unidad y protege entregadas', async () => {
     const r = await create(3); const ids = r.items.map((i) => i.id)
     expect(r.items.every((i) => i.status === 'PENDING')).toBe(true)
