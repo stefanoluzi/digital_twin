@@ -9,7 +9,8 @@ import { OWNER_LABELS, STATUS_LABELS, type RepairEquipment, type RepairRequest, 
 
 export interface RepairSeed { equipmentId: string; month: string; quantity: number; requiredDate: string; criticality: string; criticalReason: string }
 export type QuickAction = 'START' | 'DELIVER' | 'BLOCK' | 'RESOLVE'
-export function ExercisePlan({ state, requests: inputRequests, equipment: inputEquipment, filters, selectedStates = [], onStatesChange, year, today, busy, onYear, onSave, onDetail, onDetailedNew, onAction, onConfigure }: {
+export function ExercisePlan({ state, requests: inputRequests, equipment: inputEquipment, filters, selectedStates = [], onStatesChange, year, today, busy, onYear, onNew, onSave, onDetail, onDetailedNew, onAction, onConfigure }: {
+  onNew?: () => void;
   filters?: ReactNode | ((quick: MeetingFilter[], setQuick: (filter: MeetingFilter[]) => void) => ReactNode);
   selectedStates?: StateFilter[]; onStatesChange?: (selected: StateFilter[]) => void;
   state: RepairState; requests: RepairRequest[]; equipment: RepairEquipment[]; year: number; today: string; busy: boolean;
@@ -38,13 +39,12 @@ export function ExercisePlan({ state, requests: inputRequests, equipment: inputE
     if (nextRow < 0 || nextRow >= equipment.length || nextCol < 0 || nextCol > 11) return
     e.preventDefault(); const key = `${nextRow}:${nextCol}`; setFocus(key); table.current?.querySelector<HTMLButtonElement>(`[data-cell="${key}"]`)?.focus()
   }
-  return <section className="spares-panel exercise-plan"><header><div><h2>Plan de reparaciones</h2><span>{fiscalLabel(year)}</span></div><ExerciseSelector year={year} onChange={onYear} today={today} /></header>
+  return <section className="spares-panel exercise-plan"><header className="exercise-plan-heading"><h2>Plan del ejercicio · {fiscalLabel(year).replace('Ejercicio ', '')}</h2><span className="repair-result-count" role="status">{requests.length} necesidades</span><div className="exercise-plan-actions"><ExerciseSelector year={year} onChange={onYear} today={today} />{onNew && <button type="button" className="primary" disabled={busy} onClick={onNew}>+ Nueva necesidad</button>}</div></header>
     <div className="coverage-kpis exercise-kpis">{[['NECESIDADES DEL EJERCICIO', counts.ALL], ['UNIDADES ENTREGADAS', kpis.delivered], ['CUMPLIMIENTO A FECHA', kpis.percent === null ? '—' : `${kpis.percent}%`], ['VENCIDAS', counts.OVERDUE], ['UNIDADES BLOQUEADAS', kpis.blocked], ['CRÍTICAS ABIERTAS', counts.CRITICAL]].map(([label, value]) => <article className="coverage-kpi" key={label}><span>{label}</span><strong>{value}</strong></article>)}</div>
     <RepairPlanLegend selected={selectedStates} onChange={onStatesChange} />
     <div className="repair-operational-bar">
       <div className="repair-meeting-filters" role="group" aria-label="Filtros de reunión">{meetingFilters.filter(([key]) => key !== 'NEXT').map(([key, label]) => <button key={key} type="button" aria-pressed={(key === 'ALL' ? !quick.length : quick.includes(key))} className={(key === 'ALL' ? !quick.length : quick.includes(key)) ? 'active' : ''} onClick={(event) => setQuick((current) => toggleMeetingFilter(current, key, event))}>{label}<span>{counts[key]}</span></button>)}</div>
       {typeof filters === 'function' ? filters(quick, setQuick) : filters}
-      <p className="repair-result-count" role="status">Mostrando {requests.length} necesidades</p>
     </div>
     <div className="table-scroll exercise-grid" ref={table}><table><thead><tr><th>IDREP</th><th>Descripción</th><th>Área</th><th>Rubro</th>{months.map((month) => <th key={month} className={monthPhase(month, today) === 'current' ? 'current-month' : ''}>{monthLabel(month)}{monthPhase(month, today) === 'current' && <small>HOY</small>}</th>)}</tr></thead><tbody>{equipment.map((eq, row) => <tr key={eq.id}><th>{eq.repairProfile?.idrep || 'Sin IDREP'}</th><th>{eq.name}{!eq.repairProfile && <small>Vincular a taller</small>}</th><td>{eq.area}</td><td>{eq.repairProfile?.trade || '—'}</td>{months.map((month, col) => {
       const group = requests.filter((r) => r.equipmentId === eq.id && r.targetMonth.startsWith(month))

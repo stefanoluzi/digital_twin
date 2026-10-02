@@ -88,7 +88,7 @@
 .exercise-plan .repair-legend-items svg{width:17px;height:17px}.exercise-plan .repair-legend-items strong{font-size:14px}.exercise-plan .repair-legend-items small{display:none}
 .exercise-plan .repair-legend-items button{cursor:pointer;font:inherit;line-height:1.25}.exercise-plan .repair-legend-items button:hover{filter:brightness(.96)}.exercise-plan .repair-legend-items button[aria-pressed=true]{outline:2px solid currentColor;outline-offset:1px;font-weight:700}.exercise-plan .repair-legend-items button:focus-visible,.repair-meeting-filters button:focus-visible{outline:3px solid var(--sp-accent);outline-offset:3px}
 .exercise-plan .repair-legend-help{margin-top:8px;padding-top:8px;gap:6px 20px}.exercise-plan .repair-legend-help>span{flex:1 1 420px}
-.repair-operational-bar{position:sticky;top:0;z-index:6;background:var(--sp-panel);border-block:1px solid var(--sp-line);padding:10px 12px;box-shadow:0 2px 4px #00000008}
+.repair-operational-bar{position:static;background:var(--sp-panel);border-block:1px solid var(--sp-line);padding:10px 12px}
 .plan-filter-primary{display:flex;align-items:center;gap:7px}.plan-filter-primary>input{flex:1;min-width:120px!important}.plan-filter-primary>select{width:160px}.plan-filter-primary>button{white-space:nowrap}
 .plan-filter-primary>input,.plan-filter-primary>select,.plan-filter-primary>button{min-height:32px;padding:5px 8px;font-size:14px}
 .plan-filter-secondary:not([hidden]){display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding-top:8px}.plan-filter-secondary>select{flex:1 1 145px;max-width:230px;font-size:13px;padding:5px}.plan-filter-secondary .repairs-check{font-size:13px;white-space:nowrap}
@@ -99,3 +99,47 @@
 .exercise-plan>.repairs-note{padding:6px 12px;margin:4px 0 10px;font-size:13px}
 @media(max-width:1100px) { .repair-legend-items { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media(max-width:650px) { .repair-legend-items { grid-template-columns:1fr; }.repair-plan-legend { margin:0 8px 12px; padding:12px; } }
+
+/* Dense exercise workspace; keep other module screens at their normal density. */
+.repairs-app .exercise-plan>header { padding:7px 12px; gap:8px 14px; }
+.repairs-app .exercise-plan-heading h2 { margin:0; font-size:18px; }
+.exercise-plan-heading .repair-result-count { margin:0; white-space:nowrap; font-size:12px; }
+.exercise-plan-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-left:auto; }
+.exercise-plan-actions button,.repairs-app .exercise-plan-actions select { min-height:30px; padding:4px 8px; font-size:14px; }
+.repairs-app .exercise-kpis { padding:5px 12px; gap:0; margin:0; border-bottom:1px solid var(--sp-line); }
+.repairs-app .exercise-kpis .coverage-kpi { min-height:44px; padding:3px 12px; border:0; border-right:1px solid var(--sp-line); background:transparent; gap:3px; }
+.repairs-app .exercise-kpis .coverage-kpi:first-child { padding-left:0; }
+.repairs-app .exercise-kpis .coverage-kpi:last-child { border-right:0; }
+.repairs-app .exercise-kpis .coverage-kpi>span { font-size:11px; letter-spacing:0; }
+.repairs-app .exercise-kpis .coverage-kpi>strong { font-size:22px!important; margin:0; }
+.exercise-plan .repair-plan-legend { padding:4px 0; margin:0 12px; gap:6px 12px; }
+.exercise-plan .repair-legend-items { gap:6px; }
+.exercise-plan .repair-legend-items .repair-status { padding:3px 7px; gap:5px; }
+.exercise-plan .repair-legend-items strong { font-size:13px; }
+.exercise-plan .repair-legend-items svg { width:14px; height:14px; }
+.exercise-plan .repair-operational-bar { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:5px 12px; }
+.exercise-plan .repair-meeting-filters { margin:0; gap:3px; }
+.exercise-plan .repair-meeting-filters button { font-size:13px; padding:4px 6px; gap:5px; min-height:30px; white-space:nowrap; }
+.exercise-plan .plan-filter-controls { display:contents; }
+.exercise-plan .plan-filter-primary { flex:1 1 540px; min-width:0; }
+.exercise-plan .plan-filter-primary>input { min-width:180px!important; }
+.exercise-plan .plan-filter-primary>select { width:125px; }
+.exercise-plan .plan-filter-secondary { flex-basis:100%; }
+.repairs-app .exercise-grid { max-height:calc(100vh - 295px); min-height:180px; }
+.exercise-grid table { width:100%!important; }
+.repairs-app .exercise-grid thead th { height:38px; padding-top:4px; padding-bottom:4px; }
+.repairs-app .exercise-grid thead th small { margin-top:2px; }
+.repairs-app .exercise-grid tbody th,.repairs-app .exercise-grid tbody td { padding-top:4px; padding-bottom:4px; }
+.exercise-grid .repair-cell { min-height:30px; padding:3px 4px; gap:2px; }
+@media(max-width:1050px) {
+  .repairs-app .exercise-kpis .coverage-kpi:nth-child(3) { border-right:0; }
+  .repairs-app .exercise-kpis .coverage-kpi:nth-child(4) { padding-left:0; }
+  .repairs-app .exercise-grid { max-height:65vh; }
+}
+@media(max-width:650px) {
+  .exercise-plan-actions { margin-left:0; width:100%; }
+  .repairs-app .exercise-kpis { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+  .repairs-app .exercise-kpis .coverage-kpi { border:0; padding:4px 6px!important; }
+  .exercise-plan .plan-filter-primary { flex-basis:100%; }
+  .exercise-plan .plan-filter-primary>input { flex-basis:100%; }
+}

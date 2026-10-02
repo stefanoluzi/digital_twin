@@ -56,7 +56,12 @@ describe('Filtros de reunión del plan', () => {
     const html = renderToStaticMarkup(createElement(ExercisePlan, { state: { revision: 1, requests: [r], equipment: [r.equipment], areas: [], responsibles: [], users: [], config: { warningDays: 7, workshops: [], blockCategories: [] } }, requests: [r], equipment: [r.equipment], filters: createElement('input', { placeholder: 'Filtro de prueba' }), year: 2026, today: '2026-10-01', busy: false, onYear: () => {}, onSave: async () => true, onDetail: () => {}, onDetailedNew: () => {}, onAction: () => {}, onConfigure: () => {} }))
     expect(html.indexOf('repair-plan-legend')).toBeLessThan(html.indexOf('Filtro de prueba'))
     expect(html.indexOf('Filtro de prueba')).toBeLessThan(html.indexOf('table-scroll exercise-grid'))
-    expect(html).toContain('Mostrando 1 necesidades')
+    expect(html).toContain('1 necesidades')
+    expect(html).toContain('Plan del ejercicio · 2026/27')
+    expect(html).not.toContain('Plan de reparaciones')
+    expect(html.indexOf('role="status"')).toBeLessThan(html.indexOf('exercise-kpis'))
+    expect(html).toContain('Ejercicio anterior')
+    expect(html).toContain('Ejercicio siguiente')
     expect(html).not.toContain('Próximo mes')
     expect(html).toContain('NECESIDADES DEL EJERCICIO</span><strong>1</strong>')
     expect(html).toContain('UNIDADES ENTREGADAS')
@@ -74,6 +79,20 @@ describe('Filtros de reunión del plan', () => {
     expect(html).toContain('selected=""')
     expect(html).toContain('checked=""')
     expect(html).toContain('Limpiar')
+  })
+  it('integra nueva necesidad con el selector y mantiene seis indicadores y doce meses', () => {
+    const r = request('compact', '2026-10')
+    const html = renderToStaticMarkup(createElement(ExercisePlan, {
+      state: { revision: 1, requests: [r], equipment: [r.equipment], areas: [], responsibles: [], users: [], config: { warningDays: 7, workshops: [], blockCategories: [] } },
+      requests: [r], equipment: [r.equipment], year: 2026, today: '2026-10-02', busy: true,
+      onYear: () => {}, onNew: () => {}, onSave: async () => true, onDetail: () => {}, onDetailedNew: () => {}, onAction: () => {}, onConfigure: () => {},
+    }))
+    expect(html).toContain('class="primary" disabled="">+ Nueva necesidad')
+    expect(html.indexOf('+ Nueva necesidad')).toBeLessThan(html.indexOf('exercise-kpis'))
+    expect(html.match(/class="coverage-kpi"/g)).toHaveLength(6)
+    expect(html.match(/data-cell="0:/g)).toHaveLength(12)
+    expect(html).toContain('tabindex="0"')
+    expect(html).toContain('repair-mixed')
   })
   it('cuenta necesidades, no unidades, para los indicadores compartidos', () => {
     const r = request('r', '2026-09', null, 'CRITICAL')
